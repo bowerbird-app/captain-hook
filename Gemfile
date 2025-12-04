@@ -1,0 +1,16 @@
+source "https://rubygems.org"
+
+# Specify your gem's dependencies in gem_template.gemspec
+gemspec
+
+gem "puma"
+gem "sprockets-rails"
+
+group :development, :test do
+  gem "debug"
+end
+
+group :development do
+  gem "rubocop", require: false
+  gem "rubocop-rails", require: false
+end
