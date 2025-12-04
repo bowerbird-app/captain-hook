@@ -1,1 +1,4 @@
 @import "tailwindcss";
+
+/* Include the engine's views in the Tailwind build */
+@source "../../../../../app/views/**/*.erb";
