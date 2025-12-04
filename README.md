@@ -25,13 +25,17 @@ A template for building Rails mountable engine gems with PostgreSQL UUID primary
 
 1. **Create a Codespace** on this repository
 2. **Wait** for the devcontainer to build and the `postCreateCommand` to complete
-3. **Start the server**:
+3. **Start the development server**:
    ```bash
    cd test/dummy
-   bundle exec rails server -p 3000 -b 0.0.0.0
+   bin/dev
    ```
 4. **Open the app** by clicking on the forwarded port 3000 in the Codespaces UI
 5. **Visit the engine** at `/gem_template`
+
+The `bin/dev` command uses [foreman](https://github.com/ddollar/foreman) to run multiple processes defined in `Procfile.dev`:
+- **Rails server** - bound to `0.0.0.0` for Codespaces port forwarding
+- **TailwindCSS watcher** - automatically rebuilds CSS when views change
 
 The devcontainer automatically:
 - Installs all dependencies
@@ -81,9 +85,14 @@ The dummy app is configured to relax CSRF origin checks when running in Codespac
    bin/rails tailwindcss:build
    ```
 
-5. **Start the server**:
+5. **Start the development server**:
    ```bash
    cd test/dummy
+   bin/dev
+   ```
+
+   This runs both the Rails server and TailwindCSS watcher. Alternatively, run just the server:
+   ```bash
    bundle exec rails server
    ```
 
