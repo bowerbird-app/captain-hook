@@ -29,7 +29,7 @@
   },
   "remoteUser": "root",
   "features": {},
-  "postCreateCommand": "git lfs install && bundle config set --local path '/usr/local/bundle' && bundle install && cd test/dummy && bundle exec rails db:prepare && bundle exec rails tailwindcss:build",
+  "postCreateCommand": "git lfs install && cd test/dummy && bundle install && bundle exec rails db:prepare && bundle exec rails tailwindcss:build",
   "env": {
     "CODESPACES": "true"
   }
