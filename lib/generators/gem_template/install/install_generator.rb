@@ -11,6 +11,16 @@ module GemTemplate
         route 'mount GemTemplate::Engine, at: "/gem_template"'
       end
 
+      def copy_initializer
+        template "gem_template_initializer.rb", "config/initializers/gem_template.rb"
+      end
+
+      def add_yaml_config
+        return unless yes?("Would you like to add `config/gem_template.yml` for environment-specific settings? [y/N]")
+
+        template "gem_template.yml", "config/gem_template.yml"
+      end
+
       def add_tailwind_source
         tailwind_css_path = Rails.root.join("app/assets/tailwind/application.css")
 

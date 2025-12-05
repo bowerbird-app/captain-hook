@@ -1,222 +1,168 @@
 # GemTemplate
 
-A template for building Rails mountable engine gems with PostgreSQL UUID primary keys, TailwindCSS, and GitHub Codespaces integration.
+A template for building **Rails mountable engine gems** with PostgreSQL UUID primary keys, TailwindCSS, and GitHub Codespaces integration.
 
-## 🚀 Features
+---
 
-- **Rails Mountable Engine**: Full-featured Rails engine that can be mounted in any Rails application
-- **PostgreSQL with UUIDs**: Configured to use UUID primary keys by default
-- **TailwindCSS**: Modern styling with TailwindCSS v4
-- **GitHub Codespaces Ready**: Complete devcontainer setup with Docker Compose
-- **Frictionless Development**: Everything configured to work out of the box
+## ✅ What's Working
 
-## 📋 Tech Stack
+- ✓ Rails Engine mounted and operational
+- ✓ PostgreSQL with UUID primary keys
+- ✓ TailwindCSS styling (auto-rebuilds in development)
+- ✓ Codespaces environment automatically sets up on build
+- ✓ Install generator for host applications
 
-- Ruby 3.3
-- Rails 8.1
-- PostgreSQL 16
-- Redis 7
-- TailwindCSS 4
-- Docker & Docker Compose
+---
 
-## 🏁 Getting Started with Codespaces
+## 🚀 Quick Start
 
-### Using GitHub Codespaces
+### GitHub Codespaces (Recommended)
 
-1. **Create a Codespace** on this repository
-2. **Wait** for the devcontainer to build and the `postCreateCommand` to complete
-3. **Start the development server**:
+1. Click **Code** → **Codespaces** → **Create codespace**
+2. Wait for setup to complete (~3-5 minutes)
+3. Run:
    ```bash
    cd test/dummy
    bin/dev
    ```
-4. **Open the app** by clicking on the forwarded port 3000 in the Codespaces UI
-5. **Visit the engine** at `/gem_template`
+4. Open port 3000 and visit `/gem_template`
 
-The `bin/dev` command uses [foreman](https://github.com/ddollar/foreman) to run multiple processes defined in `Procfile.dev`:
-- **Rails server** - bound to `0.0.0.0` for Codespaces port forwarding
-- **TailwindCSS watcher** - automatically rebuilds CSS when views change
+→ [Codespaces Setup Guide](docs/CODESPACES.md)
 
-The devcontainer automatically:
-- Installs all dependencies
-- Sets up the PostgreSQL database
-- Builds TailwindCSS assets
-- Configures the environment
+### Local Development
 
-### CSRF Protection in Codespaces
+1. Clone and install dependencies
+2. Setup database and build Tailwind
+3. Run `bin/dev`
 
-The dummy app is configured to relax CSRF origin checks when running in Codespaces (when `ENV["CODESPACES"] == "true"`). CSRF authenticity tokens remain enabled. For best results, access your app consistently via either:
-- The GitHub Codespaces forwarded URL (*.app.github.dev)
-- localhost:3000 (if port forwarding is set to local)
+→ [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
 
-## 🔧 Local Development Setup
+---
 
-### Prerequisites
+## ✏️ Rename This Gem
 
-- Ruby 3.3
-- PostgreSQL 16
-- Redis 7
-- Node.js (for TailwindCSS)
+This gem is currently named `gem_template`. Rename it to your own:
 
-### Setup
+```bash
+bin/rename_gem your_gem_name
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/bowerbird-app/gem_template.git
-   cd gem_template
-   ```
+Preview changes first with `--dry-run`:
 
-2. **Install dependencies**:
-   ```bash
-   bundle install
-   cd test/dummy
-   bundle install
-   ```
+```bash
+bin/rename_gem your_gem_name --dry-run
+```
 
-3. **Setup database**:
-   ```bash
-   cd test/dummy
-   bin/rails db:prepare
-   ```
+→ [Renaming Guide](docs/RENAMING.md)
 
-4. **Build TailwindCSS**:
-   ```bash
-   cd test/dummy
-   bin/rails tailwindcss:build
-   ```
+---
 
-5. **Start the development server**:
-   ```bash
-   cd test/dummy
-   bin/dev
-   ```
+## 🎨 Tailwind CSS
 
-   This runs both the Rails server and TailwindCSS watcher. Alternatively, run just the server:
-   ```bash
-   bundle exec rails server
-   ```
+- CSS is prebuilt when Codespaces starts
+- Auto-rebuilds when using `bin/dev`
+- Host apps include engine views via the install generator
 
-6. **Visit** http://localhost:3000/gem_template
+→ [Tailwind Setup](docs/TAILWIND.md)
 
-## 🎯 Using This Template
+---
 
-### Creating Your Own Engine
+## ⚙️ Configuration
 
-1. **Fork this repository** or use it as a template
-2. **Rename the gem**:
-   - Update `gem_template.gemspec`
-   - Rename `lib/gem_template*` files
-   - Update module names from `GemTemplate` to your engine name
-   - Update `config/routes.rb` mount path
-3. **Customize** the engine by adding your controllers, models, and views
+Configure the gem in your host app:
 
-### Mounting in a Host Application
+```ruby
+# config/initializers/gem_template.rb
+GemTemplate.configure do |config|
+  config.api_key = ENV["GEM_TEMPLATE_API_KEY"]
+  config.enable_feature_x = true
+  config.timeout = 10
+end
+```
 
-1. **Add to your Gemfile**:
+→ [Configuration Guide](docs/CONFIGURATION.md)
+
+---
+
+## 📦 Installing in a Host App
+
+1. Add to your `Gemfile`:
    ```ruby
    gem "gem_template", github: "bowerbird-app/gem_template"
-   # or
-   gem "gem_template", path: "../gem_template"
    ```
 
-2. **Run the installer**:
+2. Run the install generator:
    ```bash
+   bundle install
    rails generate gem_template:install
    ```
 
-3. **Or manually mount** in your `config/routes.rb`:
-   ```ruby
-   mount GemTemplate::Engine, at: "/gem_template"
-   ```
+The generator mounts the engine, creates a config initializer, and configures Tailwind.
 
-## 🐳 Docker Compose Services
+→ [Installation Guide](docs/INSTALLING.md)
 
-The devcontainer includes three services:
-
-### Database (PostgreSQL)
-- Image: `postgres:16`
-- Port: `5432`
-- Default database: `app_development`
-- UUID support enabled via `pgcrypto` extension
-
-### Redis
-- Image: `redis:7-alpine`
-- Port: `6379`
-- Data persisted in volume
-
-### App
-- Built from `.devcontainer/Dockerfile`
-- Ruby 3.3 slim base
-- All Rails dependencies pre-installed
-- Bundle path: `/usr/local/bundle`
+---
 
 ## 🧪 Testing
-
-Run the test suite:
 
 ```bash
 bundle exec rake test
 ```
+
+---
 
 ## 📁 Project Structure
 
 ```
 gem_template/
 ├── app/
-│   ├── controllers/gem_template/    # Engine controllers
-│   └── views/gem_template/          # Engine views
-├── config/
-│   └── routes.rb                    # Engine routes
+│   ├── controllers/gem_template/
+│   └── views/gem_template/
+├── config/routes.rb
 ├── lib/
+│   ├── gem_template.rb
 │   ├── gem_template/
-│   │   ├── engine.rb                # Engine definition
-│   │   └── version.rb               # Version
-│   ├── gem_template.rb              # Main gem file
-│   └── generators/                  # Rails generators
-├── test/
-│   └── dummy/                       # Test Rails app
-├── .devcontainer/
-│   ├── devcontainer.json           # Codespaces config
-│   ├── docker-compose.yml          # Docker services
-│   └── Dockerfile                  # App container
-├── Gemfile
-├── Rakefile
+│   │   ├── configuration.rb
+│   │   ├── engine.rb
+│   │   └── version.rb
+│   └── generators/
+├── test/dummy/              # Test Rails app
+├── docs/                    # Documentation
 └── gem_template.gemspec
 ```
 
-## 🔒 Security
+---
 
-- RuboCop configured for code quality
-- CSRF protection enabled
-- Environment-based configuration
-- No secrets committed to repository
+## 📋 Tech Stack
 
-## 📝 Development Workflow
+| Component | Version |
+|-----------|---------|
+| Ruby | 3.3 |
+| Rails | 8.1 |
+| PostgreSQL | 16 |
+| Redis | 7 |
+| TailwindCSS | 4 |
 
-1. Make changes to engine code in `app/`, `config/`, or `lib/`
-2. Test changes in the dummy app (`test/dummy`)
-3. Run tests: `bundle exec rake test`
-4. Commit and push changes
+---
 
-## 🤝 Contributing
+## 📚 Documentation
 
-Contributions are welcome! Please follow these steps:
+| Guide | Description |
+|-------|-------------|
+| [Codespaces](docs/CODESPACES.md) | Devcontainer setup and Codespaces usage |
+| [Local Development](docs/LOCAL_DEVELOPMENT.md) | Setup without Codespaces |
+| [Configuration](docs/CONFIGURATION.md) | Configuration API and options |
+| [Tailwind](docs/TAILWIND.md) | CSS setup and auto-rebuild |
+| [Renaming](docs/RENAMING.md) | Rename script usage |
+| [Installing](docs/INSTALLING.md) | Install in a host Rails app |
+| [Security](SECURITY.md) | Security considerations |
+| [Changelog](CHANGELOG.md) | Version history |
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
+---
 
 ## 📄 License
 
-This project is available under the MIT License. See the [MIT-LICENSE](MIT-LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with Rails mountable engine architecture
-- Inspired by modern Ruby gem development practices
-- Tailored for GitHub Codespaces development
+MIT – see [MIT-LICENSE](MIT-LICENSE)
 
 ---
 
