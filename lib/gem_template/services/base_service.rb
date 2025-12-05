@@ -7,6 +7,11 @@ module GemTemplate
     # Services encapsulate business logic and provide a consistent interface
     # with `.call` class method and a Result object for success/failure handling.
     #
+    # Services support hooks for instrumentation and customization:
+    # - before_service: Called before service execution
+    # - after_service: Called after service execution (with result)
+    # - around_service: Wraps service execution
+    #
     # @example Basic usage
     #   result = MyService.call(param1: "value")
     #   if result.success?
@@ -70,12 +75,20 @@ module GemTemplate
         end
       end
 
-      # Execute the service logic
+      # Execute the service logic with hooks
       #
       # @yield [Result] Optional block for handling the result
       # @return [Result] The result of the service call
       def call
-        result = perform
+        # Run before_service hooks
+        run_before_hooks
+
+        # Run around_service hooks (or just perform if none registered)
+        result = run_with_around_hooks
+
+        # Run after_service hooks
+        run_after_hooks(result)
+
         yield(result) if block_given?
         result
       end
@@ -105,6 +118,50 @@ module GemTemplate
       def failure(error, errors: [])
         error_message = error.is_a?(Exception) ? error.message : error
         Result.new(success: false, error: error_message, errors: errors)
+      end
+
+      # Run before_service hooks
+      def run_before_hooks
+        return unless hooks_enabled?
+
+        GemTemplate::Hooks.run(:before_service, self.class, service_args)
+      end
+
+      # Run after_service hooks
+      #
+      # @param result [Result] The service result
+      def run_after_hooks(result)
+        return unless hooks_enabled?
+
+        GemTemplate::Hooks.run(:after_service, self.class, result)
+      end
+
+      # Run perform wrapped in around_service hooks
+      #
+      # @return [Result] The service result
+      def run_with_around_hooks
+        if hooks_enabled? && GemTemplate.configuration.hooks.registered?(:around_service)
+          GemTemplate::Hooks.run_around(:around_service, self) { perform }
+        else
+          perform
+        end
+      end
+
+      # Check if hooks are enabled (GemTemplate is loaded and configured)
+      #
+      # @return [Boolean]
+      def hooks_enabled?
+        defined?(GemTemplate) &&
+          GemTemplate.respond_to?(:configuration) &&
+          GemTemplate.configuration.respond_to?(:hooks)
+      end
+
+      # Get service arguments for hook callbacks
+      # Override in subclasses to provide meaningful args
+      #
+      # @return [Hash] Arguments passed to the service
+      def service_args
+        {}
       end
     end
   end

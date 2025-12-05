@@ -40,7 +40,7 @@
           <li>• In production, the parent app's Tailwind build compiles the gem's styles — run <code class="bg-amber-100 px-2 py-1 rounded">rails g gem_template:install</code> to automatically add the gem's view paths to the parent's Tailwind config</li>
         </ul>
       </div>
-      <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+      <div class="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
         <h2 class="text-lg font-semibold text-purple-900 mb-2">
           📦 Installing in a Rails App
         </h2>
@@ -56,6 +56,20 @@
           <li>• Mount the engine at <code class="bg-purple-100 px-2 py-1 rounded">/gem_template</code> in your routes</li>
           <li>• Configure Tailwind CSS to include the gem's views (if Tailwind is detected)</li>
           <li>• Display post-installation instructions</li>
+        </ul>
+      </div>
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-indigo-900 mb-2">
+          ⚡ Template Features
+        </h2>
+        <ul class="text-left text-indigo-800 space-y-2">
+          <li>• <strong>Rename Script</strong> — Run <code class="bg-indigo-100 px-2 py-1 rounded">bin/rename_gem your_gem_name</code> to rename the entire gem (files, classes, modules, and references)</li>
+          <li>• <strong>Engine Hooks</strong> — Customize engine behavior from your host app with lifecycle hooks (<code class="bg-indigo-100 px-2 py-1 rounded">before_initialize</code>, <code class="bg-indigo-100 px-2 py-1 rounded">after_initialize</code>), service hooks, and model/controller extensions</li>
+          <li>• <strong>Service Objects</strong> — Business logic encapsulated in services with Result monad pattern for clean success/failure handling</li>
+          <li>• <strong>Install Generator</strong> — Run <code class="bg-indigo-100 px-2 py-1 rounded">rails g gem_template:install</code> to mount the engine, create config initializer, and configure Tailwind</li>
+          <li>• <strong>Migrations Generator</strong> — Run <code class="bg-indigo-100 px-2 py-1 rounded">rails g gem_template:migrations</code> to copy engine migrations to your host app</li>
+          <li>• <strong>Configuration DSL</strong> — Simple configuration API with YAML and initializer support</li>
+          <li>• <strong>UUID Primary Keys</strong> — PostgreSQL UUIDs out of the box for all models</li>
         </ul>
       </div>
   </div>

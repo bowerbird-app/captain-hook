@@ -156,6 +156,33 @@ end
 
 ---
 
+## 🪝 Engine Hooks
+
+Customize engine behavior from your host application using hooks:
+
+```ruby
+GemTemplate.configure do |config|
+  # Lifecycle hooks
+  config.hooks.after_initialize do
+    Rails.logger.info "GemTemplate ready!"
+  end
+  
+  # Extend models
+  config.hooks.extend_model :Example do
+    belongs_to :organization
+  end
+  
+  # Service instrumentation
+  config.hooks.around_service do |service, block|
+    ActiveRecord::Base.transaction { block.call }
+  end
+end
+```
+
+→ [Hooks Guide](docs/HOOKS.md)
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -209,6 +236,7 @@ gem_template/
 | [Codespaces](docs/CODESPACES.md) | Devcontainer setup and Codespaces usage |
 | [Local Development](docs/LOCAL_DEVELOPMENT.md) | Setup without Codespaces |
 | [Configuration](docs/CONFIGURATION.md) | Configuration API and options |
+| [Hooks](docs/HOOKS.md) | Engine hooks and extension points |
 | [Tailwind](docs/TAILWIND.md) | CSS setup and auto-rebuild |
 | [Renaming](docs/RENAMING.md) | Rename script usage |
 | [Installing](docs/INSTALLING.md) | Install in a host Rails app |
