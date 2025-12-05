@@ -11,6 +11,8 @@ A template for building **Rails mountable engine gems** with PostgreSQL UUID pri
 - ✓ TailwindCSS styling (auto-rebuilds in development)
 - ✓ Codespaces environment automatically sets up on build
 - ✓ Install generator for host applications
+- ✓ Migrations generator for database setup
+- ✓ Service object pattern with Result monad
 
 ---
 
@@ -103,6 +105,57 @@ The generator mounts the engine, creates a config initializer, and configures Ta
 
 ---
 
+## 🗄️ Database Migrations
+
+Install engine migrations in your host app:
+
+```bash
+rails generate gem_template:migrations
+bin/rails db:migrate
+```
+
+→ [Migrations Guide](docs/MIGRATIONS.md)
+
+---
+
+## 🔧 Service Objects
+
+Business logic is encapsulated in service objects:
+
+```ruby
+result = GemTemplate::Services::ExampleService.call(name: "World")
+
+if result.success?
+  puts result.value  # => "Hello, World!"
+else
+  puts result.error
+end
+```
+
+Create your own services by inheriting from `BaseService`:
+
+```ruby
+module GemTemplate
+  module Services
+    class MyService < BaseService
+      def initialize(param:)
+        @param = param
+      end
+
+      private
+
+      def perform
+        # Your logic here
+        success(result_value)
+        # or: failure("Error message")
+      end
+    end
+  end
+end
+```
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -119,12 +172,16 @@ gem_template/
 │   ├── controllers/gem_template/
 │   └── views/gem_template/
 ├── config/routes.rb
+├── db/migrate/              # Engine migrations
 ├── lib/
 │   ├── gem_template.rb
 │   ├── gem_template/
 │   │   ├── configuration.rb
 │   │   ├── engine.rb
-│   │   └── version.rb
+│   │   ├── version.rb
+│   │   └── services/        # Service objects
+│   │       ├── base_service.rb
+│   │       └── example_service.rb
 │   └── generators/
 ├── test/dummy/              # Test Rails app
 ├── docs/                    # Documentation
@@ -155,6 +212,7 @@ gem_template/
 | [Tailwind](docs/TAILWIND.md) | CSS setup and auto-rebuild |
 | [Renaming](docs/RENAMING.md) | Rename script usage |
 | [Installing](docs/INSTALLING.md) | Install in a host Rails app |
+| [Migrations](docs/MIGRATIONS.md) | Database migrations setup |
 | [Security](SECURITY.md) | Security considerations |
 | [Changelog](CHANGELOG.md) | Version history |
 
