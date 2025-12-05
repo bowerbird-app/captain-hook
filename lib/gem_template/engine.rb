@@ -8,9 +8,13 @@ module GemTemplate
       # Load config/gem_template.yml via Rails config_for if present
       if app.respond_to?(:config_for)
         begin
-          yaml = app.config_for(:gem_template) rescue nil
+          yaml = begin
+            app.config_for(:gem_template)
+          rescue StandardError
+            nil
+          end
           GemTemplate.configuration.merge!(yaml) if yaml && yaml.respond_to?(:each)
-        rescue => _e
+        rescue StandardError => _e
           # ignore load errors; host app can provide initializer overrides
         end
       end
@@ -26,7 +30,7 @@ module GemTemplate
             hash = {}
             xcfg.each_pair { |k, v| hash[k] = v } if xcfg.respond_to?(:each_pair)
             GemTemplate.configuration.merge!(hash) if hash && hash.any?
-          rescue => _e
+          rescue StandardError => _e
             # ignore
           end
         end

@@ -5,7 +5,7 @@ module GemTemplate
     attr_accessor :api_key, :enable_feature_x, :timeout
 
     def initialize
-      @api_key = ENV["GEM_TEMPLATE_API_KEY"]
+      @api_key = ENV.fetch("GEM_TEMPLATE_API_KEY", nil)
       @enable_feature_x = false
       @timeout = 5
     end
