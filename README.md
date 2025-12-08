@@ -65,7 +65,7 @@ bin/rename_gem your_gem_name --dry-run
 - Auto-rebuilds when using `bin/dev`
 - Host apps include engine views via the install generator
 
-→ [Tailwind Setup](docs/TAILWIND.md)
+→ [Asset Architecture](docs/CSS_JS_ASSETS_ARCHITECTURE.md)
 
 ---
 
@@ -237,7 +237,7 @@ gem_template/
 | [Local Development](docs/LOCAL_DEVELOPMENT.md) | Setup without Codespaces |
 | [Configuration](docs/CONFIGURATION.md) | Configuration API and options |
 | [Hooks](docs/HOOKS.md) | Engine hooks and extension points |
-| [Tailwind](docs/TAILWIND.md) | CSS setup and auto-rebuild |
+| [Asset Architecture](docs/CSS_JS_ASSETS_ARCHITECTURE.md) | CSS/JS setup and auto-rebuild |
 | [Renaming](docs/RENAMING.md) | Rename script usage |
 | [Installing](docs/INSTALLING.md) | Install in a host Rails app |
 | [Migrations](docs/MIGRATIONS.md) | Database migrations setup |
