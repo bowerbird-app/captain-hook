@@ -263,7 +263,7 @@ class HooksTest < Minitest::Test
   # === Class Method Tests ===
 
   def test_class_run_delegates_to_configuration
-    original_hooks = GemTemplate.configuration.hooks
+    GemTemplate.configuration.hooks
     called = false
 
     GemTemplate.configuration.hooks.after_initialize { called = true }

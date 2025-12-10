@@ -21,7 +21,7 @@ module GemTemplate
       desc "Copy GemTemplate migrations to your application"
 
       class_option :skip_existing, type: :boolean, default: true,
-        desc: "Skip migrations that already exist (based on name, ignoring timestamp)"
+                                   desc: "Skip migrations that already exist (based on name, ignoring timestamp)"
 
       def copy_migrations
         migrations_dir = File.join(self.class.source_root, "db", "migrate")
@@ -31,7 +31,7 @@ module GemTemplate
           return
         end
 
-        migration_files = Dir.glob(File.join(migrations_dir, "*.rb")).sort
+        migration_files = Dir.glob(File.join(migrations_dir, "*.rb"))
 
         if migration_files.empty?
           say "No migrations found in GemTemplate engine.", :yellow
