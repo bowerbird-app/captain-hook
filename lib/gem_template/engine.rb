@@ -18,7 +18,7 @@ module GemTemplate
           rescue StandardError
             nil
           end
-          GemTemplate.configuration.merge!(yaml) if yaml && yaml.respond_to?(:each)
+          GemTemplate.configuration.merge!(yaml) if yaml.respond_to?(:each)
         rescue StandardError => _e
           # ignore load errors; host app can provide initializer overrides
         end
@@ -34,7 +34,7 @@ module GemTemplate
             # try converting OrderedOptions
             hash = {}
             xcfg.each_pair { |k, v| hash[k] = v } if xcfg.respond_to?(:each_pair)
-            GemTemplate.configuration.merge!(hash) if hash && hash.any?
+            GemTemplate.configuration.merge!(hash) if hash&.any?
           rescue StandardError => _e
             # ignore
           end
