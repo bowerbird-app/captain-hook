@@ -21,4 +21,9 @@ namespace :test do
   end
 end
 
+namespace :app do
+  desc "Run all tests for the gem"
+  task test: :test
+end
+
 task default: :test
