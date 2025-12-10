@@ -41,153 +41,19 @@ A template for building **Rails mountable engine gems** with PostgreSQL UUID pri
 
 ---
 
-## ✏️ Rename This Gem
+## 📚 Documentation
 
-This gem is currently named `gem_template`. Rename it to your own:
-
-```bash
-bin/rename_gem your_gem_name
-```
-
-Preview changes first with `--dry-run`:
-
-```bash
-bin/rename_gem your_gem_name --dry-run
-```
-
-→ [Renaming Guide](docs/RENAMING.md)
-
----
-
-## 🎨 Tailwind CSS
-
-- CSS is prebuilt when Codespaces starts
-- Auto-rebuilds when using `bin/dev`
-- Host apps include engine views via the install generator
-
-→ [Asset Architecture](docs/CSS_JS_ASSETS_ARCHITECTURE.md)
-
----
-
-## ⚙️ Configuration
-
-Configure the gem in your host app:
-
-```ruby
-# config/initializers/gem_template.rb
-GemTemplate.configure do |config|
-  config.api_key = ENV["GEM_TEMPLATE_API_KEY"]
-  config.enable_feature_x = true
-  config.timeout = 10
-end
-```
-
-→ [Configuration Guide](docs/CONFIGURATION.md)
-
----
-
-## 📦 Installing in a Host App
-
-1. Add to your `Gemfile`:
-   ```ruby
-   gem "gem_template", github: "bowerbird-app/gem_template"
-   ```
-
-2. Run the install generator:
-   ```bash
-   bundle install
-   rails generate gem_template:install
-   ```
-
-The generator mounts the engine, creates a config initializer, and configures Tailwind.
-
-→ [Installation Guide](docs/INSTALLING.md)
-
----
-
-## 🗄️ Database Migrations
-
-Install engine migrations in your host app:
-
-```bash
-rails generate gem_template:migrations
-bin/rails db:migrate
-```
-
-→ [Migrations Guide](docs/MIGRATIONS.md)
-
----
-
-## 🔧 Service Objects
-
-Business logic is encapsulated in service objects:
-
-```ruby
-result = GemTemplate::Services::ExampleService.call(name: "World")
-
-if result.success?
-  puts result.value  # => "Hello, World!"
-else
-  puts result.error
-end
-```
-
-Create your own services by inheriting from `BaseService`:
-
-```ruby
-module GemTemplate
-  module Services
-    class MyService < BaseService
-      def initialize(param:)
-        @param = param
-      end
-
-      private
-
-      def perform
-        # Your logic here
-        success(result_value)
-        # or: failure("Error message")
-      end
-    end
-  end
-end
-```
-
----
-
-## 🪝 Engine Hooks
-
-Customize engine behavior from your host application using hooks:
-
-```ruby
-GemTemplate.configure do |config|
-  # Lifecycle hooks
-  config.hooks.after_initialize do
-    Rails.logger.info "GemTemplate ready!"
-  end
-  
-  # Extend models
-  config.hooks.extend_model :Example do
-    belongs_to :organization
-  end
-  
-  # Service instrumentation
-  config.hooks.around_service do |service, block|
-    ActiveRecord::Base.transaction { block.call }
-  end
-end
-```
-
-→ [Hooks Guide](docs/HOOKS.md)
-
----
-
-## 🧪 Testing
-
-```bash
-bundle exec rake test
-```
+| Guide | Description |
+|-------|-------------|
+| [Renaming](docs/RENAMING.md) | Instructions for renaming this template gem to your own name. |
+| [Installation](docs/INSTALLING.md) | Step-by-step guide for installing this engine in a host Rails application. |
+| [Configuration](docs/CONFIGURATION.md) | Details on configuring the gem via initializers and environment variables. |
+| [Database Migrations](docs/MIGRATIONS.md) | How to generate and manage database migrations for the engine. |
+| [Service Objects](docs/SERVICES.md) | Explanation of the Service Object pattern and Result monad used for business logic. |
+| [Engine Hooks](docs/HOOKS.md) | Guide to customizing engine behavior using lifecycle and service hooks. |
+| [Asset Architecture](docs/CSS_JS_ASSETS_ARCHITECTURE.md) | Details on TailwindCSS setup and asset pipeline integration. |
+| [Security](SECURITY.md) | Security considerations. |
+| [Changelog](CHANGELOG.md) | Version history. |
 
 ---
 
@@ -226,23 +92,6 @@ gem_template/
 | PostgreSQL | 16 |
 | Redis | 7 |
 | TailwindCSS | 4 |
-
----
-
-## 📚 Documentation
-
-| Guide | Description |
-|-------|-------------|
-| [Codespaces](docs/CODESPACES.md) | Devcontainer setup and Codespaces usage |
-| [Local Development](docs/LOCAL_DEVELOPMENT.md) | Setup without Codespaces |
-| [Configuration](docs/CONFIGURATION.md) | Configuration API and options |
-| [Hooks](docs/HOOKS.md) | Engine hooks and extension points |
-| [Asset Architecture](docs/CSS_JS_ASSETS_ARCHITECTURE.md) | CSS/JS setup and auto-rebuild |
-| [Renaming](docs/RENAMING.md) | Rename script usage |
-| [Installing](docs/INSTALLING.md) | Install in a host Rails app |
-| [Migrations](docs/MIGRATIONS.md) | Database migrations setup |
-| [Security](SECURITY.md) | Security considerations |
-| [Changelog](CHANGELOG.md) | Version history |
 
 ---
 

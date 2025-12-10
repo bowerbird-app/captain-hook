@@ -48,6 +48,17 @@ default: &default
   pool: 5
   host: <%= ENV.fetch("DB_HOST", "localhost") %>
   port: <%= ENV.fetch("DB_PORT", 5432) %>
+```
+
+### 5. Run Tests
+
+```bash
+bundle exec rake test
+```
+
+---
+
+## Troubleshooting
   username: <%= ENV.fetch("DB_USER", "postgres") %>
   password: <%= ENV.fetch("DB_PASSWORD", "postgres") %>
 ```
