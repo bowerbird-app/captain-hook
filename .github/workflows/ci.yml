@@ -11,6 +11,21 @@ jobs:
     permissions:
       contents: read
     
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gem_template_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     strategy:
       fail-fast: false
       matrix:
@@ -28,13 +43,19 @@ jobs:
     - name: Install dummy app dependencies
       run: bundle install
       working-directory: test/dummy
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
     
     - name: Run database migrations
       run: bundle exec rake db:migrate RAILS_ENV=test
       working-directory: test/dummy
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
 
     - name: Run RuboCop
       run: bundle exec rubocop
 
     - name: Run tests
       run: bundle exec rake app:test
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
