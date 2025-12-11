@@ -1,3 +1,11 @@
+> **Architecture Documentation**
+> *   **Canonical Source:** [bowerbird-app/gem_template](https://github.com/bowerbird-app/gem_template/tree/main/docs/gem_template)
+> *   **Last Updated:** December 11, 2025
+>
+> *Maintainers: Please update the date above when modifying this file.*
+
+---
+
 # Service Objects
 
 Business logic in GemTemplate is encapsulated in service objects using the Result monad pattern.

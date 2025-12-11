@@ -1,3 +1,11 @@
+> **Architecture Documentation**
+> *   **Canonical Source:** [bowerbird-app/gem_template](https://github.com/bowerbird-app/gem_template/tree/main/docs/gem_template)
+> *   **Last Updated:** December 11, 2025
+>
+> *Maintainers: Please update the date above when modifying this file.*
+
+---
+
 # GemTemplate Configuration
 
 This document explains how to configure **GemTemplate** in your host Rails application.

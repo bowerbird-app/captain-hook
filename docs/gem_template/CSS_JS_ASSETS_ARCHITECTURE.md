@@ -1,3 +1,11 @@
+> **Architecture Documentation**
+> *   **Canonical Source:** [bowerbird-app/gem_template](https://github.com/bowerbird-app/gem_template/tree/main/docs/gem_template)
+> *   **Last Updated:** December 11, 2025
+>
+> *Maintainers: Please update the date above when modifying this file.*
+
+---
+
 Rails Engine Architecture: Providing CSS and JavaScript Assets to Host Applications
 
 This document outlines the recommended architecture for Rails engines that supply CSS (e.g., Tailwind v4) and JavaScript (e.g., Stimulus or ES modules) to a host Rails application or another Rails engine. This approach supports both modern Rails apps using Propshaft (default) and legacy Rails apps still using Sprockets.
