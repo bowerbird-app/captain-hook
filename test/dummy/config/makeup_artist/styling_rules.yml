@@ -1,0 +1,54 @@
+# MakeupArtist Styling Rules
+# These rules are displayed in the style guide and generated documentation.
+# Add organization-wide styling constraints here.
+
+global:
+  - "Use only one primary button per page."
+  - "Maintain consistent spacing using the spacing scale."
+  - "Use semantic color names instead of raw color values."
+  - "Ensure all interactive elements have visible focus states."
+  - "Use appropriate color contrast ratios for accessibility (WCAG 2.1 AA)."
+
+buttons:
+  - "Use ghost buttons for secondary actions."
+  - "Primary buttons should have high contrast."
+  - "Icon-only buttons must have accessible labels."
+  - "Destructive actions should use red/danger colors."
+
+forms:
+  - "Always include a label with each input."
+  - "Show validation errors inline below the input."
+  - "Use placeholder text for hints, not labels."
+  - "Required fields should be visually marked."
+  - "Group related form fields logically."
+
+typography:
+  - "Use the defined type scale for headings."
+  - "Body text should use the base text color."
+  - "Links should be distinguishable from regular text."
+  - "Use muted color for secondary/helper text."
+
+layout:
+  - "Use consistent container widths across pages."
+  - "Maintain consistent spacing between sections."
+  - "Use grid or flex for complex layouts."
+
+navigation:
+  - "Active navigation items should be visually distinct."
+  - "Navigation should be accessible via keyboard."
+  - "Mobile navigation should use drawer or collapse patterns."
+
+data_display:
+  - "Tables should have clear headers and borders."
+  - "Use cards to group related information."
+  - "Empty states should provide guidance."
+
+feedback_and_status:
+  - "Use appropriate colors for different alert types."
+  - "Loading states should indicate progress when possible."
+  - "Success messages should auto-dismiss after a reasonable time."
+
+overlays_and_popups:
+  - "Modals should be dismissible via backdrop click and Escape key."
+  - "Tooltips should appear on hover/focus with appropriate delay."
+  - "Drawers should trap focus while open."
