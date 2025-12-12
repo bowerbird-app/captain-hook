@@ -28,11 +28,10 @@ module CaptainHook
       end
 
       # Extract event ID from webhook
-      # Checks headers first, then falls back to payload
+      # Checks payload for ID fields, generates one if not found
       def extract_event_id(payload)
-        # Could be in X-Request-Id header, but headers aren't passed here
-        # So check payload for request_id or external_id
-        payload["request_id"] || payload["external_id"] || super
+        # Check payload for request_id or external_id
+        payload["request_id"] || payload["external_id"] || payload["id"] || SecureRandom.uuid
       end
 
       # Extract event type from payload or header
