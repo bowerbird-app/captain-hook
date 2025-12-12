@@ -39,11 +39,14 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true
+      env:
+        BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
     
     - name: Install dummy app dependencies
       run: bundle install
       working-directory: test/dummy
       env:
+        BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
     
     - name: Run database migrations
