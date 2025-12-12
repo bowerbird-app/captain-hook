@@ -2,23 +2,8 @@
 
 module CaptainHook
   module Admin
-    # Base controller for admin interface
-    # Inherits from configurable parent controller
-    class BaseController < ApplicationController
-      layout "captain_hook/admin"
-
-      # Override this in the host application to add authentication
-      # before_action :authenticate_admin!
-
-      helper_method :status_color, :response_code_color
-
-      private
-
-      def authenticate_admin!
-        # Implement authentication in host application
-        # Example: redirect_to root_path unless current_user&.admin?
-      end
-
+    # Helper methods for admin views
+    module BaseHelper
       def status_color(status)
         case status&.to_s
         when "pending"
