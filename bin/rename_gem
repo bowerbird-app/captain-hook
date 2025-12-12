@@ -28,7 +28,7 @@ class GemRenamer
   EXCLUDED_FILES = %w[rename_verification_test.rb].freeze
   
   # File patterns to search for content replacement
-  CONTENT_FILE_PATTERNS = %w[*.rb *.gemspec *.md *.erb *.rake Rakefile Gemfile *.sh].freeze
+  CONTENT_FILE_PATTERNS = %w[*.rb *.gemspec *.md *.erb *.rake Rakefile Gemfile *.sh *.yml *.yaml].freeze
   
   # Specific files in test/dummy that should be updated
   DUMMY_APP_FILES = %w[
@@ -262,14 +262,14 @@ class GemRenamer
     return false unless File.file?(path)
 
     content = File.read(path)
-    content.include?(@old_name) || content.include?(old_pascal)
+    content.include?(@old_name) || content.include?(old_pascal) || content.include?(@old_name.upcase)
   rescue StandardError
     false
   end
 
   def count_replacements(path)
     content = File.read(path)
-    content.scan(/#{Regexp.escape(@old_name)}|#{Regexp.escape(old_pascal)}/).size
+    content.scan(/#{Regexp.escape(@old_name)}|#{Regexp.escape(old_pascal)}|#{Regexp.escape(@old_name.upcase)}/).size
   rescue StandardError
     0
   end
@@ -289,6 +289,9 @@ class GemRenamer
 
     # 1. Update file contents FIRST (before paths change)
     update_all_file_contents
+
+    # 1a. Validate no old references remain in content after replacement
+    validate_no_old_references!
 
     # 2. Rename files
     rename_all_files
@@ -313,11 +316,61 @@ class GemRenamer
     # Replace PascalCase name - handles both standalone and compound names like OldNameTest
     updated.gsub!(/#{Regexp.escape(old_pascal)}/, new_pascal)
 
+    # Replace embedded snake_case tokens (no word boundaries) for names inside strings/identifiers
+    updated.gsub!(/#{Regexp.escape(@old_name)}/, @new_name)
+
+    # Replace upper snake case tokens (ENV vars, constants)
+    old_upper = @old_name.upcase
+    new_upper = @new_name.upcase
+    updated.gsub!(/#{Regexp.escape(old_upper)}/, new_upper)
+
+    # Migration-specific replacements for table/index names and migration filenames referenced in content
+    if path.include?("/db/migrate/")
+      updated.gsub!(/:#{Regexp.escape(@old_name)}_/, ":#{@new_name}_")
+      updated.gsub!(/create_#{Regexp.escape(@old_name)}_/, "create_#{@new_name}_")
+    end
+
     if updated != original
       File.write(path, updated)
       @changes_made[:content] << path
       puts "  ✓ Updated #{relative(path)}"
     end
+  end
+
+  def validate_no_old_references!
+    scan_patterns = (CONTENT_FILE_PATTERNS + %w[*.yml *.yaml]).uniq
+    files = scan_patterns.flat_map { |p| Dir.glob(File.join(@root, "**", p)) }
+
+    # Exclude files in excluded directories (but NOT test/dummy, handled below)
+    files.reject! { |f| EXCLUDED_DIRS.any? { |dir| f.include?("/#{dir}/") } }
+
+    # Exclude gem_template documentation directory (preserve as architectural reference)
+    files.reject! { |f| f.include?("/docs/gem_template/") }
+
+    # For test/dummy, only include specific whitelisted files
+    files.reject! do |f|
+      if f.include?("/test/dummy/")
+        !DUMMY_APP_FILES.any? { |allowed| f.end_with?(allowed) }
+      else
+        false
+      end
+    end
+
+    leftovers = []
+    files.each do |path|
+      next unless File.file?(path)
+
+      content = File.read(path)
+      if content.include?(@old_name) || content.include?(old_pascal) || content.include?(@old_name.upcase)
+        leftovers << relative(path)
+      end
+    rescue StandardError
+      next
+    end
+
+    return if leftovers.empty?
+
+    abort_with_error("Found remaining references to #{@old_name}: #{leftovers.join(', ')}")
   end
 
   def rename_all_files
@@ -332,7 +385,16 @@ class GemRenamer
     sorted = directories_to_rename.sort_by { |old, _| -old.count("/") }
 
     sorted.each do |old_path, new_path|
-      rename_path(old_path, new_path)
+      next unless Dir.exist?(old_path)
+
+      if Dir.exist?(new_path)
+        # If the target already exists (e.g., created by earlier file moves), merge contents then remove the old dir
+        FileUtils.cp_r(File.join(old_path, "."), new_path)
+        FileUtils.rm_rf(old_path)
+        puts "  ✓ Merged #{relative(old_path)} → #{relative(new_path)}"
+      else
+        rename_path(old_path, new_path)
+      end
       @changes_made[:directories] << [old_path, new_path]
     end
   end
@@ -341,6 +403,9 @@ class GemRenamer
     if File.exist?(new_path)
       abort_with_error("Target already exists: #{new_path}")
     end
+
+    parent_dir = File.dirname(new_path)
+    FileUtils.mkdir_p(parent_dir) unless Dir.exist?(parent_dir)
 
     FileUtils.mv(old_path, new_path)
     puts "  ✓ Renamed #{relative(old_path)} → #{relative(new_path)}"
