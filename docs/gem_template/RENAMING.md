@@ -1,6 +1,6 @@
 > **Architecture Documentation**
 > *   **Canonical Source:** [bowerbird-app/gem_template](https://github.com/bowerbird-app/gem_template/tree/main/docs/gem_template)
-> *   **Last Updated:** December 11, 2025
+> *   **Last Updated:** December 12, 2025
 >
 > *Maintainers: Please update the date above when modifying this file.*
 
@@ -87,6 +87,61 @@ After renaming, the script automatically runs verification tests to ensure:
 - All files were renamed correctly
 - No orphaned references to the old name remain
 - Module names and class definitions are consistent
+
+## Resume Capability
+
+The script includes automatic resume capability for handling interruptions:
+
+### How It Works
+
+The script operates in phases:
+1. **Content Update**: Replace all text references to the old gem name
+2. **Validation**: Verify no old references remain
+3. **File Renaming**: Rename individual files
+4. **Directory Renaming**: Rename directory structures
+
+If the script is interrupted (e.g., validation fails, power loss, manual cancellation), it saves its progress to `.rename_state.yml` and can resume from where it left off.
+
+### Recovery from Interruptions
+
+If the rename is interrupted and you see errors:
+
+**Scenario 1: Validation fails after content update**
+```
+❌ Found remaining references to old_name in: some_file.rb
+
+ℹ️  Note: File contents have been updated but files/directories have NOT been renamed yet.
+```
+
+To recover:
+1. Fix the reported issues (or add files to `EXCLUDED_FILES` in `bin/rename_gem`)
+2. Re-run the same command - it will resume automatically
+3. The script skips content updates (already done) and continues with renaming
+
+**Scenario 2: Conflicting rename detected**
+```
+⚠️  Warning: Found incomplete rename from previous run
+   Previous: old_gem → new_gem
+   Current:  old_gem → different_gem
+```
+
+The script detects if you're trying a different rename. Choose:
+- `y` to delete the old state and start fresh
+- `n` to abort and manually clean up
+
+**Scenario 3: Manual cleanup needed**
+```bash
+# Delete the state file and start over
+rm .rename_state.yml
+git restore .
+```
+
+### State File
+
+- File: `.rename_state.yml` (automatically created/deleted)
+- Ignored by git (in `.gitignore`)
+- Removed automatically on successful completion
+- Contains: phase, old name, new name, any error messages
 
 ## Workflow
 

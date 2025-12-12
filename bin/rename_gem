@@ -19,8 +19,12 @@
 
 require "fileutils"
 require "optparse"
+require "yaml"
 
 class GemRenamer
+  # State tracking file for resume capability
+  STATE_FILE = ".rename_state.yml"
+  
   # Directories to completely exclude from processing
   EXCLUDED_DIRS = %w[.git node_modules vendor tmp log].freeze
   
@@ -38,6 +42,7 @@ class GemRenamer
 
   def initialize(new_name, from: nil, dry_run: false)
     @root = File.expand_path("..", __dir__)
+    @state_file_path = File.join(@root, STATE_FILE)
     @new_name = normalize_name(new_name)
     @old_name = from ? normalize_name(from) : detect_current_name
     @dry_run = dry_run
@@ -285,19 +290,64 @@ class GemRenamer
   end
 
   def perform_rename
+    state = load_rename_state
+    
+    if state && state[:new_name] != @new_name
+      puts colorize("\n⚠️  Warning: Found incomplete rename from previous run", :yellow)
+      puts "   Previous: #{state[:old_name]} → #{state[:new_name]}"
+      puts "   Current:  #{@old_name} → #{@new_name}"
+      print "\nDelete previous state and start fresh? [y/N] "
+      response = $stdin.gets.chomp
+      if response.downcase == 'y'
+        delete_rename_state
+        state = nil
+      else
+        abort_with_error("Aborted. Delete #{STATE_FILE} manually to start a new rename.")
+      end
+    end
+
     puts colorize("\nRenaming...\n", :cyan)
+    
+    # Phase 1: Update file contents
+    if !state || state[:phase] == 'not_started'
+      update_all_file_contents
+      save_rename_state(
+        phase: 'content_updated',
+        old_name: @old_name,
+        new_name: @new_name
+      )
+    elsif state[:phase] == 'content_updated'
+      puts colorize("↻ Resuming from previous run (content already updated)\n", :yellow)
+    end
 
-    # 1. Update file contents FIRST (before paths change)
-    update_all_file_contents
+    # Phase 2: Validate no old references remain
+    begin
+      validate_no_old_references!
+      if state && state[:phase] == 'content_updated'
+        save_rename_state(
+          phase: 'validated',
+          old_name: @old_name,
+          new_name: @new_name
+        )
+      end
+    rescue StandardError => e
+      save_rename_state(
+        phase: 'validation_failed',
+        old_name: @old_name,
+        new_name: @new_name,
+        error: e.message
+      )
+      raise
+    end
 
-    # 1a. Validate no old references remain in content after replacement
-    validate_no_old_references!
-
-    # 2. Rename files
+    # Phase 3: Rename files
     rename_all_files
 
-    # 3. Rename directories (bottom-up to avoid path issues)
+    # Phase 4: Rename directories
     rename_all_directories
+    
+    # Cleanup state file on success
+    delete_rename_state
   end
 
   def update_all_file_contents
@@ -347,6 +397,9 @@ class GemRenamer
     # Exclude gem_template documentation directory (preserve as architectural reference)
     files.reject! { |f| f.include?("/docs/gem_template/") }
 
+    # Exclude files that are intentionally preserved (like verification tests)
+    files.reject! { |f| EXCLUDED_FILES.any? { |excluded| f.end_with?(excluded) } }
+
     # For test/dummy, only include specific whitelisted files
     files.reject! do |f|
       if f.include?("/test/dummy/")
@@ -370,7 +423,20 @@ class GemRenamer
 
     return if leftovers.empty?
 
-    abort_with_error("Found remaining references to #{@old_name}: #{leftovers.join(', ')}")
+    error_msg = <<~ERROR
+      Found remaining references to #{@old_name} in: #{leftovers.join(', ')}
+      
+      ℹ️  Note: File contents have been updated but files/directories have NOT been renamed yet.
+      
+      To recover:
+      1. If these files should be excluded, add them to EXCLUDED_FILES in bin/rename_gem
+      2. Fix the references manually, then re-run the script to complete the rename
+      3. Or run 'git restore .' to undo all changes and start over
+      
+      The script will resume from where it left off when you run it again.
+    ERROR
+
+    abort_with_error(error_msg)
   end
 
   def rename_all_files
@@ -421,6 +487,33 @@ class GemRenamer
 
     puts colorize("\nRunning verification tests...\n", :cyan)
     system("ruby", verification_test, chdir: @root)
+  end
+
+  # ===========================================================================
+  # State Management
+  # ===========================================================================
+
+  def load_rename_state
+    return nil unless File.exist?(@state_file_path)
+
+    begin
+      YAML.load_file(@state_file_path, permitted_classes: [Symbol])
+    rescue StandardError
+      nil
+    end
+  end
+
+  def save_rename_state(state)
+    return if @dry_run
+
+    File.write(@state_file_path, state.to_yaml)
+  end
+
+  def delete_rename_state
+    return if @dry_run
+    return unless File.exist?(@state_file_path)
+
+    File.delete(@state_file_path)
   end
 
   # ===========================================================================
