@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  mount MakeupArtist::Engine => "/makeup_artist", as: "makeup_artist"
   # Mount the GemTemplate engine
   mount GemTemplate::Engine, at: "/gem_template"
 

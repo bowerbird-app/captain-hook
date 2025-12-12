@@ -2,3 +2,9 @@
 
 /* Include the engine's views in the Tailwind build */
 @source "../../../../../app/views/**/*.erb";
+
+/* MakeupArtist gem views - auto-added by generator */
+@source "/usr/local/bundle/ruby/3.3.0/bundler/gems/makeup-artist-fc1684bc2772/app/views/**/*.erb";
+
+/* MakeupArtist theme variables - required for component styling */
+@import "../../../config/makeup_artist/ui_theme.css";

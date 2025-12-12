@@ -1,3 +1,13 @@
+GIT
+  remote: https://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@github.com/bowerbird-app/makeup-artist.git
+  revision: fc1684bc277242100ab486426e2033c733331e0a
+  specs:
+    makeup_artist (0.4.2)
+      importmap-rails
+      rails (>= 7.0)
+      stimulus-rails
+      tailwindcss-rails (>= 4.0)
+
 PATH
   remote: ../..
   specs:
@@ -394,6 +404,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
+  makeup_artist!
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)
@@ -468,6 +479,7 @@ CHECKSUMS
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   loofah (2.24.1) sha256=655a30842b70ec476410b347ab1cd2a5b92da46a19044357bbd9f401b009a337
   mail (2.9.0) sha256=6fa6673ecd71c60c2d996260f9ee3dd387d4673b8169b502134659ece6d34941
+  makeup_artist (0.4.2)
   marcel (1.1.0) sha256=fdcfcfa33cc52e93c4308d40e4090a5d4ea279e160a7f6af988260fa970e0bee
   mini_magick (5.3.1) sha256=29395dfd76badcabb6403ee5aff6f681e867074f8f28ce08d78661e9e4a351c4
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef

@@ -42,3 +42,6 @@ test/dummy/config/credentials/*.key
 # Build artifacts
 *.gem
 pkg/
+
+# Rename script state
+.rename_state.yml
