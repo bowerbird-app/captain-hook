@@ -20,7 +20,7 @@ module CaptainHook
       def allowed?(provider:, limit:, period:)
         @mutex.synchronize do
           cleanup_old_requests(provider, period)
-          
+
           current_count = @requests[provider].size
           current_count < limit
         end
@@ -34,13 +34,14 @@ module CaptainHook
       def record!(provider:, limit:, period:)
         @mutex.synchronize do
           cleanup_old_requests(provider, period)
-          
+
           current_count = @requests[provider].size
-          
+
           if current_count >= limit
-            raise RateLimitExceeded, "Rate limit exceeded for provider #{provider}: #{current_count}/#{limit} requests in #{period}s"
+            raise RateLimitExceeded,
+                  "Rate limit exceeded for provider #{provider}: #{current_count}/#{limit} requests in #{period}s"
           end
-          
+
           @requests[provider] << Time.current
         end
       end
@@ -84,7 +85,7 @@ module CaptainHook
       def stats(provider:, period:)
         @mutex.synchronize do
           cleanup_old_requests(provider, period)
-          
+
           requests = @requests[provider]
           return { count: 0, oldest: nil, newest: nil } if requests.empty?
 

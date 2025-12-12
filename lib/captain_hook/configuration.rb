@@ -21,8 +21,8 @@ module CaptainHook
     end
 
     # Register a provider configuration
-    def register_provider(name, **options)
-      @providers[name.to_s] = ProviderConfig.new(name: name.to_s, **options)
+    def register_provider(name, **)
+      @providers[name.to_s] = ProviderConfig.new(name: name.to_s, **)
     end
 
     # Get a provider configuration
@@ -31,8 +31,8 @@ module CaptainHook
     end
 
     # Register an outgoing endpoint
-    def register_outgoing_endpoint(name, **options)
-      @outgoing_endpoints[name.to_s] = OutgoingEndpoint.new(name: name.to_s, **options)
+    def register_outgoing_endpoint(name, **)
+      @outgoing_endpoints[name.to_s] = OutgoingEndpoint.new(name: name.to_s, **)
     end
 
     # Get an outgoing endpoint configuration

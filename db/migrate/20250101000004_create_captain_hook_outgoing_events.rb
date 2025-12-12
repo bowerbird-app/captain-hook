@@ -30,7 +30,7 @@ class CreateCaptainHookOutgoingEvents < ActiveRecord::Migration[7.0]
       t.index :status
       t.index :created_at
       t.index :archived_at
-      t.index [:status, :last_attempt_at], name: "idx_captain_hook_outgoing_events_retry"
+      t.index %i[status last_attempt_at], name: "idx_captain_hook_outgoing_events_retry"
     end
   end
 end

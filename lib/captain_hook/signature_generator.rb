@@ -19,16 +19,16 @@ module CaptainHook
     # @return [Hash] Hash containing signature, timestamp, and signed_data
     def generate(payload, timestamp: nil)
       timestamp ||= Time.current.to_i
-      
+
       # Convert payload to canonical JSON (sorted keys)
       canonical_json = canonical_json(payload)
-      
+
       # Create signed data: timestamp.json
       signed_data = "#{timestamp}.#{canonical_json}"
-      
+
       # Generate HMAC signature
       signature = OpenSSL::HMAC.hexdigest("SHA256", secret, signed_data)
-      
+
       {
         signature: signature,
         timestamp: timestamp,
@@ -48,7 +48,7 @@ module CaptainHook
 
       # Regenerate signature
       expected = generate(payload, timestamp: timestamp)
-      
+
       # Constant-time comparison
       secure_compare(signature, expected[:signature])
     end

@@ -34,7 +34,7 @@ module CaptainHook
     scope :archived, -> { where.not(archived_at: nil) }
     scope :not_archived, -> { where(archived_at: nil) }
     scope :recent, -> { order(created_at: :desc) }
-    scope :ready_for_retry, -> {
+    scope :ready_for_retry, lambda {
       where(status: :failed)
         .where("last_attempt_at IS NULL OR last_attempt_at < ?", 5.minutes.ago)
     }

@@ -18,8 +18,8 @@ class CreateCaptainHookIncomingEvents < ActiveRecord::Migration[7.0]
       t.timestamps
 
       # Unique index for idempotency
-      t.index [:provider, :external_id], unique: true, name: "idx_captain_hook_incoming_events_idempotency"
-      
+      t.index %i[provider external_id], unique: true, name: "idx_captain_hook_incoming_events_idempotency"
+
       # Indexes for common queries
       t.index :provider
       t.index :event_type

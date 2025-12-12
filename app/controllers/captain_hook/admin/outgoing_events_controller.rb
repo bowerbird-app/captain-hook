@@ -7,9 +7,9 @@ module CaptainHook
       # GET /captain_hook/admin/outgoing_events
       def index
         @events = CaptainHook::OutgoingEvent
-          .order(created_at: :desc)
-          .page(params[:page])
-          .per(50)
+                  .order(created_at: :desc)
+                  .page(params[:page])
+                  .per(50)
 
         # Apply filters if provided
         @events = @events.by_provider(params[:provider]) if params[:provider].present?

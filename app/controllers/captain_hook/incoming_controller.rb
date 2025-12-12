@@ -13,7 +13,7 @@ module CaptainHook
 
       # Get provider configuration
       provider_config = CaptainHook.configuration.provider(provider_name)
-      
+
       unless provider_config
         render json: { error: "Unknown provider" }, status: :not_found
         return
@@ -28,14 +28,14 @@ module CaptainHook
       # Check rate limiting
       if provider_config.rate_limiting_enabled?
         rate_limiter = CaptainHook::Services::RateLimiter.new
-        
+
         begin
           rate_limiter.record!(
             provider: provider_name,
             limit: provider_config.rate_limit_requests,
             period: provider_config.rate_limit_period
           )
-        rescue CaptainHook::Services::RateLimiter::RateLimitExceeded => e
+        rescue CaptainHook::Services::RateLimiter::RateLimitExceeded
           CaptainHook::Instrumentation.rate_limit_exceeded(
             provider: provider_name,
             current_count: provider_config.rate_limit_requests,
@@ -49,7 +49,7 @@ module CaptainHook
       # Check payload size
       if provider_config.payload_size_limit_enabled?
         payload_size = request.raw_post.bytesize
-        
+
         if payload_size > provider_config.max_payload_size_bytes
           render json: { error: "Payload too large" }, status: :payload_too_large
           return
@@ -62,7 +62,7 @@ module CaptainHook
 
       # Verify signature using adapter
       adapter = provider_config.adapter
-      
+
       unless adapter.verify_signature(payload: raw_payload, headers: headers)
         CaptainHook::Instrumentation.signature_failed(provider: provider_name, reason: "Invalid signature")
         render json: { error: "Invalid signature" }, status: :unauthorized
@@ -86,12 +86,12 @@ module CaptainHook
       # Check timestamp if provided
       if provider_config.timestamp_validation_enabled?
         timestamp = adapter.extract_timestamp(headers)
-        
+
         if timestamp
           validator = CaptainHook::TimeWindowValidator.new(
             tolerance_seconds: provider_config.timestamp_tolerance_seconds
           )
-          
+
           unless validator.valid?(timestamp)
             render json: { error: "Timestamp outside tolerance window" }, status: :bad_request
             return
@@ -116,13 +116,13 @@ module CaptainHook
       if event.previously_new_record?
         # New event - create handlers
         create_handlers_for_event(event)
-        
+
         CaptainHook::Instrumentation.incoming_received(
           event,
           provider: provider_name,
           event_type: event_type
         )
-        
+
         render json: { id: event.id, status: "received" }, status: :created
       else
         # Duplicate event
@@ -136,21 +136,21 @@ module CaptainHook
     # Extract relevant headers from request
     def extract_headers(request)
       headers = {}
-      
+
       request.headers.each do |key, value|
         # Extract HTTP headers (they start with HTTP_ or are CONTENT_TYPE/CONTENT_LENGTH)
-        if key.start_with?("HTTP_") || key == "CONTENT_TYPE" || key == "CONTENT_LENGTH"
-          # Convert HTTP_X_SOME_HEADER to X-Some-Header
-          header_name = if key.start_with?("HTTP_")
-            key[5..].split("_").map(&:capitalize).join("-")
-          else
-            key.split("_").map(&:capitalize).join("-")
-          end
-          
-          headers[header_name] = value
-        end
+        next unless key.start_with?("HTTP_") || key == "CONTENT_TYPE" || key == "CONTENT_LENGTH"
+
+        # Convert HTTP_X_SOME_HEADER to X-Some-Header
+        header_name = if key.start_with?("HTTP_")
+                        key[5..].split("_").map(&:capitalize).join("-")
+                      else
+                        key.split("_").map(&:capitalize).join("-")
+                      end
+
+        headers[header_name] = value
       end
-      
+
       headers
     end
 

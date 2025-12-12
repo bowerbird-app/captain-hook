@@ -22,7 +22,7 @@ class CreateCaptainHookIncomingEventHandlers < ActiveRecord::Migration[7.0]
       # Indexes for processing and querying
       t.index :incoming_event_id
       t.index :status
-      t.index [:status, :priority, :handler_class], name: "idx_captain_hook_handlers_processing_order"
+      t.index %i[status priority handler_class], name: "idx_captain_hook_handlers_processing_order"
       t.index :locked_at
     end
   end

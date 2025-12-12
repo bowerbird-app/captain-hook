@@ -38,7 +38,7 @@ module CaptainHook
         # Execute handler
         handler_class = handler.handler_class.constantize
         handler_instance = handler_class.new
-        
+
         # Call handle method with event payload
         handler_instance.handle(event: event, payload: event.payload, metadata: event.metadata)
 
@@ -51,7 +51,6 @@ module CaptainHook
         # Instrument completion
         duration = (Time.current - start_time).to_f
         Instrumentation.handler_completed(handler, duration: duration)
-
       rescue StandardError => e
         # Mark as failed
         handler.mark_failed!(e)

@@ -36,7 +36,7 @@ module CaptainHook
       def allowed?(endpoint:, failure_threshold:, cooldown_seconds:)
         @mutex.synchronize do
           state = @circuits[endpoint]
-          
+
           case state.status
           when :closed
             true
@@ -62,7 +62,7 @@ module CaptainHook
       def record_success(endpoint)
         @mutex.synchronize do
           state = @circuits[endpoint]
-          
+
           if state.half_open?
             # Successful request in half-open state closes the circuit
             state.status = :closed
@@ -84,7 +84,7 @@ module CaptainHook
           state = @circuits[endpoint]
           state.failure_count += 1
           state.last_failure_at = Time.current
-          
+
           if state.failure_count >= failure_threshold
             state.status = :open
             state.opened_at = Time.current
@@ -149,11 +149,11 @@ module CaptainHook
       # @param cooldown_seconds [Integer] Cooldown period before trying again
       # @raise [CircuitOpenError] if circuit is open
       def check!(endpoint:, failure_threshold:, cooldown_seconds:)
-        unless allowed?(endpoint: endpoint, failure_threshold: failure_threshold, cooldown_seconds: cooldown_seconds)
-          state = state(endpoint)
-          time_until_retry = cooldown_seconds - (Time.current - state.opened_at).to_i
-          raise CircuitOpenError, "Circuit breaker open for #{endpoint}. Retry in #{time_until_retry}s"
-        end
+        return if allowed?(endpoint: endpoint, failure_threshold: failure_threshold, cooldown_seconds: cooldown_seconds)
+
+        state = state(endpoint)
+        time_until_retry = cooldown_seconds - (Time.current - state.opened_at).to_i
+        raise CircuitOpenError, "Circuit breaker open for #{endpoint}. Retry in #{time_until_retry}s"
       end
     end
   end

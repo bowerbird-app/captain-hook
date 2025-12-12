@@ -23,7 +23,7 @@ module CaptainHook
       # Extract timestamp from headers if available
       # @param headers [Hash] The request headers
       # @return [Integer, nil] Unix timestamp or nil
-      def extract_timestamp(headers)
+      def extract_timestamp(_headers)
         # Override in subclasses if provider includes timestamp
         nil
       end

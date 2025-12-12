@@ -38,16 +38,16 @@ module CaptainHook
       @mutex.synchronize do
         key = registry_key(provider, event_type)
         @registry[key] ||= []
-        
+
         config = HandlerConfig.new(
           provider: provider,
           event_type: event_type,
           handler_class: handler_class,
           **options
         )
-        
+
         @registry[key] << config
-        
+
         # Sort by priority (lower number = higher priority), then by handler class name for determinism
         @registry[key].sort_by! { |h| [h.priority, h.handler_class.to_s] }
       end

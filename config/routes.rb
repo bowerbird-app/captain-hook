@@ -6,9 +6,9 @@ CaptainHook::Engine.routes.draw do
 
   # Admin interface
   namespace :admin do
-    resources :incoming_events, only: [:index, :show]
-    resources :outgoing_events, only: [:index, :show]
-    
+    resources :incoming_events, only: %i[index show]
+    resources :outgoing_events, only: %i[index show]
+
     root to: "incoming_events#index"
   end
 

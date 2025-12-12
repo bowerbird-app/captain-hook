@@ -98,14 +98,14 @@ module CaptainHook
       all_failed = incoming_event_handlers.all?(&:status_failed?)
 
       new_status = if all_processed
-        :processed
-      elsif all_failed
-        :failed
-      elsif any_failed
-        :partially_processed
-      else
-        :processing
-      end
+                     :processed
+                   elsif all_failed
+                     :failed
+                   elsif any_failed
+                     :partially_processed
+                   else
+                     :processing
+                   end
 
       update!(status: new_status)
     end

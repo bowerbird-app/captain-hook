@@ -23,8 +23,8 @@ module CaptainHook
     end
 
     # Convenience method to register a handler
-    def register_handler(**options)
-      handler_registry.register(**options)
+    def register_handler(**)
+      handler_registry.register(**)
     end
   end
 end
