@@ -45,3 +45,4 @@ pkg/
 
 # Rename script state
 .rename_state.yml
+vendor/bundle

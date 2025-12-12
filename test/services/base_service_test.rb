@@ -2,7 +2,7 @@
 
 require "test_helper"
 
-module GemTemplate
+module CaptainHook
   module Services
     class BaseServiceTest < Minitest::Test
       # Test subclass for testing BaseService

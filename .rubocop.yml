@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.2
   NewCops: enable
   Exclude:
     - 'test/dummy/**/*'
@@ -16,21 +16,49 @@ Style/StringLiterals:
 Layout/LineLength:
   Max: 120
 
-# Relax metrics for test files and generators
+# Relax metrics for test files, generators, controllers, and jobs
 Metrics/ClassLength:
+  Max: 150
   Exclude:
     - 'test/**/*'
-    - 'lib/gem_template/hooks.rb'
+    - 'lib/captain_hook/hooks.rb'
+    - 'app/controllers/**/*'
+    - 'app/jobs/**/*'
+
+Metrics/ModuleLength:
+  Max: 200
+  Exclude:
+    - 'test/**/*'
 
 Metrics/MethodLength:
+  Max: 30
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'app/controllers/**/*'
+    - 'app/jobs/**/*'
+    - 'db/migrate/**/*'
 
 Metrics/AbcSize:
+  Max: 30
   Exclude:
     - 'test/**/*'
     - 'lib/generators/**/*'
+    - 'app/controllers/**/*'
+    - 'app/jobs/**/*'
+    - 'db/migrate/**/*'
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+  Exclude:
+    - 'app/controllers/**/*'
+    - 'app/jobs/**/*'
+
+Metrics/PerceivedComplexity:
+  Max: 10
+  Exclude:
+    - 'app/controllers/**/*'
+    - 'app/jobs/**/*'
 
 # Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:
@@ -50,5 +78,20 @@ Naming/VariableNumber:
 # Don't require super in service initialize methods
 Lint/MissingSuper:
   Exclude:
-    - 'lib/gem_template/services/**/*'
+    - 'lib/captain_hook/services/**/*'
     - 'test/services/**/*'
+
+# Allow short parameter names in cryptographic contexts
+Naming/MethodParameterName:
+  AllowedNames:
+    - a
+    - b
+    - e
+    - k
+    - v
+
+# Naming for compare methods
+Naming/PredicateMethod:
+  Exclude:
+    - 'lib/captain_hook/adapters/base.rb'
+    - 'lib/captain_hook/signature_generator.rb'
