@@ -4,7 +4,7 @@ MakeupArtist.configure do |config|
   # === Admin Layout ===
   # Layout file used by all makeup_artist admin pages
   # Generate a custom layout with: bin/rails generate makeup_artist:layout
-  # config.admin_layout = "makeup_artist"
+  config.admin_layout = "makeup_artist"
 
   # === Admin Authentication ===
   # Host app defines custom auth logic
