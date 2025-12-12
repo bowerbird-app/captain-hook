@@ -6,6 +6,17 @@ require "captain_hook/configuration"
 require "captain_hook/handler_registry"
 require "captain_hook/provider_config"
 require "captain_hook/outgoing_endpoint"
+require "captain_hook/time_window_validator"
+require "captain_hook/signature_generator"
+require "captain_hook/instrumentation"
+
+# Load adapters
+require "captain_hook/adapters/base"
+require "captain_hook/adapters/stripe"
+
+# Load services
+require "captain_hook/services/rate_limiter"
+require "captain_hook/services/circuit_breaker"
 
 module CaptainHook
   class << self
