@@ -1,24 +1,52 @@
 # frozen_string_literal: true
 
 require_relative "hooks"
+require_relative "handler_registry"
+require_relative "provider_config"
+require_relative "outgoing_endpoint"
 
 module CaptainHook
   class Configuration
-    attr_accessor :api_key, :enable_feature_x, :timeout
-    attr_reader :hooks
+    attr_accessor :admin_parent_controller, :admin_layout, :retention_days
+    attr_reader :hooks, :handler_registry, :providers, :outgoing_endpoints
 
     def initialize
-      @api_key = ENV.fetch("CAPTAIN_HOOK_API_KEY", nil)
-      @enable_feature_x = false
-      @timeout = 5
+      @admin_parent_controller = "ApplicationController"
+      @admin_layout = "application"
+      @retention_days = 90 # Default retention period
       @hooks = Hooks.new
+      @handler_registry = HandlerRegistry.new
+      @providers = {}
+      @outgoing_endpoints = {}
+    end
+
+    # Register a provider configuration
+    def register_provider(name, **options)
+      @providers[name.to_s] = ProviderConfig.new(name: name.to_s, **options)
+    end
+
+    # Get a provider configuration
+    def provider(name)
+      @providers[name.to_s]
+    end
+
+    # Register an outgoing endpoint
+    def register_outgoing_endpoint(name, **options)
+      @outgoing_endpoints[name.to_s] = OutgoingEndpoint.new(name: name.to_s, **options)
+    end
+
+    # Get an outgoing endpoint configuration
+    def outgoing_endpoint(name)
+      @outgoing_endpoints[name.to_s]
     end
 
     def to_h
       {
-        api_key: api_key,
-        enable_feature_x: enable_feature_x,
-        timeout: timeout,
+        admin_parent_controller: admin_parent_controller,
+        admin_layout: admin_layout,
+        retention_days: retention_days,
+        providers: @providers.keys,
+        outgoing_endpoints: @outgoing_endpoints.keys,
         hooks_registered: hooks.instance_variable_get(:@registry).transform_values(&:size)
       }
     end
