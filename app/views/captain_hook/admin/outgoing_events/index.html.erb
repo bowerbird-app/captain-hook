@@ -48,7 +48,7 @@
             <tbody>
               <% @events.each do |event| %>
                 <tr>
-                  <td><span class="badge bg-primary"><%= event.endpoint %></span></td>
+                  <td><span class="badge bg-primary"><%= event.provider %></span></td>
                   <td><small><%= truncate(event.target_url, length: 50) %></small></td>
                   <td>
                     <span class="badge bg-<%= status_color(event.status) %>">
@@ -64,7 +64,7 @@
                       <span class="text-muted">—</span>
                     <% end %>
                   </td>
-                  <td><%= event.attempts || 0 %></td>
+                  <td><%= event.attempt_count || 0 %></td>
                   <td><%= time_ago_in_words(event.created_at) %> ago</td>
                   <td>
                     <%= link_to "View", captain_hook.admin_outgoing_event_path(event), class: "btn btn-sm btn-outline-primary" %>

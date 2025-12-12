@@ -16,8 +16,10 @@ require "captain_hook/adapters/base"
 require "captain_hook/adapters/stripe"
 
 # Load services
+require "captain_hook/services/base_service"
 require "captain_hook/services/rate_limiter"
 require "captain_hook/services/circuit_breaker"
+require "captain_hook/services/example_service"
 
 module CaptainHook
   class << self
