@@ -236,6 +236,9 @@ class GemRenamer
         EXCLUDED_DIRS.any? { |dir| f.include?("/#{dir}/") }
       end
       
+      # Exclude gem_template documentation directory (preserve as architectural reference)
+      files.reject! { |f| f.include?("/docs/gem_template/") }
+      
       # For test/dummy, only include specific whitelisted files
       files.reject! do |f|
         if f.include?("/test/dummy/")

@@ -66,6 +66,21 @@ Files updated include:
 - Test files and test helper
 - Dummy app configuration (`test/dummy/Gemfile`, `test/dummy/config/routes.rb`)
 
+## What Does NOT Get Renamed
+
+The following directories and files are intentionally **excluded** from renaming:
+
+### Excluded Documentation
+- `docs/gem_template/` - **Preserved as architectural reference**
+  - These files document the original gem_template structure
+  - They serve as reference documentation for understanding the template's architecture
+  - Keep them unchanged even after renaming your gem
+
+This ensures you maintain documentation showing:
+- How the template was originally structured
+- What patterns and conventions come from the gem_template
+- Reference material for future gems built from this template
+
 ## Verification
 
 After renaming, the script automatically runs verification tests to ensure:
