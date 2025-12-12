@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module GemTemplate
+module CaptainHook
   # Hook system for extending engine behavior from host applications.
   #
   # This module provides a registry for lifecycle hooks, service hooks,
@@ -8,12 +8,12 @@ module GemTemplate
   # engine behavior without modifying source code.
   #
   # @example Registering hooks
-  #   GemTemplate.configuration.hooks.after_initialize do
-  #     Rails.logger.info "GemTemplate initialized!"
+  #   CaptainHook.configuration.hooks.after_initialize do
+  #     Rails.logger.info "CaptainHook initialized!"
   #   end
   #
   # @example Running hooks
-  #   GemTemplate::Hooks.run(:after_initialize)
+  #   CaptainHook::Hooks.run(:after_initialize)
   #
   class Hooks
     # Error raised when a hook fails and raise_on_error is enabled
@@ -233,7 +233,7 @@ module GemTemplate
     def log_hook_error(error, event_name, _hook)
       return unless defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
 
-      Rails.logger.error "[GemTemplate::Hooks] Error in #{event_name} hook: #{error.message}"
+      Rails.logger.error "[CaptainHook::Hooks] Error in #{event_name} hook: #{error.message}"
       Rails.logger.error error.backtrace.first(5).join("\n") if error.backtrace
     end
 
@@ -244,7 +244,7 @@ module GemTemplate
       # @param args [Array] Arguments to pass to hooks
       # @return [Array] Results from all hooks
       def run(event_name, *)
-        GemTemplate.configuration.hooks.run(event_name, *)
+        CaptainHook.configuration.hooks.run(event_name, *)
       end
 
       # Run around hooks on the global configuration
@@ -254,7 +254,7 @@ module GemTemplate
       # @yield The block to wrap
       # @return [Object] Result of the wrapped block
       def run_around(event_name, context, &)
-        GemTemplate.configuration.hooks.run_around(event_name, context, &)
+        CaptainHook.configuration.hooks.run_around(event_name, context, &)
       end
 
       # Trigger a custom event

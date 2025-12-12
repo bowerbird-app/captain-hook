@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-module GemTemplate
+module CaptainHook
   module Services
     # Example service demonstrating the service object pattern.
     #
     # This is a template—replace with your actual business logic.
     #
     # @example
-    #   result = GemTemplate::Services::ExampleService.call(name: "World")
+    #   result = CaptainHook::Services::ExampleService.call(name: "World")
     #   result.value # => "Hello, World!"
     #
     class ExampleService < BaseService

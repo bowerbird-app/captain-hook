@@ -2,13 +2,13 @@
 
 require_relative "hooks"
 
-module GemTemplate
+module CaptainHook
   class Configuration
     attr_accessor :api_key, :enable_feature_x, :timeout
     attr_reader :hooks
 
     def initialize
-      @api_key = ENV.fetch("GEM_TEMPLATE_API_KEY", nil)
+      @api_key = ENV.fetch("CAPTAIN_HOOK_API_KEY", nil)
       @enable_feature_x = false
       @timeout = 5
       @hooks = Hooks.new

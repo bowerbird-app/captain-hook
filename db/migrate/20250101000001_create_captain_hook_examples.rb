@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-# Example migration for GemTemplate engine.
+# Example migration for CaptainHook engine.
 #
 # This migration creates a sample table to demonstrate the migration generator.
 # Replace or remove this migration with your actual engine tables.
 #
 # After renaming the gem, update the table name and class name accordingly.
 #
-class CreateGemTemplateExamples < ActiveRecord::Migration[7.1]
+class CreateCaptainHookExamples < ActiveRecord::Migration[7.1]
   def change
-    create_table :gem_template_examples, id: :uuid do |t|
+    create_table :captain_hook_examples, id: :uuid do |t|
       t.string :name, null: false
       t.text :description
       t.jsonb :metadata, default: {}
@@ -18,7 +18,7 @@ class CreateGemTemplateExamples < ActiveRecord::Migration[7.1]
       t.timestamps
     end
 
-    add_index :gem_template_examples, :name
-    add_index :gem_template_examples, :active
+    add_index :captain_hook_examples, :name
+    add_index :captain_hook_examples, :active
   end
 end
