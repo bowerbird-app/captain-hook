@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "kaminari"
 require "captain_hook/version"
 require "captain_hook/engine"
 require "captain_hook/configuration"

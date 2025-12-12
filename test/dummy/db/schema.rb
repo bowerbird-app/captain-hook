@@ -10,9 +10,91 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_01_01_000000) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_12_064843) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
 
+  create_table "captain_hook_examples", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.jsonb "metadata", default: {}
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_captain_hook_examples_on_active"
+    t.index ["name"], name: "index_captain_hook_examples_on_name"
+  end
+
+  create_table "captain_hook_incoming_event_handlers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "attempt_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.string "handler_class", null: false
+    t.uuid "incoming_event_id", null: false
+    t.datetime "last_attempt_at"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "locked_at"
+    t.string "locked_by"
+    t.integer "priority", default: 100, null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["incoming_event_id"], name: "index_captain_hook_incoming_event_handlers_on_incoming_event_id"
+    t.index ["locked_at"], name: "index_captain_hook_incoming_event_handlers_on_locked_at"
+    t.index ["status", "priority", "handler_class"], name: "idx_captain_hook_handlers_processing_order"
+    t.index ["status"], name: "index_captain_hook_incoming_event_handlers_on_status"
+  end
+
+  create_table "captain_hook_incoming_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.string "dedup_state", default: "unique", null: false
+    t.string "event_type", null: false
+    t.string "external_id", null: false
+    t.jsonb "headers"
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "metadata"
+    t.jsonb "payload"
+    t.string "provider", null: false
+    t.string "request_id"
+    t.string "status", default: "received", null: false
+    t.datetime "updated_at", null: false
+    t.index ["archived_at"], name: "index_captain_hook_incoming_events_on_archived_at"
+    t.index ["created_at"], name: "index_captain_hook_incoming_events_on_created_at"
+    t.index ["event_type"], name: "index_captain_hook_incoming_events_on_event_type"
+    t.index ["provider", "external_id"], name: "idx_captain_hook_incoming_events_idempotency", unique: true
+    t.index ["provider"], name: "index_captain_hook_incoming_events_on_provider"
+    t.index ["status"], name: "index_captain_hook_incoming_events_on_status"
+  end
+
+  create_table "captain_hook_outgoing_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "archived_at"
+    t.integer "attempt_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.text "error_message"
+    t.string "event_type", null: false
+    t.jsonb "headers"
+    t.datetime "last_attempt_at"
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "metadata"
+    t.jsonb "payload"
+    t.string "provider", null: false
+    t.datetime "queued_at"
+    t.string "request_id"
+    t.text "response_body"
+    t.integer "response_code"
+    t.integer "response_time_ms"
+    t.string "status", default: "pending", null: false
+    t.string "target_url", null: false
+    t.datetime "updated_at", null: false
+    t.index ["archived_at"], name: "index_captain_hook_outgoing_events_on_archived_at"
+    t.index ["created_at"], name: "index_captain_hook_outgoing_events_on_created_at"
+    t.index ["event_type"], name: "index_captain_hook_outgoing_events_on_event_type"
+    t.index ["provider"], name: "index_captain_hook_outgoing_events_on_provider"
+    t.index ["status", "last_attempt_at"], name: "idx_captain_hook_outgoing_events_retry"
+    t.index ["status"], name: "index_captain_hook_outgoing_events_on_status"
+  end
+
+  add_foreign_key "captain_hook_incoming_event_handlers", "captain_hook_incoming_events", column: "incoming_event_id"
 end

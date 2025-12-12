@@ -1,0 +1,110 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Outgoing Event Details</h1>
+    <%= link_to "← Back to List", captain_hook.admin_outgoing_events_path, class: "btn btn-secondary" %>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <!-- Event Details -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Event Information</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row">
+            <dt class="col-sm-3">Endpoint</dt>
+            <dd class="col-sm-9"><span class="badge bg-primary"><%= @event.endpoint %></span></dd>
+
+            <dt class="col-sm-3">Target URL</dt>
+            <dd class="col-sm-9"><%= @event.target_url %></dd>
+
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+              <span class="badge bg-<%= status_color(@event.status) %>">
+                <%= @event.status&.titleize || 'N/A' %>
+              </span>
+            </dd>
+
+            <dt class="col-sm-3">Attempts</dt>
+            <dd class="col-sm-9"><%= @event.attempts || 0 %></dd>
+
+            <dt class="col-sm-3">Created At</dt>
+            <dd class="col-sm-9"><%= @event.created_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+
+            <dt class="col-sm-3">Last Attempt At</dt>
+            <dd class="col-sm-9">
+              <%= @event.last_attempted_at ? @event.last_attempted_at.strftime("%Y-%m-%d %H:%M:%S %Z") : "Never" %>
+            </dd>
+
+            <dt class="col-sm-3">Next Retry At</dt>
+            <dd class="col-sm-9">
+              <%= @event.next_retry_at ? @event.next_retry_at.strftime("%Y-%m-%d %H:%M:%S %Z") : "N/A" %>
+            </dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Payload -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Payload</h5>
+        </div>
+        <div class="card-body">
+          <pre class="bg-light p-3 rounded"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
+        </div>
+      </div>
+
+      <!-- Response -->
+      <% if @event.response_body.present? %>
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0">Response</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <strong>Status Code:</strong>
+              <span class="badge bg-<%= response_code_color(@event.response_code) %>">
+                <%= @event.response_code %>
+              </span>
+            </div>
+            <pre class="bg-light p-3 rounded"><code><%= @event.response_body %></code></pre>
+          </div>
+        </div>
+      <% end %>
+
+      <!-- Error Message -->
+      <% if @event.error_message.present? %>
+        <div class="card mb-4">
+          <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Error</h5>
+          </div>
+          <div class="card-body">
+            <pre class="text-danger mb-0"><%= @event.error_message %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="col-lg-4">
+      <!-- Metadata -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Metadata</h5>
+        </div>
+        <div class="card-body">
+          <dl>
+            <dt>Idempotency Key</dt>
+            <dd><small><%= @event.idempotency_key || "N/A" %></small></dd>
+
+            <dt>Sent At</dt>
+            <dd><%= @event.sent_at ? @event.sent_at.strftime("%Y-%m-%d %H:%M:%S %Z") : "Not sent yet" %></dd>
+
+            <dt>Response Time (ms)</dt>
+            <dd><%= @event.response_time_ms || "N/A" %></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

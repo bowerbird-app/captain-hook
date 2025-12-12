@@ -1,5 +1,4 @@
 Rails.application.routes.draw do
-  mount MakeupArtist::Engine => "/makeup_artist", as: "makeup_artist"
   # Mount the CaptainHook engine
   mount CaptainHook::Engine, at: "/captain_hook"
 

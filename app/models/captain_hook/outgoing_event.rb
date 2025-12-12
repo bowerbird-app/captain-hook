@@ -14,11 +14,6 @@ module CaptainHook
       failed: "failed"
     }, prefix: true
 
-    # Serialize JSON fields
-    serialize :headers, coder: JSON
-    serialize :payload, coder: JSON
-    serialize :metadata, coder: JSON
-
     # Validations
     validates :provider, presence: true
     validates :event_type, presence: true
