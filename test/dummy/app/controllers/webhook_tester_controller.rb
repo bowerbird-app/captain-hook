@@ -22,7 +22,14 @@ class WebhookTesterController < ApplicationController
     # Simulate an incoming webhook to the Captain Hook engine
     provider = params[:provider] || "test_provider"
     token = params[:token] || "test_token"
-    payload = JSON.parse(params[:payload] || '{"event": "test"}')
+    
+    begin
+      payload = JSON.parse(params[:payload] || '{"event": "test"}')
+    rescue JSON::ParserError => e
+      flash[:alert] = "Invalid JSON payload: #{e.message}"
+      redirect_to webhook_tester_path
+      return
+    end
 
     uri = URI.parse("#{request.base_url}/captain_hook/#{provider}/#{token}")
     http = Net::HTTP.new(uri.host, uri.port)
@@ -43,7 +50,13 @@ class WebhookTesterController < ApplicationController
 
   def send_outgoing
     # Send a test webhook to webhook.site
-    payload = JSON.parse(params[:payload] || '{"event": "test"}')
+    begin
+      payload = JSON.parse(params[:payload] || '{"event": "test"}')
+    rescue JSON::ParserError => e
+      flash[:alert] = "Invalid JSON payload: #{e.message}"
+      redirect_to webhook_tester_path
+      return
+    end
 
     uri = URI.parse(WEBHOOK_CONFIG[:unique_url])
     http = Net::HTTP.new(uri.host, uri.port)
