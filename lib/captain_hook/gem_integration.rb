@@ -194,7 +194,7 @@ module CaptainHook
     #
     # @return [Hash] Default metadata
     def default_metadata
-      self.class.default_metadata_hash
+      CaptainHook::GemIntegration.default_metadata_hash
     end
 
     # Log webhook sent event
