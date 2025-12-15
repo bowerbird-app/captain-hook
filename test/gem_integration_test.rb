@@ -82,9 +82,15 @@ class GemIntegrationTest < Minitest::Test
   end
 
   def test_module_methods_work_as_class_methods
-    # Test that methods are available as module functions
-    assert CaptainHook::GemIntegration.respond_to?(:webhook_configured?)
-    assert CaptainHook::GemIntegration.respond_to?(:webhook_url)
-    assert CaptainHook::GemIntegration.respond_to?(:register_webhook_handler)
+    # Test that methods are available as class methods via ClassMethods module
+    test_class = Class.new do
+      include CaptainHook::GemIntegration
+    end
+
+    assert test_class.respond_to?(:webhook_configured?)
+    assert test_class.respond_to?(:webhook_url)
+    assert test_class.respond_to?(:register_webhook_handler)
+    assert test_class.respond_to?(:build_webhook_payload)
+    assert test_class.respond_to?(:build_webhook_metadata)
   end
 end

@@ -219,11 +219,23 @@ end
 ## Helper Methods Reference
 
 ```ruby
-# Include the module
-include CaptainHook::GemIntegration
+# Include the module in your class
+class MyGem::WebhookService
+  include CaptainHook::GemIntegration
 
-# Or use as module functions
-CaptainHook::GemIntegration.send_webhook(...)
+  def notify_event(resource)
+    send_webhook(...)  # Available as instance method
+  end
+end
+
+# Or use as class methods
+class MyGem::WebhookService
+  include CaptainHook::GemIntegration
+
+  def self.notify_event(resource)
+    send_webhook(...)  # Available as class method
+  end
+end
 
 # Send a webhook
 send_webhook(

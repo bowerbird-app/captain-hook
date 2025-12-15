@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "socket"
+
 module CaptainHook
   # Helpers and utilities for integrating Captain Hook into other gems
   # Provides reusable methods for sending webhooks and managing configurations
@@ -226,11 +228,56 @@ module CaptainHook
     end
 
     # Make methods available as both instance and class methods
-    module_function :send_webhook,
-                    :register_webhook_handler,
-                    :webhook_configured?,
-                    :webhook_url,
-                    :build_webhook_payload,
-                    :build_webhook_metadata
+    # Note: Private methods will only be available to instance method calls
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
+
+    module ClassMethods
+      # Send a webhook via Captain Hook with standard error handling
+      # This is a class method wrapper that creates an instance and calls the instance method
+      def send_webhook(...)
+        include CaptainHook::GemIntegration
+        new.send_webhook(...)
+      end
+
+      def register_webhook_handler(...)
+        CaptainHook.register_handler(...)
+      end
+
+      def webhook_configured?(provider)
+        endpoint = CaptainHook.configuration.outgoing_endpoint(provider.to_s)
+        endpoint && endpoint.base_url.present?
+      end
+
+      def webhook_url(provider)
+        endpoint = CaptainHook.configuration.outgoing_endpoint(provider.to_s)
+        endpoint&.base_url
+      end
+
+      def build_webhook_payload(resource, additional_fields: {})
+        base_payload = {
+          id: resource.id,
+          created_at: resource.created_at&.iso8601,
+          updated_at: resource.updated_at&.iso8601
+        }
+
+        if resource.respond_to?(:attributes)
+          base_payload.merge!(resource.attributes.symbolize_keys)
+        end
+
+        base_payload.merge(additional_fields)
+      end
+
+      def build_webhook_metadata(additional_metadata: {})
+        {
+          environment: defined?(Rails) ? Rails.env : "development",
+          triggered_at: Time.current.iso8601,
+          hostname: Socket.gethostname
+        }.merge(additional_metadata)
+      rescue StandardError
+        { environment: "unknown", triggered_at: Time.current.iso8601 }.merge(additional_metadata)
+      end
+    end
   end
 end
