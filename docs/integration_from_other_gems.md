@@ -2,6 +2,10 @@
 
 This guide explains how to use CaptainHook from other Rails engines or gems to handle webhooks.
 
+> **🔗 For Inter-Gem Communication**  
+> If you want gems to communicate with each other via webhooks (e.g., Country Gem notifying Location Gem), 
+> see the [Inter-Gem Communication Guide](INTER_GEM_COMMUNICATION.md) for comprehensive examples and patterns.
+
 ## Table of Contents
 
 - [Handler Registration](#handler-registration)

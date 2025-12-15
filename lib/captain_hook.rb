@@ -10,6 +10,7 @@ require "captain_hook/outgoing_endpoint"
 require "captain_hook/time_window_validator"
 require "captain_hook/signature_generator"
 require "captain_hook/instrumentation"
+require "captain_hook/gem_integration"
 
 # Load adapters
 require "captain_hook/adapters/base"

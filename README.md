@@ -113,6 +113,109 @@ end
 
 See [docs/integration_from_other_gems.md](docs/integration_from_other_gems.md) for detailed integration examples.
 
+## Inter-Gem Communication
+
+Captain Hook enables Rails gems to communicate with each other through webhooks, creating a loosely coupled, event-driven architecture. Gems can send webhooks to notify other gems about events, and register handlers to respond to webhooks from other gems.
+
+### Example: Country List Gem ↔ Location Gem
+
+```ruby
+# Country Gem sends webhook when country is updated
+module CountryGem
+  class Country < ApplicationRecord
+    after_commit :notify_country_updated, on: :update
+
+    private
+
+    def notify_country_updated
+      event = CaptainHook::OutgoingEvent.create!(
+        provider: "country_gem_webhooks",
+        event_type: "country.updated",
+        target_url: "#{ENV['APP_URL']}/captain_hook/country_gem_internal/#{ENV['TOKEN']}",
+        payload: {
+          id: id,
+          code: code,
+          name: name,
+          population: population,
+          changes: saved_changes
+        }
+      )
+      CaptainHook::OutgoingJob.perform_later(event.id)
+    end
+  end
+end
+
+# Location Gem receives webhook and updates its records
+module LocationGem
+  class Engine < ::Rails::Engine
+    initializer "location_gem.webhooks" do
+      ActiveSupport.on_load(:captain_hook_configured) do
+        # Register handler for country updates
+        CaptainHook.register_handler(
+          provider: "country_gem_internal",
+          event_type: "country.updated",
+          handler_class: "LocationGem::Handlers::CountryUpdatedHandler",
+          priority: 50
+        )
+      end
+    end
+  end
+
+  module Handlers
+    class CountryUpdatedHandler
+      def handle(event:, payload:, metadata:)
+        # Update locations with new country data
+        LocationGem::Location
+          .where(country_code: payload["code"])
+          .update_all(country_name: payload["name"])
+      end
+    end
+  end
+end
+```
+
+**For complete examples and best practices**, see:
+- [Inter-Gem Communication Guide](docs/INTER_GEM_COMMUNICATION.md) - Comprehensive guide for gem-to-gem webhooks
+- [Gem Integration Examples](docs/GEM_INTEGRATION_EXAMPLES.md) - Using the `GemIntegration` helper module
+- [Integration from Other Gems](docs/integration_from_other_gems.md) - General integration patterns
+
+### Simplified Integration with Helper Module
+
+Captain Hook provides a `GemIntegration` module with reusable methods for easier integration:
+
+```ruby
+# Include in your service class
+class MyGem::WebhookService
+  include CaptainHook::GemIntegration
+
+  def notify_event(resource)
+    # Simplified webhook sending
+    send_webhook(
+      provider: "my_gem_webhooks",
+      event_type: "resource.created",
+      payload: build_webhook_payload(resource)
+    )
+  end
+end
+
+# Register handlers easily
+class MyGem::Engine < ::Rails::Engine
+  include CaptainHook::GemIntegration
+
+  initializer "my_gem.webhooks" do
+    ActiveSupport.on_load(:captain_hook_configured) do
+      register_webhook_handler(
+        provider: "external_service",
+        event_type: "resource.updated",
+        handler_class: "MyGem::Handlers::ResourceHandler"
+      )
+    end
+  end
+end
+```
+
+See [Gem Integration Examples](docs/GEM_INTEGRATION_EXAMPLES.md) for more details.
+
 ## Quick Start
 
 ### 1. Receiving Webhooks
