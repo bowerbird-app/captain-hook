@@ -11,37 +11,57 @@ Navigate to: `/webhook_tester`
 ### 1. Incoming Webhook Testing
 Test webhooks being received by the CaptainHook engine.
 
-- **Provider**: The webhook provider name (e.g., "stripe", "github")
-- **Token**: Authentication token for the webhook
+- **Provider**: The webhook provider name (defaults to "webhook_site")
+- **Token**: Authentication token (auto-populated from config)
 - **Payload**: JSON payload to send
 
-The form will send a POST request to: `http://localhost:3000/captain_hook/{provider}/{token}`
+The form sends a POST request to: `http://localhost:3004/captain_hook/{provider}/{token}`
+
+**Note**: Uses localhost to avoid GitHub Codespaces port visibility issues.
 
 ### 2. Outgoing Webhook Testing
-Test sending webhooks to external services (webhook.site).
+Send webhooks to external services (webhook.site) using CaptainHook's OutgoingEvent system.
 
 - **Payload**: JSON payload to send
 
-The form will send a POST request to the configured webhook.site URL.
+Creates an `OutgoingEvent` record and enqueues `OutgoingJob` for asynchronous delivery. The webhook and its delivery status will be visible in the CaptainHook admin interface.
 
 ## Configuration
 
-Webhook.site credentials are currently hardcoded in `WebhookTesterController::WEBHOOK_CONFIG`:
+The app uses a flexible configuration system that loads from either:
 
-```ruby
-WEBHOOK_CONFIG = {
-  unique_url: "https://webhook.site/83c6777b-45cf-40db-a013-7e8085db26d6",
-  email_address: "83c6777b-45cf-40db-a013-7e8085db26d6@emailhook.site",
-  dns_name: "83c6777b-45cf-40db-a013-7e8085db26d6.dnshook.site",
-  token: "83c6777b-45cf-40db-a013-7e8085db26d6"
-}
+### Option 1: Config File (Default for Development/Test)
+
+Edit `config/webhook_config.yml`:
+
+```yaml
+development:
+  webhook_site:
+    token: "400efa14-c6e1-4e77-8a54-51e8c4026a5e"
+    url: "https://webhook.site/83c6777b-45cf-40db-a013-7e8085db26d6"
 ```
 
-**TODO**: Move these to environment variables or Rails credentials for production use.
+**Benefit**: No environment variables needed! Just edit the file and restart.
+
+### Option 2: Environment Variables
+
+Set `USE_ENV_CONFIG=true` to use environment variables:
+
+```bash
+export USE_ENV_CONFIG=true
+export WEBHOOK_SITE_TOKEN="your-token"
+export WEBHOOK_SITE_URL="https://webhook.site/your-token"
+```
+
+### Production
+
+In production, environment variables are **always** used, regardless of the config file.
+
+See `config/WEBHOOK_CONFIG.md` for detailed documentation.
 
 ## Styling
 
-The page uses MakeupArtist gem styling conventions with CSS custom properties:
+The page uses Tailwind CSS with custom CSS properties for theming:
 - `--ma-color-brand`: Primary brand color
 - `--ma-color-accent`: Accent color for links and highlights
 - `--ma-color-bg`: Background color
@@ -49,26 +69,43 @@ The page uses MakeupArtist gem styling conventions with CSS custom properties:
 - `--ma-radius-*`: Border radius tokens
 - `--ma-shadow-card`: Card shadow
 
-This ensures consistency with the rest of the application's UI.
+Styles are consistent with the CaptainHook admin interface.
 
 ## Quick Links
 
 The page provides quick access to:
-- CaptainHook Admin Interface
-- Webhook.site Dashboard
-- MakeupArtist Style Guide
+- CaptainHook Admin Interface (`/captain_hook`)
+- Webhook.site Dashboard (opens the configured webhook URL)
 
 ## Usage Example
 
-1. Start the server: `cd test/dummy && bin/dev`
-2. Navigate to: `http://localhost:3000/webhook_tester`
+1. Start the server: `cd test/dummy && bin/rails server -p 3004`
+2. Navigate to: `http://localhost:3004/webhook_tester` (or via Codespaces forwarded port)
 3. To test an incoming webhook:
-   - Fill in provider name (e.g., "stripe")
-   - Fill in token (e.g., "secret_token_123")
+   - Provider is pre-filled with "webhook_site"
+   - Token is auto-populated from config
    - Edit the JSON payload as needed
    - Click "Send Incoming Webhook"
-   - Check the CaptainHook admin interface to see the received webhook
+   - Check `/captain_hook/admin/incoming_events` to see the received webhook
 4. To test an outgoing webhook:
    - Edit the JSON payload as needed
    - Click "Send Outgoing Webhook"
-   - Visit the webhook.site URL shown on the page to see the received request
+   - Check `/captain_hook/admin/outgoing_events` to see the queued event
+   - Visit the webhook.site URL shown on the page to see the delivered request
+
+## How It Works
+
+### Incoming Webhooks
+1. Form submits to `WebhookTesterController#send_incoming`
+2. Controller makes HTTP POST to `http://localhost:3004/captain_hook/webhook_site/{token}`
+3. `CaptainHook::IncomingController` receives and validates the webhook
+4. Creates an `IncomingEvent` record in the database
+5. Success/error message is displayed
+
+### Outgoing Webhooks
+1. Form submits to `WebhookTesterController#send_outgoing`
+2. Controller creates an `OutgoingEvent` record with status "pending"
+3. Enqueues `CaptainHook::OutgoingJob` for asynchronous delivery
+4. Job processes and sends HTTP request to webhook.site
+5. Updates `OutgoingEvent` status (delivered/failed)
+6. View the event in `/captain_hook/admin/outgoing_events`

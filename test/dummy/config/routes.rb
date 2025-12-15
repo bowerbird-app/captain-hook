@@ -2,8 +2,8 @@ Rails.application.routes.draw do
   # Mount the CaptainHook engine
   mount CaptainHook::Engine, at: "/captain_hook"
 
-  # Mount MakeupArtist style guide
-  mount MakeupArtist::Engine, at: "/makeup_artist"
+  # Mount MakeupArtist style guide (temporarily disabled)
+  # mount MakeupArtist::Engine, at: "/makeup_artist"
 
   # Webhook Tester
   get "webhook_tester", to: "webhook_tester#index", as: :webhook_tester

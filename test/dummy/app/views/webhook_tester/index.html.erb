@@ -36,25 +36,25 @@
         <div class="flex items-start">
           <span class="font-medium w-32">Unique URL:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= WebhookTesterController::WEBHOOK_CONFIG[:unique_url] %>
+            <%= webhook_site_url %>
           </code>
         </div>
         <div class="flex items-start">
           <span class="font-medium w-32">Email:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= WebhookTesterController::WEBHOOK_CONFIG[:email_address] %>
+            <%= webhook_site_email %>
           </code>
         </div>
         <div class="flex items-start">
           <span class="font-medium w-32">DNS Name:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= WebhookTesterController::WEBHOOK_CONFIG[:dns_name] %>
+            <%= webhook_site_dns %>
           </code>
         </div>
         <div class="flex items-start">
           <span class="font-medium w-32">Token:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= WebhookTesterController::WEBHOOK_CONFIG[:token] %>
+            <%= webhook_site_token %>
           </code>
         </div>
       </div>
@@ -79,9 +79,11 @@
         <%= form_with url: send_incoming_webhook_tester_path, method: :post, local: true, class: "space-y-4" do |f| %>
           <div>
             <%= f.label :provider, "Provider", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
-            <%= f.text_field :provider, 
-                placeholder: "e.g., stripe, github, etc.", 
-                value: "test_provider",
+            <%= f.select :provider, 
+                options_for_select([
+                  ["Webhook.site", "webhook_site"]
+                ], "webhook_site"),
+                {},
                 class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
           </div>
 
@@ -89,7 +91,7 @@
             <%= f.label :token, "Token", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
             <%= f.text_field :token, 
                 placeholder: "Authentication token", 
-                value: "test_token",
+                value: webhook_site_token,
                 class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
           </div>
 
@@ -134,7 +136,7 @@
           </div>
 
           <div class="text-xs text-[var(--ma-color-muted)] pt-2">
-            💡 After sending, check <a href="<%= WebhookTesterController::WEBHOOK_CONFIG[:unique_url] %>" target="_blank" class="text-[var(--ma-color-accent)] hover:underline">webhook.site</a> to see the received request.
+            💡 After sending, check <a href="<%= webhook_site_url %>" target="_blank" class="text-[var(--ma-color-accent)] hover:underline">webhook.site</a> to see the received request.
           </div>
         <% end %>
       </div>
@@ -147,15 +149,12 @@
       <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
         🔗 Quick Links
       </h2>
-      <div class="grid gap-3 md:grid-cols-3">
+      <div class="grid gap-3 md:grid-cols-2">
         <a href="/captain_hook" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           CaptainHook Admin →
         </a>
-        <a href="<%= WebhookTesterController::WEBHOOK_CONFIG[:unique_url] %>" target="_blank" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+        <a href="<%= webhook_site_url %>" target="_blank" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           Webhook.site Dashboard →
-        </a>
-        <a href="/makeup_artist" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          Style Guide →
         </a>
       </div>
     </div>
