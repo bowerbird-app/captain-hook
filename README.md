@@ -175,6 +175,7 @@ end
 ```
 
 **For complete examples and best practices**, see:
+- **[Quick Reference](docs/QUICK_REFERENCE.md)** - Essential code snippets and patterns
 - [Inter-Gem Communication Guide](docs/INTER_GEM_COMMUNICATION.md) - Comprehensive guide for gem-to-gem webhooks
 - [Gem Integration Examples](docs/GEM_INTEGRATION_EXAMPLES.md) - Using the `GemIntegration` helper module
 - [Integration from Other Gems](docs/integration_from_other_gems.md) - General integration patterns
