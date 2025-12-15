@@ -177,17 +177,24 @@ module CaptainHook
       ENV[env_var]
     end
 
-    # Default metadata included in all webhooks
+    # Default metadata included in all webhooks (shared implementation)
     #
     # @return [Hash] Default metadata
-    def default_metadata
+    def self.default_metadata_hash
       {
-        environment: Rails.env,
+        environment: defined?(Rails) ? Rails.env : "development",
         triggered_at: Time.current.iso8601,
         hostname: Socket.gethostname
       }
     rescue StandardError
-      { environment: Rails.env, triggered_at: Time.current.iso8601 }
+      { environment: "unknown", triggered_at: Time.current.iso8601 }
+    end
+
+    # Default metadata included in all webhooks (instance method wrapper)
+    #
+    # @return [Hash] Default metadata
+    def default_metadata
+      self.class.default_metadata_hash
     end
 
     # Log webhook sent event
@@ -234,11 +241,41 @@ module CaptainHook
     end
 
     module ClassMethods
-      # Send a webhook via Captain Hook with standard error handling
-      # This is a class method that delegates to the instance method
-      def send_webhook(...)
-        # Create a temporary object to use instance methods with private method access
-        Object.new.extend(CaptainHook::GemIntegration).send_webhook(...)
+      # Send a webhook via Captain Hook
+      # Note: This creates a temporary context to access instance methods
+      # For production use, prefer including the module in your class
+      def send_webhook(provider:, event_type:, payload:, target_url: nil, metadata: {}, headers: {}, async: true)
+        # Determine target URL
+        endpoint = CaptainHook.configuration.outgoing_endpoint(provider.to_s)
+        url = target_url || endpoint&.base_url
+
+        unless url
+          Rails.logger.error("[CaptainHook] No target URL configured for provider: #{provider}") if defined?(Rails) && Rails.logger
+          return nil
+        end
+
+        # Create the outgoing event
+        event = CaptainHook::OutgoingEvent.create!(
+          provider: provider.to_s,
+          event_type: event_type.to_s,
+          target_url: url,
+          payload: payload,
+          metadata: metadata.merge(CaptainHook::GemIntegration.default_metadata_hash),
+          headers: headers
+        )
+
+        # Enqueue for delivery
+        if async
+          CaptainHook::OutgoingJob.perform_later(event.id)
+        else
+          CaptainHook::OutgoingJob.perform_now(event.id)
+        end
+
+        Rails.logger.info("[CaptainHook] Webhook queued: #{event_type} (Provider: #{provider}, Event ID: #{event.id})") if defined?(Rails) && Rails.logger
+        event
+      rescue StandardError => e
+        Rails.logger.error("[CaptainHook] Failed to send webhook: #{e.message}") if defined?(Rails) && Rails.logger
+        nil
       end
 
       # Register a webhook handler
@@ -251,7 +288,11 @@ module CaptainHook
           **options
         )
 
-        log_handler_registered(provider, event_type, handler_class)
+        if defined?(Rails) && Rails.logger
+          Rails.logger.info(
+            "[CaptainHook] Handler registered: #{provider}.#{event_type} -> #{handler_class}"
+          )
+        end
       end
 
       def webhook_configured?(provider)
@@ -279,24 +320,7 @@ module CaptainHook
       end
 
       def build_webhook_metadata(additional_metadata: {})
-        {
-          environment: defined?(Rails) ? Rails.env : "development",
-          triggered_at: Time.current.iso8601,
-          hostname: Socket.gethostname
-        }.merge(additional_metadata)
-      rescue StandardError
-        { environment: "unknown", triggered_at: Time.current.iso8601 }.merge(additional_metadata)
-      end
-
-      private
-
-      # Log handler registration for class method calls
-      def log_handler_registered(provider, event_type, handler_class)
-        return unless defined?(Rails) && Rails.logger
-
-        Rails.logger.info(
-          "[CaptainHook] Handler registered: #{provider}.#{event_type} -> #{handler_class}"
-        )
+        CaptainHook::GemIntegration.default_metadata_hash.merge(additional_metadata)
       end
     end
   end
