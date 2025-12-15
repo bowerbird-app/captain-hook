@@ -235,14 +235,23 @@ module CaptainHook
 
     module ClassMethods
       # Send a webhook via Captain Hook with standard error handling
-      # This is a class method wrapper that creates an instance and calls the instance method
+      # This is a class method that delegates to the instance method
       def send_webhook(...)
-        include CaptainHook::GemIntegration
-        new.send_webhook(...)
+        # Create a temporary object to use instance methods with private method access
+        Object.new.extend(CaptainHook::GemIntegration).send_webhook(...)
       end
 
-      def register_webhook_handler(...)
-        CaptainHook.register_handler(...)
+      # Register a webhook handler
+      # Includes logging for consistency with instance method
+      def register_webhook_handler(provider:, event_type:, handler_class:, **options)
+        CaptainHook.register_handler(
+          provider: provider.to_s,
+          event_type: event_type.to_s,
+          handler_class: handler_class.to_s,
+          **options
+        )
+
+        log_handler_registered(provider, event_type, handler_class)
       end
 
       def webhook_configured?(provider)
@@ -277,6 +286,17 @@ module CaptainHook
         }.merge(additional_metadata)
       rescue StandardError
         { environment: "unknown", triggered_at: Time.current.iso8601 }.merge(additional_metadata)
+      end
+
+      private
+
+      # Log handler registration for class method calls
+      def log_handler_registered(provider, event_type, handler_class)
+        return unless defined?(Rails) && Rails.logger
+
+        Rails.logger.info(
+          "[CaptainHook] Handler registered: #{provider}.#{event_type} -> #{handler_class}"
+        )
       end
     end
   end
