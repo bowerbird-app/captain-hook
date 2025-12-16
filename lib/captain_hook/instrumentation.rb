@@ -12,13 +12,7 @@ module CaptainHook
     HANDLER_STARTED = "handler.started.captain_hook"
     HANDLER_COMPLETED = "handler.completed.captain_hook"
     HANDLER_FAILED = "handler.failed.captain_hook"
-    OUTGOING_QUEUED = "outgoing_event.queued.captain_hook"
-    OUTGOING_SENDING = "outgoing_event.sending.captain_hook"
-    OUTGOING_DELIVERED = "outgoing_event.delivered.captain_hook"
-    OUTGOING_FAILED = "outgoing_event.failed.captain_hook"
     RATE_LIMIT_EXCEEDED = "rate_limit.exceeded.captain_hook"
-    CIRCUIT_OPENED = "circuit_breaker.opened.captain_hook"
-    CIRCUIT_CLOSED = "circuit_breaker.closed.captain_hook"
     SIGNATURE_VERIFIED = "signature.verified.captain_hook"
     SIGNATURE_FAILED = "signature.failed.captain_hook"
 
@@ -102,54 +96,6 @@ module CaptainHook
         )
       end
 
-      # Instrument outgoing event queued
-      def outgoing_queued(event)
-        ActiveSupport::Notifications.instrument(
-          OUTGOING_QUEUED,
-          event_id: event.id,
-          provider: event.provider,
-          event_type: event.event_type,
-          target_url: event.target_url
-        )
-      end
-
-      # Instrument outgoing event sending
-      def outgoing_sending(event)
-        ActiveSupport::Notifications.instrument(
-          OUTGOING_SENDING,
-          event_id: event.id,
-          provider: event.provider,
-          target_url: event.target_url,
-          attempt: event.attempt_count + 1
-        )
-      end
-
-      # Instrument outgoing event delivered
-      def outgoing_delivered(event, response_code:, response_time_ms:)
-        ActiveSupport::Notifications.instrument(
-          OUTGOING_DELIVERED,
-          event_id: event.id,
-          provider: event.provider,
-          target_url: event.target_url,
-          response_code: response_code,
-          response_time_ms: response_time_ms
-        )
-      end
-
-      # Instrument outgoing event failed
-      def outgoing_failed(event, error:, response_code: nil)
-        ActiveSupport::Notifications.instrument(
-          OUTGOING_FAILED,
-          event_id: event.id,
-          provider: event.provider,
-          target_url: event.target_url,
-          error: error.class.name,
-          error_message: error.message,
-          response_code: response_code,
-          attempt: event.attempt_count
-        )
-      end
-
       # Instrument rate limit exceeded
       def rate_limit_exceeded(provider:, current_count:, limit:)
         ActiveSupport::Notifications.instrument(
@@ -157,23 +103,6 @@ module CaptainHook
           provider: provider,
           current_count: current_count,
           limit: limit
-        )
-      end
-
-      # Instrument circuit breaker opened
-      def circuit_opened(endpoint:, failure_count:)
-        ActiveSupport::Notifications.instrument(
-          CIRCUIT_OPENED,
-          endpoint: endpoint,
-          failure_count: failure_count
-        )
-      end
-
-      # Instrument circuit breaker closed
-      def circuit_closed(endpoint:)
-        ActiveSupport::Notifications.instrument(
-          CIRCUIT_CLOSED,
-          endpoint: endpoint
         )
       end
 
