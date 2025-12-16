@@ -39,4 +39,32 @@ CaptainHook.configure do |config|
       "User-Agent" => "CaptainHook/#{CaptainHook::VERSION}"
     }
   )
+
+  # =============================================================================
+  # Inter-Gem Communication Example: Lookup Service
+  # =============================================================================
+  # This demonstrates bidirectional webhook communication with an external service
+  
+  # Outgoing: Send webhooks TO the lookup service
+  config.register_outgoing_endpoint(
+    "lookup_service",
+    base_url: ENV["LOOKUP_SERVICE_URL"] || "https://example.com/webhooks",
+    signing_secret: ENV["LOOKUP_SERVICE_SECRET"] || "example-secret",
+    default_headers: {
+      "Content-Type" => "application/json",
+      "X-App-Name" => "CaptainHook Demo"
+    }
+  )
+
+  # Incoming: Receive webhooks FROM the lookup service
+  config.register_provider(
+    "lookup_service",
+    token: ENV["LOOKUP_SERVICE_TOKEN"] || "example-token",
+    signing_secret: ENV["LOOKUP_SERVICE_SECRET"] || "example-secret",
+    adapter_class: "CaptainHook::Adapters::Base",
+    timestamp_tolerance_seconds: 300,
+    max_payload_size_bytes: 1_048_576,  # 1MB
+    rate_limit_requests: 100,
+    rate_limit_period: 60
+  )
 end

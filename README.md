@@ -22,6 +22,13 @@ A comprehensive Rails engine for managing webhooks with features including signa
   - Response tracking (code, body, time)
   - Optimistic locking for safe concurrency
 
+- **Inter-Gem Communication**
+  - Decoupled gem-to-gem communication via webhooks
+  - ActiveSupport::Notifications integration
+  - Helper methods for sending and receiving webhooks
+  - Handler registration with priority and retry configuration
+  - Complete examples in test/dummy app
+
 - **Admin Interface**
   - View incoming and outgoing events
   - Filter and search capabilities
@@ -154,6 +161,34 @@ event = CaptainHook::OutgoingEvent.create!(
 CaptainHook::OutgoingJob.perform_later(event.id)
 ```
 
+### 3. Inter-Gem Communication
+
+CaptainHook enables decoupled communication between Rails engines/gems via webhooks:
+
+```ruby
+# In your gem: Emit a notification
+ActiveSupport::Notifications.instrument("my_gem.resource.created", data: { id: 1 })
+
+# In main app: Subscribe and send webhook
+ActiveSupport::Notifications.subscribe("my_gem.resource.created") do |_, _, _, _, payload|
+  CaptainHook::GemIntegration.send_webhook(
+    provider: "my_gem",
+    event_type: "resource.created",
+    endpoint: "external_service",
+    payload: payload
+  )
+end
+
+# Register handler for incoming webhooks
+CaptainHook::GemIntegration.register_webhook_handler(
+  provider: "external_service",
+  event_type: "response.received",
+  handler_class: "MyGem::ResponseHandler"
+)
+```
+
+See [docs/INTER_GEM_COMMUNICATION.md](docs/INTER_GEM_COMMUNICATION.md) for complete guide and examples.
+
 ## Security
 
 **Never store secrets in the database.** Use environment variables or Rails encrypted credentials.
@@ -168,7 +203,10 @@ Outgoing webhooks include SSRF protection and signature generation.
 ## Documentation
 
 - **Full README**: See above for comprehensive documentation
-- **Integration Guide**: [docs/integration_from_other_gems.md](docs/integration_from_other_gems.md)
+- **Inter-Gem Communication**: [docs/INTER_GEM_COMMUNICATION.md](docs/INTER_GEM_COMMUNICATION.md) - Complete guide for gem-to-gem webhooks
+- **Quick Reference**: [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) - Quick setup guide
+- **Integration Guide**: [docs/integration_from_other_gems.md](docs/integration_from_other_gems.md) - General integration patterns
+- **Example Implementation**: [test/dummy/EXAMPLE_README.md](test/dummy/EXAMPLE_README.md) - Working example in test app
 - **Architecture**: [docs/gem_template/](docs/gem_template/) (template reference)
 
 ## License
