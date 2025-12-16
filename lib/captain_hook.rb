@@ -14,6 +14,8 @@ require "captain_hook/instrumentation"
 require "captain_hook/adapters/base"
 require "captain_hook/adapters/stripe"
 require "captain_hook/adapters/webhook_site"
+require "captain_hook/adapters/paypal"
+require "captain_hook/adapters/square"
 
 # Load services
 require "captain_hook/services/base_service"

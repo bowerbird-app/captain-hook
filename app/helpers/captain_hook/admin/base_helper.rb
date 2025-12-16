@@ -35,6 +35,25 @@ module CaptainHook
           "secondary"
         end
       end
+
+      # Get available adapter classes for dropdown
+      def available_adapter_classes
+        adapters = []
+
+        # Scan the adapters directory
+        adapter_dir = File.join(CaptainHook::Engine.root, "lib", "captain_hook", "adapters")
+        Dir.glob(File.join(adapter_dir, "*.rb")).each do |file|
+          adapter_name = File.basename(file, ".rb")
+          next if adapter_name == "base" # Skip the base class
+
+          class_name = "CaptainHook::Adapters::#{adapter_name.camelize}"
+          display_name = adapter_name.titleize
+          adapters << [display_name, class_name]
+        end
+
+        # Sort alphabetically and add Base at the end
+        adapters.sort_by(&:first) + [["Base (No Verification)", "CaptainHook::Adapters::Base"]]
+      end
     end
   end
 end

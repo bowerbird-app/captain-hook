@@ -7,35 +7,46 @@ echo ""
 # Check if we're in a Rails app
 if [ ! -f "config/application.rb" ]; then
     echo "❌ Error: Not in a Rails application root directory"
+    echo "   Run this from your Rails app root (where config/ is)"
     exit 1
 fi
 
 # Generate encryption keys
 echo "📝 Generating encryption keys..."
 echo ""
-rails db:encryption:init
+OUTPUT=$(rails db:encryption:init 2>&1)
+echo "$OUTPUT"
+
+# Extract keys
+PRIMARY_KEY=$(echo "$OUTPUT" | grep "primary_key:" | awk '{print $2}')
+DETERMINISTIC_KEY=$(echo "$OUTPUT" | grep "deterministic_key:" | awk '{print $2}')
+KEY_DERIVATION_SALT=$(echo "$OUTPUT" | grep "key_derivation_salt:" | awk '{print $2}')
 
 echo ""
-echo "✅ Keys generated! Next steps:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📋 COPY THESE TO YOUR .env FILE:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "1. Add keys to credentials:"
-echo "   EDITOR='code --wait' rails credentials:edit"
+echo "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=$PRIMARY_KEY"
+echo "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=$DETERMINISTIC_KEY"
+echo "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=$KEY_DERIVATION_SALT"
 echo ""
-echo "2. Or set as environment variables:"
-echo "   export ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=..."
-echo "   export ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=..."
-echo "   export ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔒 FOR PRODUCTION - Set in your hosting platform:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "3. For provider-specific secrets (optional):"
-echo "   export STRIPE_WEBHOOK_SECRET=whsec_..."
-echo "   export GITHUB_WEBHOOK_SECRET=..."
+echo "Heroku:  heroku config:set ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=$PRIMARY_KEY"
+echo "Render:  Add to Environment Variables in dashboard"
+echo "Fly.io:  fly secrets set ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=$PRIMARY_KEY"
 echo ""
-echo "4. Test encryption:"
-echo "   rails console"
-echo "   > p = CaptainHook::Provider.first"
-echo "   > p.signing_secret = 'test_secret'"
-echo "   > p.save!"
-echo "   > p.reload"
-echo "   > p.signing_secret # Should return 'test_secret'"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠️  SECURITY NOTES:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "✨ Encryption is now enabled for signing_secret field!"
+echo "1. Never commit these keys to git"
+echo "2. Add .env to .gitignore"
+echo "3. Use different keys for each environment"
+echo "4. Rotate keys periodically in production"
+echo ""
+echo "✨ Next: Restart your Rails server to load the new keys!"
+echo ""

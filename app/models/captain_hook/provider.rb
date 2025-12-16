@@ -6,9 +6,8 @@ module CaptainHook
   class Provider < ApplicationRecord
     self.table_name = "captain_hook_providers"
 
-    # Encrypt signing secrets at rest
-    # This uses Rails 7+ ActiveRecord encryption with application-level keys
-    # Keys are stored in config/credentials.yml.enc or ENV variables
+    # Encryption enabled - signing secrets are encrypted at rest
+    # See docs/gem_template/SIGNING_SECRET_STORAGE.md for details
     encrypts :signing_secret, deterministic: false
 
     # Associations
@@ -35,7 +34,7 @@ module CaptainHook
 
     # Generate webhook URL for this provider
     def webhook_url(base_url: nil)
-      base = base_url || "#{ENV.fetch('APP_URL', 'http://localhost:3000')}"
+      base = base_url || detect_base_url
       "#{base}/captain_hook/#{name}/#{token}"
     end
 
@@ -58,6 +57,8 @@ module CaptainHook
     # This allows storing secrets in ENV instead of DB for sensitive providers
     # Example: STRIPE_WEBHOOK_SECRET=whsec_abc123
     def signing_secret
+      return super if name.blank?
+
       env_key = "#{name.upcase}_WEBHOOK_SECRET"
       ENV[env_key].presence || super
     end
@@ -88,6 +89,21 @@ module CaptainHook
 
     def generate_token
       self.token = SecureRandom.urlsafe_base64(32)
+    end
+
+    def detect_base_url
+      # Check for explicit APP_URL first
+      return ENV["APP_URL"] if ENV["APP_URL"].present?
+
+      # Detect GitHub Codespaces environment
+      if ENV["CODESPACES"] == "true" && ENV["CODESPACE_NAME"].present?
+        port = ENV.fetch("PORT", "3004")
+        "https://#{ENV.fetch('CODESPACE_NAME', nil)}-#{port}.app.github.dev"
+      else
+        # Default to localhost with PORT or 3000
+        port = ENV.fetch("PORT", "3000")
+        "http://localhost:#{port}"
+      end
     end
   end
 end

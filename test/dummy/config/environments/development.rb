@@ -3,6 +3,27 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
+  # Secret key base - should come from ENV in production
+  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE") do
+    SecureRandom.hex(64)
+  end
+
+  # ActiveRecord Encryption keys - MUST come from ENV variables
+  # Run: ruby /workspace/generate_keys.rb to generate keys
+  # Then add them to your .env file
+  config.active_record.encryption.primary_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY") do
+    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY not set - using temporary random key (data will not persist!)"
+    SecureRandom.alphanumeric(32)
+  end
+  config.active_record.encryption.deterministic_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY") do
+    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY not set - using temporary random key"
+    SecureRandom.alphanumeric(32)
+  end
+  config.active_record.encryption.key_derivation_salt = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT") do
+    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT not set - using temporary random key"
+    SecureRandom.alphanumeric(32)
+  end
+
   # Make code changes take effect immediately without server restart.
   config.enable_reloading = true
 
@@ -47,16 +68,16 @@ Rails.application.configure do
   config.active_record.migration_error = :page_load
 
   # Highlight code that triggered database queries in logs.
-  config.active_record.verbose_query_logs = true
+  config.active_record.verbose_query_logs = false
 
   # Append comments with runtime information tags to SQL queries in logs.
-  config.active_record.query_log_tags_enabled = true
+  config.active_record.query_log_tags_enabled = false
 
   # Highlight code that enqueued background job in logs.
-  config.active_job.verbose_enqueue_logs = true
+  config.active_job.verbose_enqueue_logs = false
 
   # Highlight code that triggered redirect in logs.
-  config.action_dispatch.verbose_redirect_logs = true
+  config.action_dispatch.verbose_redirect_logs = false
 
   # Suppress logger output for asset requests.
   config.assets.quiet = true

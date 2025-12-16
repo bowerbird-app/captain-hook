@@ -60,7 +60,7 @@
             <% @event.incoming_event_handlers.order(priority: :asc, created_at: :asc).each do |handler| %>
               <div class="border-bottom pb-3 mb-3">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                  <strong><%= handler.handler_name %></strong>
+                  <strong><%= handler.handler_class %></strong>
                   <span class="badge bg-<%= status_color(handler.status) %>">
                     <%= handler.status&.titleize || 'N/A' %>
                   </span>
@@ -72,9 +72,9 @@
                     <%= handler.error_message %>
                   </div>
                 <% end %>
-                <% if handler.processed_at %>
+                <% if handler.status_processed? || handler.status_failed? %>
                   <div class="text-muted small mt-1">
-                    Processed <%= time_ago_in_words(handler.processed_at) %> ago
+                    <%= handler.status.capitalize %> <%= time_ago_in_words(handler.updated_at) %> ago
                   </div>
                 <% end %>
               </div>

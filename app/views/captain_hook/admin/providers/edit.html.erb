@@ -79,10 +79,7 @@
         <div class="mb-3">
           <%= f.label :adapter_class, class: "form-label" %>
           <%= f.select :adapter_class, 
-              options_for_select([
-                ["Base (No Verification)", "CaptainHook::Adapters::Base"],
-                ["Stripe", "CaptainHook::Adapters::Stripe"]
-              ], @provider.adapter_class),
+              options_for_select(available_adapter_classes, @provider.adapter_class),
               {},
               class: "form-control" %>
         </div>

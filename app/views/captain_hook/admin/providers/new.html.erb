@@ -79,10 +79,7 @@
         <div class="mb-3">
           <%= f.label :adapter_class, class: "form-label" %>
           <%= f.select :adapter_class, 
-              options_for_select([
-                ["Base (No Verification)", "CaptainHook::Adapters::Base"],
-                ["Stripe", "CaptainHook::Adapters::Stripe"]
-              ], "CaptainHook::Adapters::Base"),
+              options_for_select(available_adapter_classes, "CaptainHook::Adapters::Base"),
               {},
               class: "form-control" %>
           <small class="form-text text-muted">Adapter for signature verification specific to this provider</small>
