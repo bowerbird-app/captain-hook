@@ -1,0 +1,2 @@
+class WebhookLog < ApplicationRecord
+end

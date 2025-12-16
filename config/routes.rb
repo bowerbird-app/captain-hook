@@ -8,6 +8,10 @@ CaptainHook::Engine.routes.draw do
     end
     resources :incoming_events, only: %i[index show]
 
+    # Sandbox for testing webhooks (dry run)
+    get "sandbox", to: "sandbox#index"
+    post "sandbox/test", to: "sandbox#test_webhook"
+
     root to: "providers#index"
   end
 

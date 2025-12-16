@@ -6,7 +6,7 @@ require "json"
 
 class WebhookTesterController < ApplicationController
   # Configuration for webhook.site - uses config file or environment
-  helper_method :webhook_site_url, :webhook_site_token
+  helper_method :webhook_site_url, :webhook_site_token, :provider_token
 
   def webhook_site_url
     # Try ENV first, then config file, then fallback
@@ -28,6 +28,12 @@ class WebhookTesterController < ApplicationController
     webhook_site_url.split('/').last
   end
 
+  def provider_token
+    # Get the actual provider token from the database
+    provider = CaptainHook::Provider.find_by(name: "webhook_site")
+    provider&.token || "No provider found - create one first"
+  end
+
   def index
     # Display the webhook connection testing interface
   end
@@ -38,7 +44,19 @@ class WebhookTesterController < ApplicationController
     
     # Get provider from database or configuration
     provider = CaptainHook::Provider.find_by(name: provider_name)
-    token = params[:token] || provider&.token || CaptainHook.configuration.provider(provider_name)&.token || "test_token"
+    
+    # Use the token from the form, or fall back to the provider's token from the database
+    token = if params[:token].present? && params[:token] != webhook_site_token
+              params[:token]
+            else
+              provider&.token
+            end
+    
+    unless token
+      flash[:alert] = "✗ No token found for provider '#{provider_name}'. Please create the provider first."
+      redirect_to webhook_tester_path
+      return
+    end
     
     begin
       payload_hash = JSON.parse(params[:payload] || '{"event": "test"}')

@@ -34,15 +34,21 @@
       </h2>
       <div class="space-y-2.5 text-sm text-[var(--ma-color-text)]">
         <div class="flex items-start">
-          <span class="font-medium w-40">Test Provider URL:</span>
+          <span class="font-medium w-40">CaptainHook URL:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= webhook_site_url %>
+            http://localhost:3004/captain_hook/webhook_site/<%= provider_token %>
           </code>
         </div>
         <div class="flex items-start">
-          <span class="font-medium w-40">Token:</span>
+          <span class="font-medium w-40">Provider Token:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= webhook_site_token %>
+            <%= provider_token %>
+          </code>
+        </div>
+        <div class="flex items-start">
+          <span class="font-medium w-40">Webhook.site URL:</span>
+          <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
+            <%= webhook_site_url %>
           </code>
         </div>
       </div>
@@ -77,8 +83,11 @@
           <%= f.label :token, "Token", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
           <%= f.text_field :token, 
               placeholder: "Authentication token", 
-              value: webhook_site_token,
+              value: provider_token,
               class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
+          <p class="text-xs text-[var(--ma-color-muted)] mt-1">
+            This is your CaptainHook provider token (from the database)
+          </p>
         </div>
 
         <div>

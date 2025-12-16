@@ -13,6 +13,7 @@ require "captain_hook/instrumentation"
 # Load adapters
 require "captain_hook/adapters/base"
 require "captain_hook/adapters/stripe"
+require "captain_hook/adapters/webhook_site"
 
 # Load services
 require "captain_hook/services/base_service"

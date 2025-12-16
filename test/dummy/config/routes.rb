@@ -5,10 +5,6 @@ Rails.application.routes.draw do
   # Mount MakeupArtist style guide (temporarily disabled)
   # mount MakeupArtist::Engine, at: "/makeup_artist"
 
-  # Webhook Tester
-  get "webhook_tester", to: "webhook_tester#index", as: :webhook_tester
-  post "webhook_tester/send_incoming", to: "webhook_tester#send_incoming", as: :send_incoming_webhook_tester
-
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_16_000001) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_16_041227) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -85,6 +85,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_16_000001) do
     t.index ["active"], name: "index_captain_hook_providers_on_active"
     t.index ["name"], name: "index_captain_hook_providers_on_name", unique: true
     t.index ["token"], name: "index_captain_hook_providers_on_token", unique: true
+  end
+
+  create_table "webhook_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_type"
+    t.string "external_id"
+    t.jsonb "payload"
+    t.datetime "processed_at"
+    t.string "provider"
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_webhook_logs_on_external_id"
+    t.index ["provider", "event_type"], name: "index_webhook_logs_on_provider_and_event_type"
   end
 
   add_foreign_key "captain_hook_incoming_event_handlers", "captain_hook_incoming_events", column: "incoming_event_id"

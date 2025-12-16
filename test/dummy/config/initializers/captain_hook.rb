@@ -21,3 +21,21 @@ end
 #   provider.active = true
 # end
 
+# Register handlers for webhook processing
+Rails.application.config.after_initialize do
+  # Handler for webhook.site test events
+  # To trigger this, send a webhook with: { "type": "test", ... }
+  # Or: { "event_type": "test", ... }
+  # Or: { "event": "test", ... }
+  CaptainHook.register_handler(
+    provider: "webhook_site",
+    event_type: "test",
+    handler_class: "WebhookSiteTestHandler",
+    priority: 100,
+    async: true,
+    max_attempts: 3
+  )
+
+  Rails.logger.info "🎣 Registered WebhookSiteTestHandler for webhook_site:test events"
+end
+

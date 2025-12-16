@@ -9,12 +9,15 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
+    <!-- Tailwind CSS -->
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    
     <%= yield :head %>
   </head>
 
   <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="display: block !important;">
       <div class="container-fluid">
         <a class="navbar-brand" href="<%= captain_hook.admin_root_path %>">
           ⚓ CaptainHook
@@ -22,15 +25,22 @@
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
-            <li class="nav-item">
+        <div class="navbar-collapse" id="navbarNav" style="display: block !important;">
+          <ul class="navbar-nav" style="display: flex !important; flex-direction: row !important; list-style: none !important; padding-left: 0 !important; margin-bottom: 0 !important;">
+            <li class="nav-item" style="display: block !important;">
               <%= link_to "Providers", captain_hook.admin_providers_path, 
-                  class: "nav-link #{controller_name == 'providers' ? 'active' : ''}" %>
+                  class: "nav-link #{controller_name == 'providers' ? 'active' : ''}", 
+                  style: "display: block !important; padding: 0.5rem 1rem !important; color: rgba(255,255,255,0.75) !important; text-decoration: none !important;" %>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" style="display: block !important;">
               <%= link_to "Incoming Events", captain_hook.admin_incoming_events_path, 
-                  class: "nav-link #{controller_name == 'incoming_events' ? 'active' : ''}" %>
+                  class: "nav-link #{controller_name == 'incoming_events' ? 'active' : ''}", 
+                  style: "display: block !important; padding: 0.5rem 1rem !important; color: rgba(255,255,255,0.75) !important; text-decoration: none !important;" %>
+            </li>
+            <li class="nav-item" style="display: block !important;">
+              <%= link_to "Sandbox", captain_hook.admin_sandbox_path, 
+                  class: "nav-link #{controller_name == 'sandbox' ? 'active' : ''}", 
+                  style: "display: block !important; padding: 0.5rem 1rem !important; color: rgba(255,255,255,0.75) !important; text-decoration: none !important;" %>
             </li>
           </ul>
         </div>
