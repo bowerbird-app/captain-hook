@@ -50,7 +50,7 @@ module CaptainHook
     end
 
     test "send_webhook raises error when provider is blank" do
-      assert_raises(ArgumentError, match: /Provider cannot be blank/) do
+      error = assert_raises(ArgumentError) do
         send_webhook(
           provider: "",
           event_type: "test.created",
@@ -58,10 +58,11 @@ module CaptainHook
           payload: {}
         )
       end
+      assert_match(/Provider cannot be blank/, error.message)
     end
 
     test "send_webhook raises error when event_type is blank" do
-      assert_raises(ArgumentError, match: /Event type cannot be blank/) do
+      error = assert_raises(ArgumentError) do
         send_webhook(
           provider: "test_provider",
           event_type: "",
@@ -69,10 +70,11 @@ module CaptainHook
           payload: {}
         )
       end
+      assert_match(/Event type cannot be blank/, error.message)
     end
 
     test "send_webhook raises error when endpoint is blank" do
-      assert_raises(ArgumentError, match: /Endpoint cannot be blank/) do
+      error = assert_raises(ArgumentError) do
         send_webhook(
           provider: "test_provider",
           event_type: "test.created",
@@ -80,10 +82,11 @@ module CaptainHook
           payload: {}
         )
       end
+      assert_match(/Endpoint cannot be blank/, error.message)
     end
 
     test "send_webhook raises error when endpoint not configured" do
-      assert_raises(ArgumentError, match: /Endpoint 'nonexistent' not configured/) do
+      error = assert_raises(ArgumentError) do
         send_webhook(
           provider: "test_provider",
           event_type: "test.created",
@@ -91,6 +94,7 @@ module CaptainHook
           payload: {}
         )
       end
+      assert_match(/Endpoint 'nonexistent' not configured/, error.message)
     end
 
     test "send_webhook merges custom headers with default headers" do

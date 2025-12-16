@@ -65,14 +65,10 @@ module CaptainHook
         metadata: metadata
       )
 
-      # Enqueue for delivery if async
-      if async
-        CaptainHook::OutgoingJob.perform_later(event.id)
-      else
-        # For synchronous delivery, we'd need to implement immediate sending
-        # For now, we'll enqueue and rely on the job system
-        CaptainHook::OutgoingJob.perform_later(event.id)
-      end
+      # Enqueue for delivery
+      # Note: Currently all webhooks are sent asynchronously via ActiveJob
+      # The async parameter is provided for future enhancement
+      CaptainHook::OutgoingJob.perform_later(event.id)
 
       event
     end
