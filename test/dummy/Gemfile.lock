@@ -1,5 +1,5 @@
 GIT
-  remote: https://@github.com/bowerbird-app/makeup-artist.git
+  remote: https://github.com/bowerbird-app/makeup-artist.git
   revision: 6bcee17a05b291c47bfdb16245642efc174049de
   specs:
     makeup_artist (0.4.3)
@@ -417,7 +417,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
-  makeup_artist!
+  makeup_artist (~> 0.4.3)!
   pg (~> 1.1)
   propshaft
   puma (>= 5.0)

@@ -24,7 +24,7 @@ gem "jbuilder"
 gem "tailwindcss-rails"
 
 # MakeupArtist UI component library
-gem "makeup_artist", git: "https://#{ENV['PERSONAL_ACCESS_TOKEN']}@github.com/bowerbird-app/makeup-artist.git"
+# gem "makeup_artist", git: "https://#{ENV['PERSONAL_ACCESS_TOKEN']}@github.com/bowerbird-app/makeup-artist.git"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
@@ -67,3 +67,5 @@ group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
 end
+
+gem "makeup_artist", "~> 0.4.3", git: "https://github.com/bowerbird-app/makeup-artist.git"
