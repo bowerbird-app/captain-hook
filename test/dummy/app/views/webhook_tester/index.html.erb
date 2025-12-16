@@ -2,10 +2,10 @@
   <!-- Header -->
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-[var(--ma-color-text)] mb-3">
-      🔗 Webhook Provider Connectivity Tester
+      🔗 Test Webhook Connection
     </h1>
     <p class="text-base text-[var(--ma-color-muted)]">
-      Test if CaptainHook can receive webhooks from your providers. This tool simulates incoming webhooks to verify your configuration and connectivity.
+      Verify that CaptainHook can receive webhooks from your providers. This tool simulates incoming webhooks to test your configuration and connectivity.
     </p>
   </div>
 
@@ -56,10 +56,10 @@
   <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
     <div class="p-6">
       <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
-        📥 Test Incoming Webhook
+        📥 Test Webhook Connection
       </h2>
       <p class="text-sm text-[var(--ma-color-muted)] mb-4">
-        Send a test webhook to verify CaptainHook can receive and process webhooks from your provider.
+        Send a test webhook to verify that CaptainHook can successfully receive and process webhooks from your provider.
       </p>
       
       <%= form_with url: send_incoming_webhook_tester_path, method: :post, local: true, class: "space-y-4" do |f| %>
@@ -91,7 +91,7 @@
         </div>
 
         <div class="pt-2">
-          <%= f.submit "Test Provider Connection", class: "w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[var(--ma-color-brand)] rounded-[var(--ma-radius-md)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ma-color-brand)] transition-opacity cursor-pointer" %>
+          <%= f.submit "Test Webhook Connection", class: "w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[var(--ma-color-brand)] rounded-[var(--ma-radius-md)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ma-color-brand)] transition-opacity cursor-pointer" %>
         </div>
       <% end %>
     </div>

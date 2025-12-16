@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
 CaptainHook::Engine.routes.draw do
-  # Public incoming webhook endpoint
-  post ":provider/:token", to: "incoming#create", as: :incoming_webhook
-
-  # Admin interface
+  # Admin interface (must come BEFORE wildcard routes)
   namespace :admin do
     resources :providers do
       resources :handlers, only: %i[index]
@@ -16,4 +13,7 @@ CaptainHook::Engine.routes.draw do
 
   # Root redirects to admin
   root to: redirect("/captain_hook/admin")
+
+  # Public incoming webhook endpoint (must come AFTER admin routes)
+  post ":provider/:token", to: "incoming#create", as: :incoming_webhook
 end

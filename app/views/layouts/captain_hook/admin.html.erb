@@ -25,12 +25,12 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
             <li class="nav-item">
-              <%= link_to "Incoming Events", captain_hook.admin_incoming_events_path, 
-                  class: "nav-link #{controller_name == 'incoming_events' ? 'active' : ''}" %>
+              <%= link_to "Providers", captain_hook.admin_providers_path, 
+                  class: "nav-link #{controller_name == 'providers' ? 'active' : ''}" %>
             </li>
             <li class="nav-item">
-              <%= link_to "Outgoing Events", captain_hook.admin_outgoing_events_path, 
-                  class: "nav-link #{controller_name == 'outgoing_events' ? 'active' : ''}" %>
+              <%= link_to "Incoming Events", captain_hook.admin_incoming_events_path, 
+                  class: "nav-link #{controller_name == 'incoming_events' ? 'active' : ''}" %>
             </li>
           </ul>
         </div>

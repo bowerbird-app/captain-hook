@@ -6,6 +6,10 @@ module CaptainHook
   class Provider < ApplicationRecord
     self.table_name = "captain_hook_providers"
 
+    # TODO: Enable encryption in production
+    # encrypts :signing_secret, deterministic: false
+    # Requires: rails credentials:edit to set active_record_encryption keys
+
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
 
@@ -26,7 +30,7 @@ module CaptainHook
 
     # Callbacks
     before_validation :normalize_name
-    before_create :generate_token, unless: :token?
+    before_validation :generate_token, if: -> { token.blank? }
 
     # Generate webhook URL for this provider
     def webhook_url(base_url: nil)

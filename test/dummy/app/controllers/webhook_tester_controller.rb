@@ -29,11 +29,11 @@ class WebhookTesterController < ApplicationController
   end
 
   def index
-    # Display the webhook testing interface
+    # Display the webhook connection testing interface
   end
 
   def send_incoming
-    # Simulate an incoming webhook to the Captain Hook engine
+    # Test webhook connection by simulating an incoming webhook to the Captain Hook engine
     provider_name = params[:provider] || "webhook_site"
     
     # Get provider from database or configuration
@@ -64,15 +64,15 @@ class WebhookTesterController < ApplicationController
     if response.code.to_i >= 200 && response.code.to_i < 300
       event_id = body['id'] || 'N/A'
       status_text = body['status'] || 'received'
-      flash[:notice] = "✓ Incoming webhook processed successfully! Status: #{response.code}, Event ID: #{event_id}, Status: #{status_text}"
+      flash[:notice] = "✓ Webhook connection successful! Status: #{response.code}, Event ID: #{event_id}, Status: #{status_text}"
     else
       error_msg = body['error'] || body['message'] || 'Unknown error'
-      flash[:alert] = "✗ Incoming webhook failed with status #{response.code}: #{error_msg}"
+      flash[:alert] = "✗ Webhook connection failed with status #{response.code}: #{error_msg}"
     end
     
     redirect_to webhook_tester_path
   rescue StandardError => e
-    flash[:alert] = "✗ Error processing incoming webhook: #{e.message}"
+    flash[:alert] = "✗ Error testing webhook connection: #{e.message}"
     redirect_to webhook_tester_path
   end
 end

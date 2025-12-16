@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_12_064843) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_16_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -67,33 +67,24 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_12_064843) do
     t.index ["status"], name: "index_captain_hook_incoming_events_on_status"
   end
 
-  create_table "captain_hook_outgoing_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "archived_at"
-    t.integer "attempt_count", default: 0, null: false
+  create_table "captain_hook_providers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "adapter_class", default: "CaptainHook::Adapters::Base"
     t.datetime "created_at", null: false
-    t.datetime "delivered_at"
-    t.text "error_message"
-    t.string "event_type", null: false
-    t.jsonb "headers"
-    t.datetime "last_attempt_at"
-    t.integer "lock_version", default: 0, null: false
-    t.jsonb "metadata"
-    t.jsonb "payload"
-    t.string "provider", null: false
-    t.datetime "queued_at"
-    t.string "request_id"
-    t.text "response_body"
-    t.integer "response_code"
-    t.integer "response_time_ms"
-    t.string "status", default: "pending", null: false
-    t.string "target_url", null: false
+    t.text "description"
+    t.string "display_name"
+    t.integer "max_payload_size_bytes", default: 1048576
+    t.jsonb "metadata", default: {}
+    t.string "name", null: false
+    t.integer "rate_limit_period", default: 60
+    t.integer "rate_limit_requests", default: 100
+    t.string "signing_secret"
+    t.integer "timestamp_tolerance_seconds", default: 300
+    t.string "token", null: false
     t.datetime "updated_at", null: false
-    t.index ["archived_at"], name: "index_captain_hook_outgoing_events_on_archived_at"
-    t.index ["created_at"], name: "index_captain_hook_outgoing_events_on_created_at"
-    t.index ["event_type"], name: "index_captain_hook_outgoing_events_on_event_type"
-    t.index ["provider"], name: "index_captain_hook_outgoing_events_on_provider"
-    t.index ["status", "last_attempt_at"], name: "idx_captain_hook_outgoing_events_retry"
-    t.index ["status"], name: "index_captain_hook_outgoing_events_on_status"
+    t.index ["active"], name: "index_captain_hook_providers_on_active"
+    t.index ["name"], name: "index_captain_hook_providers_on_name", unique: true
+    t.index ["token"], name: "index_captain_hook_providers_on_token", unique: true
   end
 
   add_foreign_key "captain_hook_incoming_event_handlers", "captain_hook_incoming_events", column: "incoming_event_id"
