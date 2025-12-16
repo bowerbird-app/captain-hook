@@ -78,24 +78,27 @@ $ rails db:migrate
 
 ## Quick Start
 
-### 1. Set Up Encryption (Important!)
+### 1. Encryption Setup (Automatic!)
 
-CaptainHook encrypts webhook signing secrets in the database. Generate encryption keys:
+CaptainHook encrypts webhook signing secrets in the database using AES-256-GCM encryption.
 
+**For Development**: Encryption keys are automatically generated on first server start and saved to `config/local_encryption_keys.yml` (gitignored). No setup required!
+
+**For Production**: Set environment variables:
+
+```bash
+ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=your_32_char_key
+ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=your_32_char_key
+ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=your_32_char_salt
+SECRET_KEY_BASE=your_128_char_secret
+```
+
+Generate production keys with:
 ```bash
 $ ruby generate_keys.rb
 ```
 
-Copy the generated keys to your `.env` file or set as environment variables:
-
-```bash
-ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=...
-ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=...
-ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=...
-SECRET_KEY_BASE=...
-```
-
-**Important**: Never commit these keys to version control. Use `.env` files (gitignored) or your hosting platform's environment variable system.
+**Important**: Environment variables take precedence over the local file. Never commit `local_encryption_keys.yml` to version control.
 
 ### 2. Create a Provider
 

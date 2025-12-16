@@ -38,6 +38,7 @@ test/dummy/public/assets/
 # Credentials
 test/dummy/config/master.key
 test/dummy/config/credentials/*.key
+test/dummy/config/local_encryption_keys.yml
 
 # Build artifacts
 *.gem

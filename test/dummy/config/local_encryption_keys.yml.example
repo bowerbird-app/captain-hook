@@ -1,0 +1,8 @@
+# Example encryption keys file for local development
+# Copy this file to local_encryption_keys.yml (which is gitignored)
+# The app will auto-generate real keys if the file doesn't exist
+
+primary_key: your_32_character_primary_key_here
+deterministic_key: your_32_character_deterministic_key
+key_derivation_salt: your_32_character_salt_here_xxx
+secret_key_base: your_128_character_secret_key_base_for_rails_sessions_and_cookies_here_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

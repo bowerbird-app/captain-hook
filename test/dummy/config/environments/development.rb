@@ -3,26 +3,32 @@ require "active_support/core_ext/integer/time"
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
-  # Secret key base - should come from ENV in production
-  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE") do
-    SecureRandom.hex(64)
+  # Load encryption keys from local file (auto-generated on first boot)
+  # For production, use ENV variables to override these
+  encryption_keys_file = Rails.root.join("config/local_encryption_keys.yml")
+  
+  # Auto-generate keys if file doesn't exist
+  unless encryption_keys_file.exist?
+    require 'securerandom'
+    keys = {
+      "primary_key" => SecureRandom.alphanumeric(32),
+      "deterministic_key" => SecureRandom.alphanumeric(32),
+      "key_derivation_salt" => SecureRandom.alphanumeric(32),
+      "secret_key_base" => SecureRandom.hex(64)
+    }
+    File.write(encryption_keys_file, "# Auto-generated encryption keys for local development\n# This file is gitignored - do not commit to source control\n# For production, use environment variables instead\n\n#{keys.to_yaml}")
+    puts "✅ Generated encryption keys at config/local_encryption_keys.yml"
   end
+  
+  local_keys = YAML.load_file(encryption_keys_file)
+  
+  # Secret key base - ENV takes precedence, then local file
+  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE") { local_keys["secret_key_base"] }
 
-  # ActiveRecord Encryption keys - MUST come from ENV variables
-  # Run: ruby /workspace/generate_keys.rb to generate keys
-  # Then add them to your .env file
-  config.active_record.encryption.primary_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY") do
-    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY not set - using temporary random key (data will not persist!)"
-    SecureRandom.alphanumeric(32)
-  end
-  config.active_record.encryption.deterministic_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY") do
-    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY not set - using temporary random key"
-    SecureRandom.alphanumeric(32)
-  end
-  config.active_record.encryption.key_derivation_salt = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT") do
-    Rails.logger.warn "⚠️  ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT not set - using temporary random key"
-    SecureRandom.alphanumeric(32)
-  end
+  # ActiveRecord Encryption - ENV takes precedence, then local file
+  config.active_record.encryption.primary_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY") { local_keys["primary_key"] }
+  config.active_record.encryption.deterministic_key = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY") { local_keys["deterministic_key"] }
+  config.active_record.encryption.key_derivation_salt = ENV.fetch("ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT") { local_keys["key_derivation_salt"] }
 
   # Make code changes take effect immediately without server restart.
   config.enable_reloading = true
