@@ -2,10 +2,10 @@
   <!-- Header -->
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-[var(--ma-color-text)] mb-3">
-      🔗 Webhook Tester
+      🔗 Webhook Provider Connectivity Tester
     </h1>
     <p class="text-base text-[var(--ma-color-muted)]">
-      Test incoming and outgoing webhooks for the CaptainHook engine
+      Test if CaptainHook can receive webhooks from your providers. This tool simulates incoming webhooks to verify your configuration and connectivity.
     </p>
   </div>
 
@@ -26,120 +26,89 @@
     </div>
   <% end %>
 
-  <!-- Webhook Configuration Info -->
+  <!-- Test Configuration Info -->
   <div class="mb-6 bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
     <div class="p-6">
       <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
-        📋 Webhook.site Configuration
+        📋 Testing Configuration
       </h2>
       <div class="space-y-2.5 text-sm text-[var(--ma-color-text)]">
         <div class="flex items-start">
-          <span class="font-medium w-32">Unique URL:</span>
+          <span class="font-medium w-40">Test Provider URL:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
             <%= webhook_site_url %>
           </code>
         </div>
         <div class="flex items-start">
-          <span class="font-medium w-32">Email:</span>
-          <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= webhook_site_email %>
-          </code>
-        </div>
-        <div class="flex items-start">
-          <span class="font-medium w-32">DNS Name:</span>
-          <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
-            <%= webhook_site_dns %>
-          </code>
-        </div>
-        <div class="flex items-start">
-          <span class="font-medium w-32">Token:</span>
+          <span class="font-medium w-40">Token:</span>
           <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono flex-1">
             <%= webhook_site_token %>
           </code>
         </div>
       </div>
       <p class="text-xs text-[var(--ma-color-muted)] mt-4">
-        💡 Note: These values are currently hardcoded. In production, move them to environment variables or Rails credentials.
+        💡 Note: Configure providers in the admin panel before testing in production.
       </p>
     </div>
   </div>
 
-  <!-- Grid of Testing Cards -->
-  <div class="grid gap-6 md:grid-cols-2">
-    <!-- Incoming Webhook Testing Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
-        <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
-          📥 Test Incoming Webhook
-        </h2>
-        <p class="text-sm text-[var(--ma-color-muted)] mb-4">
-          Send a test webhook to the CaptainHook engine's incoming webhook endpoint.
-        </p>
-        
-        <%= form_with url: send_incoming_webhook_tester_path, method: :post, local: true, class: "space-y-4" do |f| %>
-          <div>
-            <%= f.label :provider, "Provider", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
-            <%= f.select :provider, 
-                options_for_select([
-                  ["Webhook.site", "webhook_site"]
-                ], "webhook_site"),
-                {},
-                class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
-          </div>
+  <!-- Testing Card -->
+  <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
+    <div class="p-6">
+      <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
+        📥 Test Incoming Webhook
+      </h2>
+      <p class="text-sm text-[var(--ma-color-muted)] mb-4">
+        Send a test webhook to verify CaptainHook can receive and process webhooks from your provider.
+      </p>
+      
+      <%= form_with url: send_incoming_webhook_tester_path, method: :post, local: true, class: "space-y-4" do |f| %>
+        <div>
+          <%= f.label :provider, "Provider", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
+          <%= f.select :provider, 
+              options_for_select([
+                ["Webhook.site", "webhook_site"]
+              ], "webhook_site"),
+              {},
+              class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
+        </div>
 
-          <div>
-            <%= f.label :token, "Token", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
-            <%= f.text_field :token, 
-                placeholder: "Authentication token", 
-                value: webhook_site_token,
-                class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
-          </div>
+        <div>
+          <%= f.label :token, "Token", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
+          <%= f.text_field :token, 
+              placeholder: "Authentication token", 
+              value: webhook_site_token,
+              class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
+        </div>
 
-          <div>
-            <%= f.label :payload, "JSON Payload", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
-            <%= f.text_area :payload, 
-                placeholder: '{"event": "test", "data": {"key": "value"}}', 
-                rows: 6,
-                value: '{"event": "test.created", "timestamp": "' + Time.now.iso8601 + '", "data": {"id": "123", "status": "success"}}',
-                class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
-          </div>
+        <div>
+          <%= f.label :payload, "JSON Payload", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
+          <%= f.text_area :payload, 
+              placeholder: '{"event": "test", "data": {"key": "value"}}', 
+              rows: 8,
+              value: '{"event": "test.created", "timestamp": "' + Time.now.iso8601 + '", "data": {"id": "123", "status": "success"}}',
+              class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
+        </div>
 
-          <div class="pt-2">
-            <%= f.submit "Send Incoming Webhook", class: "w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[var(--ma-color-brand)] rounded-[var(--ma-radius-md)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ma-color-brand)] transition-opacity cursor-pointer" %>
-          </div>
-        <% end %>
-      </div>
+        <div class="pt-2">
+          <%= f.submit "Test Provider Connection", class: "w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[var(--ma-color-brand)] rounded-[var(--ma-radius-md)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ma-color-brand)] transition-opacity cursor-pointer" %>
+        </div>
+      <% end %>
     </div>
+  </div>
 
-    <!-- Outgoing Webhook Testing Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
-        <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
-          📤 Test Outgoing Webhook
-        </h2>
-        <p class="text-sm text-[var(--ma-color-muted)] mb-4">
-          Send a test webhook to webhook.site to verify outgoing webhook functionality.
-        </p>
-        
-        <%= form_with url: send_outgoing_webhook_tester_path, method: :post, local: true, class: "space-y-4" do |f| %>
-          <div>
-            <%= f.label :payload, "JSON Payload", class: "block text-sm font-medium text-[var(--ma-color-text)] mb-1" %>
-            <%= f.text_area :payload, 
-                placeholder: '{"event": "test", "data": {"key": "value"}}', 
-                rows: 6,
-                value: '{"event": "outgoing.test", "timestamp": "' + Time.now.iso8601 + '", "source": "captain_hook", "data": {"message": "Hello from CaptainHook!"}}',
-                class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-[var(--ma-radius-md)] bg-[var(--ma-color-bg)] text-[var(--ma-color-text)] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[var(--ma-color-accent)]" %>
-          </div>
-
-          <div class="pt-2">
-            <%= f.submit "Send Outgoing Webhook", class: "w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-[var(--ma-color-brand)] rounded-[var(--ma-radius-md)] hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ma-color-brand)] transition-opacity cursor-pointer" %>
-          </div>
-
-          <div class="text-xs text-[var(--ma-color-muted)] pt-2">
-            💡 After sending, check <a href="<%= webhook_site_url %>" target="_blank" class="text-[var(--ma-color-accent)] hover:underline">webhook.site</a> to see the received request.
-          </div>
-        <% end %>
-      </div>
+  <!-- How it Works -->
+  <div class="mt-6 bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
+    <div class="p-6">
+      <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
+        🔍 How This Works
+      </h2>
+      <ol class="space-y-2 text-sm text-[var(--ma-color-text)] list-decimal list-inside">
+        <li>This tool sends a test webhook to CaptainHook's incoming webhook endpoint</li>
+        <li>CaptainHook validates the request, checks rate limits, and verifies signatures</li>
+        <li>If successful, the webhook is processed and you'll see a success message</li>
+        <li>You can view the received webhook in the <%= link_to "Incoming Events", "/captain_hook/admin/incoming_events", class: "text-[var(--ma-color-accent)] hover:underline" %> admin</li>
+      </ol>
     </div>
   </div>
 
@@ -149,12 +118,15 @@
       <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
         🔗 Quick Links
       </h2>
-      <div class="grid gap-3 md:grid-cols-2">
+      <div class="grid gap-3 md:grid-cols-3">
         <a href="/captain_hook" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
           CaptainHook Admin →
         </a>
+        <a href="/captain_hook/admin/providers" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          Manage Providers →
+        </a>
         <a href="<%= webhook_site_url %>" target="_blank" class="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-[var(--ma-color-text)] bg-[var(--ma-color-bg-soft)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-md)] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          Webhook.site Dashboard →
+          Test Provider Dashboard →
         </a>
       </div>
     </div>

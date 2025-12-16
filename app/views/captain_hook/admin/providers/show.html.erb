@@ -1,0 +1,182 @@
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
+      <li class="breadcrumb-item active" aria-current="page"><%= @provider.display_name || @provider.name.titleize %></li>
+    </ol>
+  </nav>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><%= @provider.display_name || @provider.name.titleize %></h1>
+    <div>
+      <%= link_to "Edit", edit_admin_provider_path(@provider), class: "btn btn-secondary" %>
+      <%= link_to "View Handlers", admin_provider_handlers_path(@provider), class: "btn btn-info" %>
+    </div>
+  </div>
+
+  <!-- Status Badge -->
+  <% if @provider.active? %>
+    <span class="badge bg-success mb-3">Active</span>
+  <% else %>
+    <span class="badge bg-secondary mb-3">Inactive</span>
+  <% end %>
+
+  <!-- Webhook URL Card -->
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Webhook Endpoint</h5>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-2">Share this URL with <%= @provider.display_name || @provider.name.titleize %> to receive webhooks:</p>
+      <div class="input-group">
+        <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url %>" readonly>
+        <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
+          📋 Copy
+        </button>
+      </div>
+      <small class="text-muted d-block mt-2">
+        This URL is unique to this provider and includes a secure token for authentication.
+      </small>
+    </div>
+  </div>
+
+  <!-- Provider Details -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Provider Details</h5>
+    </div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">Name</dt>
+        <dd class="col-sm-9"><code><%= @provider.name %></code></dd>
+
+        <dt class="col-sm-3">Display Name</dt>
+        <dd class="col-sm-9"><%= @provider.display_name || "—" %></dd>
+
+        <dt class="col-sm-3">Description</dt>
+        <dd class="col-sm-9"><%= @provider.description || "—" %></dd>
+
+        <dt class="col-sm-3">Adapter Class</dt>
+        <dd class="col-sm-9"><code><%= @provider.adapter_class %></code></dd>
+
+        <dt class="col-sm-3">Signing Secret</dt>
+        <dd class="col-sm-9">
+          <% if @provider.signing_secret.present? %>
+            <span class="badge bg-success">Configured</span>
+          <% else %>
+            <span class="badge bg-warning">Not Set</span>
+          <% end %>
+        </dd>
+
+        <dt class="col-sm-3">Token</dt>
+        <dd class="col-sm-9"><code><%= @provider.token.truncate(20) %></code></dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Security Settings -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Security Settings</h5>
+    </div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-4">Timestamp Validation</dt>
+        <dd class="col-sm-8">
+          <% if @provider.timestamp_validation_enabled? %>
+            <span class="badge bg-success">Enabled</span>
+            <small class="text-muted">(±<%= @provider.timestamp_tolerance_seconds %>s)</small>
+          <% else %>
+            <span class="badge bg-secondary">Disabled</span>
+          <% end %>
+        </dd>
+
+        <dt class="col-sm-4">Payload Size Limit</dt>
+        <dd class="col-sm-8">
+          <% if @provider.payload_size_limit_enabled? %>
+            <span class="badge bg-success">Enabled</span>
+            <small class="text-muted">(<%= number_to_human_size(@provider.max_payload_size_bytes) %>)</small>
+          <% else %>
+            <span class="badge bg-secondary">Disabled</span>
+          <% end %>
+        </dd>
+
+        <dt class="col-sm-4">Rate Limiting</dt>
+        <dd class="col-sm-8">
+          <% if @provider.rate_limiting_enabled? %>
+            <span class="badge bg-success">Enabled</span>
+            <small class="text-muted">(<%= @provider.rate_limit_requests %> req / <%= @provider.rate_limit_period %>s)</small>
+          <% else %>
+            <span class="badge bg-secondary">Disabled</span>
+          <% end %>
+        </dd>
+      </dl>
+    </div>
+  </div>
+
+  <!-- Recent Events -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Recent Events</h5>
+      <%= link_to "View All", admin_incoming_events_path(provider: @provider.name), class: "btn btn-sm btn-outline-primary" %>
+    </div>
+    <div class="card-body">
+      <% if @recent_events.any? %>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Event Type</th>
+                <th>Status</th>
+                <th>Handlers</th>
+                <th>Received</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_events.each do |event| %>
+                <tr>
+                  <td><code><%= event.event_type %></code></td>
+                  <td>
+                    <span class="badge bg-<%= status_color(event.status) %>">
+                      <%= event.status&.titleize || 'N/A' %>
+                    </span>
+                  </td>
+                  <td><%= event.incoming_event_handlers.count %></td>
+                  <td><%= time_ago_in_words(event.created_at) %> ago</td>
+                  <td>
+                    <%= link_to "View", [:admin, event], class: "btn btn-sm btn-outline-primary" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-muted mb-0">No events received yet.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyWebhookUrl() {
+  const input = document.getElementById('webhookUrl');
+  input.select();
+  input.setSelectionRange(0, 99999); // For mobile devices
+  navigator.clipboard.writeText(input.value);
+  
+  // Show feedback
+  const button = event.target;
+  const originalText = button.innerHTML;
+  button.innerHTML = '✓ Copied!';
+  button.classList.remove('btn-outline-secondary');
+  button.classList.add('btn-success');
+  
+  setTimeout(() => {
+    button.innerHTML = originalText;
+    button.classList.remove('btn-success');
+    button.classList.add('btn-outline-secondary');
+  }, 2000);
+}
+</script>

@@ -6,10 +6,12 @@ CaptainHook::Engine.routes.draw do
 
   # Admin interface
   namespace :admin do
+    resources :providers do
+      resources :handlers, only: %i[index]
+    end
     resources :incoming_events, only: %i[index show]
-    resources :outgoing_events, only: %i[index show]
 
-    root to: "incoming_events#index"
+    root to: "providers#index"
   end
 
   # Root redirects to admin

@@ -1,0 +1,129 @@
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
+      <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
+      <li class="breadcrumb-item active" aria-current="page">Handlers</li>
+    </ol>
+  </nav>
+
+  <h1 class="mb-4">Event Handlers for <%= @provider.display_name || @provider.name.titleize %></h1>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">About Handlers</h5>
+      <p class="card-text">
+        Handlers are Ruby classes that process incoming webhook events from this provider.
+        They are registered in your application code using <code>CaptainHook.register_handler</code>.
+      </p>
+      <p class="card-text mb-0">
+        <strong>Example:</strong>
+      </p>
+      <pre class="bg-light p-3 rounded mt-2"><code>CaptainHook.register_handler(
+  provider: "<%= @provider.name %>",
+  event_type: "payment.succeeded",
+  handler_class: "ProcessPaymentHandler",
+  priority: 100,
+  async: true
+)</code></pre>
+    </div>
+  </div>
+
+  <% if @handlers.any? %>
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Registered Handlers</h5>
+      </div>
+      <div class="card-body">
+        <% @handlers.each do |event_type, handler_configs| %>
+          <div class="mb-4">
+            <h6 class="border-bottom pb-2">
+              Event Type: <code><%= event_type %></code>
+            </h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Priority</th>
+                    <th>Handler Class</th>
+                    <th>Execution</th>
+                    <th>Max Attempts</th>
+                    <th>Retry Delays</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% handler_configs.each do |config| %>
+                    <tr>
+                      <td><span class="badge bg-secondary"><%= config.priority %></span></td>
+                      <td><code><%= config.handler_class %></code></td>
+                      <td>
+                        <% if config.async %>
+                          <span class="badge bg-info">Async</span>
+                        <% else %>
+                          <span class="badge bg-warning">Sync</span>
+                        <% end %>
+                      </td>
+                      <td><%= config.max_attempts %></td>
+                      <td><small><%= config.retry_delays.join(", ") %>s</small></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="alert alert-info">
+      <h5>No handlers registered</h5>
+      <p class="mb-2">
+        You haven't registered any handlers for this provider yet.
+        Handlers are registered in your application code, typically in an initializer.
+      </p>
+      <p class="mb-0">
+        <strong>To register a handler:</strong>
+      </p>
+      <ol class="mt-2">
+        <li>Create a handler class (e.g., <code>app/handlers/my_handler.rb</code>)</li>
+        <li>Register it in <code>config/initializers/captain_hook.rb</code></li>
+        <li>Restart your application</li>
+      </ol>
+    </div>
+  <% end %>
+
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5 class="mb-0">Handler Implementation Guide</h5>
+    </div>
+    <div class="card-body">
+      <p><strong>1. Create a handler class:</strong></p>
+      <pre class="bg-light p-3 rounded"><code>class ProcessPaymentHandler
+  def handle(event:, payload:, metadata:)
+    # Your processing logic here
+    payment_id = payload.dig("data", "object", "id")
+    Payment.find_by(external_id: payment_id)&.mark_succeeded!
+  end
+end</code></pre>
+
+      <p class="mt-3"><strong>2. Register the handler:</strong></p>
+      <pre class="bg-light p-3 rounded"><code>CaptainHook.register_handler(
+  provider: "<%= @provider.name %>",
+  event_type: "payment.succeeded",
+  handler_class: "ProcessPaymentHandler",
+  priority: 100,        # Lower numbers execute first
+  async: true,          # Run in background job
+  max_attempts: 5,      # Number of retry attempts
+  retry_delays: [30, 60, 300, 900, 3600]  # Delay between retries (seconds)
+)</code></pre>
+
+      <p class="mt-3"><strong>3. Handler requirements:</strong></p>
+      <ul>
+        <li>Must implement a <code>handle(event:, payload:, metadata:)</code> method</li>
+        <li>Should be idempotent (safe to run multiple times)</li>
+        <li>Should handle errors gracefully</li>
+        <li>Raise exceptions to trigger retries</li>
+      </ul>
+    </div>
+  </div>
+</div>

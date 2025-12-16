@@ -6,7 +6,7 @@ require "json"
 
 class WebhookTesterController < ApplicationController
   # Configuration for webhook.site - uses config file or environment
-  helper_method :webhook_site_url, :webhook_site_token, :webhook_site_email, :webhook_site_dns
+  helper_method :webhook_site_url, :webhook_site_token
 
   def webhook_site_url
     # Try ENV first, then config file, then fallback
@@ -28,14 +28,6 @@ class WebhookTesterController < ApplicationController
     webhook_site_url.split('/').last
   end
 
-  def webhook_site_email
-    "#{webhook_site_token}@emailhook.site"
-  end
-
-  def webhook_site_dns
-    "*.#{webhook_site_token}.dnshook.site"
-  end
-
   def index
     # Display the webhook testing interface
   end
@@ -43,8 +35,10 @@ class WebhookTesterController < ApplicationController
   def send_incoming
     # Simulate an incoming webhook to the Captain Hook engine
     provider_name = params[:provider] || "webhook_site"
-    # Get the actual configured token from CaptainHook
-    token = params[:token] || CaptainHook.configuration.provider(provider_name)&.token || "test_token"
+    
+    # Get provider from database or configuration
+    provider = CaptainHook::Provider.find_by(name: provider_name)
+    token = params[:token] || provider&.token || CaptainHook.configuration.provider(provider_name)&.token || "test_token"
     
     begin
       payload_hash = JSON.parse(params[:payload] || '{"event": "test"}')
@@ -79,41 +73,6 @@ class WebhookTesterController < ApplicationController
     redirect_to webhook_tester_path
   rescue StandardError => e
     flash[:alert] = "✗ Error processing incoming webhook: #{e.message}"
-    redirect_to webhook_tester_path
-  end
-
-  def send_outgoing
-    # Send a test webhook to webhook.site using CaptainHook's OutgoingEvent system
-    begin
-      payload = JSON.parse(params[:payload] || '{"event": "test"}')
-    rescue JSON::ParserError => e
-      flash[:alert] = "Invalid JSON payload: #{e.message}"
-      redirect_to webhook_tester_path
-      return
-    end
-
-    # Create an outgoing event that will be tracked in the admin
-    event = CaptainHook::OutgoingEvent.create!(
-      provider: "webhook_site",
-      event_type: payload["event"] || "test.outgoing",
-      target_url: webhook_site_url,
-      payload: payload,
-      headers: {
-        "Content-Type" => "application/json",
-        "User-Agent" => "CaptainHook/#{CaptainHook::VERSION}",
-        "X-Webhook-Provider" => "webhook_site",
-        "X-Request-Id" => SecureRandom.uuid
-      },
-      status: :pending
-    )
-
-    # Enqueue the job to send it
-    CaptainHook::OutgoingJob.perform_later(event.id)
-
-    flash[:notice] = "Outgoing webhook queued successfully! Event ID: #{event.id}. Check #{webhook_site_url} and the outgoing events admin to see the result."
-    redirect_to webhook_tester_path
-  rescue StandardError => e
-    flash[:alert] = "Error sending outgoing webhook: #{e.message}"
     redirect_to webhook_tester_path
   end
 end

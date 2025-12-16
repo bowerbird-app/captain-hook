@@ -8,7 +8,6 @@ Rails.application.routes.draw do
   # Webhook Tester
   get "webhook_tester", to: "webhook_tester#index", as: :webhook_tester
   post "webhook_tester/send_incoming", to: "webhook_tester#send_incoming", as: :send_incoming_webhook_tester
-  post "webhook_tester/send_outgoing", to: "webhook_tester#send_outgoing", as: :send_outgoing_webhook_tester
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

@@ -1,0 +1,122 @@
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
+      <li class="breadcrumb-item active" aria-current="page">New Provider</li>
+    </ol>
+  </nav>
+
+  <h1 class="mb-4">Add New Provider</h1>
+
+  <%= form_with model: [:admin, @provider], local: true, class: "needs-validation" do |f| %>
+    <% if @provider.errors.any? %>
+      <div class="alert alert-danger">
+        <h5><%= pluralize(@provider.errors.count, "error") %> prohibited this provider from being saved:</h5>
+        <ul class="mb-0">
+          <% @provider.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Basic Information</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <%= f.label :name, class: "form-label" %>
+          <%= f.text_field :name, class: "form-control", placeholder: "stripe", required: true %>
+          <small class="form-text text-muted">Unique identifier (lowercase, underscores only). Example: stripe, openai, github</small>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :display_name, class: "form-label" %>
+          <%= f.text_field :display_name, class: "form-control", placeholder: "Stripe" %>
+          <small class="form-text text-muted">Human-readable name for display</small>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :description, class: "form-label" %>
+          <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Webhooks from Stripe payment processing" %>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :active, class: "form-label" %>
+          <div class="form-check">
+            <%= f.check_box :active, class: "form-check-input", checked: true %>
+            <%= f.label :active, "Provider is active", class: "form-check-label" %>
+          </div>
+          <small class="form-text text-muted">Inactive providers won't accept webhooks</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Authentication</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <%= f.label :signing_secret, class: "form-label" %>
+          <%= f.text_field :signing_secret, class: "form-control", placeholder: "whsec_..." %>
+          <small class="form-text text-muted">Secret key for verifying webhook signatures (optional, but recommended)</small>
+        </div>
+
+        <div class="alert alert-info">
+          <strong>Note:</strong> A secure token will be automatically generated when you save this provider.
+          You'll use this token in the webhook URL.
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Security Settings</h5>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <%= f.label :adapter_class, class: "form-label" %>
+          <%= f.select :adapter_class, 
+              options_for_select([
+                ["Base (No Verification)", "CaptainHook::Adapters::Base"],
+                ["Stripe", "CaptainHook::Adapters::Stripe"]
+              ], "CaptainHook::Adapters::Base"),
+              {},
+              class: "form-control" %>
+          <small class="form-text text-muted">Adapter for signature verification specific to this provider</small>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :timestamp_tolerance_seconds, class: "form-label" %>
+          <%= f.number_field :timestamp_tolerance_seconds, class: "form-control", value: 300, placeholder: "300" %>
+          <small class="form-text text-muted">Allow timestamps within ± this many seconds (prevents replay attacks). Default: 300 (5 minutes)</small>
+        </div>
+
+        <div class="mb-3">
+          <%= f.label :max_payload_size_bytes, class: "form-label" %>
+          <%= f.number_field :max_payload_size_bytes, class: "form-control", value: 1_048_576, placeholder: "1048576" %>
+          <small class="form-text text-muted">Maximum webhook payload size in bytes. Default: 1048576 (1 MB)</small>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <%= f.label :rate_limit_requests, "Rate Limit (requests)", class: "form-label" %>
+            <%= f.number_field :rate_limit_requests, class: "form-control", value: 100, placeholder: "100" %>
+          </div>
+          <div class="col-md-6 mb-3">
+            <%= f.label :rate_limit_period, "Rate Limit (period in seconds)", class: "form-label" %>
+            <%= f.number_field :rate_limit_period, class: "form-control", value: 60, placeholder: "60" %>
+          </div>
+        </div>
+        <small class="form-text text-muted">Rate limit: Maximum number of requests allowed within the specified period. Default: 100 requests per 60 seconds</small>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <%= f.submit "Create Provider", class: "btn btn-primary" %>
+      <%= link_to "Cancel", admin_providers_path, class: "btn btn-secondary" %>
+    </div>
+  <% end %>
+</div>
