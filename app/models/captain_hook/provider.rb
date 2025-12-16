@@ -6,9 +6,10 @@ module CaptainHook
   class Provider < ApplicationRecord
     self.table_name = "captain_hook_providers"
 
-    # TODO: Enable encryption in production
-    # encrypts :signing_secret, deterministic: false
-    # Requires: rails credentials:edit to set active_record_encryption keys
+    # Encrypt signing secrets at rest
+    # This uses Rails 7+ ActiveRecord encryption with application-level keys
+    # Keys are stored in config/credentials.yml.enc or ENV variables
+    encrypts :signing_secret, deterministic: false
 
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
@@ -51,6 +52,14 @@ module CaptainHook
     # Check if timestamp validation is enabled
     def timestamp_validation_enabled?
       timestamp_tolerance_seconds.present?
+    end
+
+    # Get signing secret (supports ENV variable override)
+    # This allows storing secrets in ENV instead of DB for sensitive providers
+    # Example: STRIPE_WEBHOOK_SECRET=whsec_abc123
+    def signing_secret
+      env_key = "#{name.upcase}_WEBHOOK_SECRET"
+      ENV[env_key].presence || super
     end
 
     # Get the adapter instance

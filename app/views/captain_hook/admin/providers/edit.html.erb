@@ -112,15 +112,16 @@
       </div>
     </div>
 
-    <div class="d-flex justify-content-between">
-      <div class="d-flex gap-2">
-        <%= f.submit "Update Provider", class: "btn btn-primary" %>
-        <%= link_to "Cancel", [:admin, @provider], class: "btn btn-secondary" %>
-      </div>
-      <%= button_to "Delete Provider", [:admin, @provider], 
-          method: :delete, 
-          class: "btn btn-danger",
-          data: { confirm: "Are you sure? This cannot be undone." } %>
+    <div class="d-flex gap-2">
+      <%= f.submit "Update Provider", class: "btn btn-primary" %>
+      <%= link_to "Cancel", [:admin, @provider], class: "btn btn-secondary" %>
     </div>
   <% end %>
+
+  <div class="mt-4 pt-4 border-top">
+    <%= button_to "Delete Provider", [:admin, @provider], 
+        method: :delete, 
+        class: "btn btn-danger",
+        form: { data: { turbo_confirm: "Are you sure? This will permanently delete this provider and cannot be undone." } } %>
+  </div>
 </div>

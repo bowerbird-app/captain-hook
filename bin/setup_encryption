@@ -1,0 +1,41 @@
+#!/bin/bash
+# Setup script for ActiveRecord Encryption in CaptainHook
+
+echo "🔐 Setting up ActiveRecord Encryption for CaptainHook"
+echo ""
+
+# Check if we're in a Rails app
+if [ ! -f "config/application.rb" ]; then
+    echo "❌ Error: Not in a Rails application root directory"
+    exit 1
+fi
+
+# Generate encryption keys
+echo "📝 Generating encryption keys..."
+echo ""
+rails db:encryption:init
+
+echo ""
+echo "✅ Keys generated! Next steps:"
+echo ""
+echo "1. Add keys to credentials:"
+echo "   EDITOR='code --wait' rails credentials:edit"
+echo ""
+echo "2. Or set as environment variables:"
+echo "   export ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=..."
+echo "   export ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=..."
+echo "   export ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=..."
+echo ""
+echo "3. For provider-specific secrets (optional):"
+echo "   export STRIPE_WEBHOOK_SECRET=whsec_..."
+echo "   export GITHUB_WEBHOOK_SECRET=..."
+echo ""
+echo "4. Test encryption:"
+echo "   rails console"
+echo "   > p = CaptainHook::Provider.first"
+echo "   > p.signing_secret = 'test_secret'"
+echo "   > p.save!"
+echo "   > p.reload"
+echo "   > p.signing_secret # Should return 'test_secret'"
+echo ""
+echo "✨ Encryption is now enabled for signing_secret field!"
