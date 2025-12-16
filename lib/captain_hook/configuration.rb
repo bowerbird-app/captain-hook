@@ -3,12 +3,11 @@
 require_relative "hooks"
 require_relative "handler_registry"
 require_relative "provider_config"
-require_relative "outgoing_endpoint"
 
 module CaptainHook
   class Configuration
     attr_accessor :admin_parent_controller, :admin_layout, :retention_days
-    attr_reader :hooks, :handler_registry, :providers, :outgoing_endpoints
+    attr_reader :hooks, :handler_registry, :providers
 
     def initialize
       @admin_parent_controller = "ApplicationController"
@@ -17,27 +16,22 @@ module CaptainHook
       @hooks = Hooks.new
       @handler_registry = HandlerRegistry.new
       @providers = {}
-      @outgoing_endpoints = {}
     end
 
-    # Register a provider configuration
+    # Register a provider configuration (for backward compatibility)
+    # Note: Providers should now be managed via the Provider model in the database
     def register_provider(name, **)
       @providers[name.to_s] = ProviderConfig.new(name: name.to_s, **)
     end
 
-    # Get a provider configuration
+    # Get a provider configuration (checks both DB and in-memory registrations)
     def provider(name)
+      # First check database
+      db_provider = CaptainHook::Provider.find_by(name: name.to_s)
+      return provider_config_from_model(db_provider) if db_provider
+
+      # Fall back to in-memory registration
       @providers[name.to_s]
-    end
-
-    # Register an outgoing endpoint
-    def register_outgoing_endpoint(name, **)
-      @outgoing_endpoints[name.to_s] = OutgoingEndpoint.new(name: name.to_s, **)
-    end
-
-    # Get an outgoing endpoint configuration
-    def outgoing_endpoint(name)
-      @outgoing_endpoints[name.to_s]
     end
 
     def to_h
@@ -46,7 +40,6 @@ module CaptainHook
         admin_layout: admin_layout,
         retention_days: retention_days,
         providers: @providers.keys,
-        outgoing_endpoints: @outgoing_endpoints.keys,
         hooks_registered: hooks.instance_variable_get(:@registry).transform_values(&:size)
       }
     end
@@ -59,6 +52,22 @@ module CaptainHook
         setter = "#{key}="
         public_send(setter, v) if respond_to?(setter)
       end
+    end
+
+    private
+
+    # Convert Provider model to ProviderConfig for backward compatibility
+    def provider_config_from_model(provider)
+      ProviderConfig.new(
+        name: provider.name,
+        token: provider.token,
+        signing_secret: provider.signing_secret,
+        adapter_class: provider.adapter_class,
+        timestamp_tolerance_seconds: provider.timestamp_tolerance_seconds,
+        max_payload_size_bytes: provider.max_payload_size_bytes,
+        rate_limit_requests: provider.rate_limit_requests,
+        rate_limit_period: provider.rate_limit_period
+      )
     end
   end
 end

@@ -15,9 +15,6 @@ module CaptainHook
 
       # Archive incoming events
       archive_incoming_events(cutoff_date, batch_size)
-
-      # Archive outgoing events
-      archive_outgoing_events(cutoff_date, batch_size)
     end
 
     private
@@ -44,31 +41,6 @@ module CaptainHook
       end
 
       Rails.logger.info "Archived #{archived_count} incoming events total"
-      archived_count
-    end
-
-    def archive_outgoing_events(cutoff_date, batch_size)
-      archived_count = 0
-
-      loop do
-        # Find unarchived events older than cutoff
-        events = CaptainHook::OutgoingEvent
-                 .not_archived
-                 .where("created_at < ?", cutoff_date)
-                 .limit(batch_size)
-
-        break if events.empty?
-
-        # Archive each event
-        events.each do |event|
-          event.archive!
-          archived_count += 1
-        end
-
-        Rails.logger.info "Archived #{archived_count} outgoing events so far..."
-      end
-
-      Rails.logger.info "Archived #{archived_count} outgoing events total"
       archived_count
     end
   end

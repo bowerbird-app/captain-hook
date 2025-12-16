@@ -1,9 +1,17 @@
-development:
-  api_key: "dev-key"
-  enable_feature_x: true
-  timeout: 5
+# DEPRECATED: This file is no longer used by CaptainHook
+#
+# Providers are now managed via the database through the admin UI:
+# /captain_hook/admin/providers
+#
+# To manage providers programmatically, use the Provider model:
+#
+# CaptainHook::Provider.create!(
+#   name: "stripe",
+#   display_name: "Stripe",
+#   signing_secret: ENV["STRIPE_WEBHOOK_SECRET"],
+#   adapter_class: "CaptainHook::Adapters::Stripe",
+#   active: true
+# )
+#
+# This file is kept as a reference for legacy configurations only.
 
-production:
-  api_key: <%= ENV["CAPTAIN_HOOK_API_KEY"] %>
-  enable_feature_x: false
-  timeout: 5
