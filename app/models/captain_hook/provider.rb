@@ -15,7 +15,7 @@ module CaptainHook
 
     # Validations
     validates :name, presence: true, uniqueness: true,
-              format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
+                     format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
     validates :token, presence: true, uniqueness: true
     validates :adapter_class, presence: true
     validates :timestamp_tolerance_seconds, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
