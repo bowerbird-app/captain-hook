@@ -23,20 +23,22 @@ CaptainHook.configure do |config|
   config.register_provider(
     "webhook_site",
     token: webhook_site_token || "default-token-change-me",
-    adapter_class: "CaptainHook::Adapters::WebhookSite",
+    adapter_class: "CaptainHook::Adapters::Base",  # Use Base adapter (no signature verification)
     timestamp_tolerance_seconds: 300,
     rate_limit_requests: 100,
     rate_limit_period: 60
   )
-
-  # Register outgoing endpoint for webhook_site
-  config.register_outgoing_endpoint(
-    "webhook_site",
-    base_url: webhook_site_url || "https://webhook.site/default",
-    signing_secret: nil,  # No signing for webhook.site
-    default_headers: {
-      "Content-Type" => "application/json",
-      "User-Agent" => "CaptainHook/#{CaptainHook::VERSION}"
-    }
-  )
 end
+
+# Note: Providers can now be managed via the Provider model in the database.
+# To create a provider programmatically:
+#
+# CaptainHook::Provider.find_or_create_by!(name: "webhook_site") do |provider|
+#   provider.display_name = "Webhook.site"
+#   provider.token = webhook_site_token || SecureRandom.urlsafe_base64(32)
+#   provider.adapter_class = "CaptainHook::Adapters::Base"
+#   provider.timestamp_tolerance_seconds = 300
+#   provider.rate_limit_requests = 100
+#   provider.rate_limit_period = 60
+#   provider.active = true
+# end
