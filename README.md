@@ -1,6 +1,6 @@
 # CaptainHook Rails Engine
 
-A comprehensive Rails engine for managing webhooks with features including signature verification, rate limiting, circuit breakers, retry logic, and admin UI.
+A comprehensive Rails engine for receiving and processing webhooks from external providers with features including signature verification, rate limiting, retry logic, and admin UI.
 
 ## Features
 
@@ -14,24 +14,31 @@ A comprehensive Rails engine for managing webhooks with features including signa
   - Automatic retry with exponential backoff
   - Optimistic locking for safe concurrency
 
-- **Outgoing Webhooks**
-  - HMAC-SHA256 signature generation
-  - Circuit breaker pattern for failing endpoints
-  - SSRF protection
-  - Retry logic with exponential backoff
-  - Response tracking (code, body, time)
-  - Optimistic locking for safe concurrency
+- **Provider Management**
+  - Database-backed provider configuration
+  - Per-provider security settings
+  - Webhook URL generation for sharing with providers
+  - Active/inactive status control
+  - Support for custom adapters (Stripe, OpenAI, GitHub, etc.)
 
 - **Admin Interface**
-  - View incoming and outgoing events
-  - Filter and search capabilities
-  - Response tracking and error details
-  - Configurable authentication
+  - View and manage providers
+  - View incoming events with filtering
+  - View registered handlers per provider
+  - Monitor event processing status
+  - Track handler execution
+
+- **Security Features**
+  - HMAC signature verification
+  - Timestamp validation (replay attack prevention)
+  - Rate limiting per provider
+  - Payload size limits
+  - Token-based authentication
+  - Support for IP whitelisting (planned)
 
 - **Observability**
   - ActiveSupport::Notifications instrumentation
   - Rate limiting stats
-  - Circuit breaker state monitoring
   - Comprehensive event tracking
 
 - **Data Retention**
@@ -69,9 +76,57 @@ $ rails captain_hook:install:migrations
 $ rails db:migrate
 ```
 
-## Configuration
+## Quick Start
 
-Configure CaptainHook in `config/initializers/captain_hook.rb`:
+### 1. Create a Provider
+
+Via Admin UI: Navigate to `/captain_hook/admin/providers` and click "Add Provider"
+
+Or via Rails console:
+
+```ruby
+provider = CaptainHook::Provider.create!(
+  name: "stripe",
+  display_name: "Stripe",
+  description: "Stripe payment webhooks",
+  signing_secret: ENV["STRIPE_WEBHOOK_SECRET"],
+  adapter_class: "CaptainHook::Adapters::Stripe",
+  timestamp_tolerance_seconds: 300,
+  max_payload_size_bytes: 1_048_576,
+  rate_limit_requests: 100,
+  rate_limit_period: 60,
+  active: true
+)
+```
+
+### 2. Get Your Webhook URL
+
+The webhook URL is automatically generated when you create a provider:
+
+```ruby
+provider.webhook_url
+# => "https://your-app.com/captain_hook/stripe/abc123token..."
+```
+
+Share this URL with your provider (e.g., in Stripe's webhook settings).
+
+### 3. Create a Handler
+
+Create a handler class in `app/handlers/`:
+
+```ruby
+# app/handlers/stripe_payment_succeeded_handler.rb
+class StripePaymentSucceededHandler
+  def handle(event:, payload:, metadata:)
+    payment_intent_id = payload.dig("data", "object", "id")
+    Payment.find_by(stripe_id: payment_intent_id)&.mark_succeeded!
+  end
+end
+```
+
+### 4. Register the Handler
+
+In `config/initializers/captain_hook.rb`:
 
 ```ruby
 CaptainHook.configure do |config|
@@ -81,94 +136,114 @@ CaptainHook.configure do |config|
   
   # Data retention (days)
   config.retention_days = 90
-
-  # Register incoming webhook providers
-  config.register_provider(
-    "stripe",
-    token: ENV["STRIPE_WEBHOOK_TOKEN"],
-    signing_secret: ENV["STRIPE_WEBHOOK_SECRET"],
-    adapter_class: "CaptainHook::Adapters::Stripe",
-    timestamp_tolerance_seconds: 300,        # 5 minutes
-    max_payload_size_bytes: 1_048_576,       # 1MB
-    rate_limit_requests: 100,
-    rate_limit_period: 60                    # 100 requests per 60 seconds
-  )
-
-  # Register outgoing webhook endpoints
-  config.register_outgoing_endpoint(
-    "production_endpoint",
-    base_url: "https://example.com/webhooks",
-    signing_secret: ENV["OUTGOING_WEBHOOK_SECRET"],
-    signing_header: "X-Captain-Hook-Signature",
-    timestamp_header: "X-Captain-Hook-Timestamp",
-    default_headers: { "Content-Type" => "application/json" },
-    retry_delays: [30, 60, 300, 900, 3600],  # Exponential backoff
-    max_attempts: 5,
-    circuit_breaker_enabled: true,
-    circuit_failure_threshold: 5,
-    circuit_cooldown_seconds: 300
-  )
 end
-```
 
-See [docs/integration_from_other_gems.md](docs/integration_from_other_gems.md) for detailed integration examples.
-
-## Quick Start
-
-### 1. Receiving Webhooks
-
-Create a handler:
-
-```ruby
-class StripePaymentSucceededHandler
-  def handle(event:, payload:, metadata:)
-    payment_intent_id = payload.dig("data", "object", "id")
-    Payment.find_by(stripe_id: payment_intent_id)&.mark_succeeded!
-  end
-end
-```
-
-Register it:
-
-```ruby
+# Register handler
 CaptainHook.register_handler(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
   handler_class: "StripePaymentSucceededHandler",
-  priority: 100
+  priority: 100,
+  async: true
 )
 ```
 
-Your webhook URL: `POST https://your-app.com/captain_hook/stripe/your_token`
+## Configuration
 
-### 2. Sending Webhooks
+### Provider Settings
+
+Each provider can be configured with:
+
+- **name**: Unique identifier (lowercase, underscores only)
+- **display_name**: Human-readable name
+- **signing_secret**: Secret for HMAC signature verification
+- **adapter_class**: Class for provider-specific signature verification
+- **timestamp_tolerance_seconds**: Tolerance window for timestamp validation (prevents replay attacks)
+- **max_payload_size_bytes**: Maximum payload size (DoS protection)
+- **rate_limit_requests**: Maximum requests per period
+- **rate_limit_period**: Time period for rate limiting (seconds)
+- **active**: Enable/disable webhook reception
+
+### Handler Registration
+
+Handlers can be configured with:
+
+- **provider**: Provider name (must match a provider)
+- **event_type**: Event type to handle (e.g., "payment.succeeded")
+- **handler_class**: Class name (as string) that implements the handler
+- **priority**: Execution order (lower numbers run first)
+- **async**: Whether to run in background job (default: true)
+- **max_attempts**: Maximum retry attempts (default: 5)
+- **retry_delays**: Array of delays between retries in seconds (default: [30, 60, 300, 900, 3600])
+
+## Adapters
+
+CaptainHook includes adapters for popular webhook providers:
+
+### Stripe
 
 ```ruby
-event = CaptainHook::OutgoingEvent.create!(
-  provider: "production_endpoint",
-  event_type: "user.created",
-  target_url: "https://example.com/webhooks",
-  payload: { user_id: user.id, email: user.email }
+CaptainHook::Provider.create!(
+  name: "stripe",
+  adapter_class: "CaptainHook::Adapters::Stripe",
+  signing_secret: ENV["STRIPE_WEBHOOK_SECRET"]
 )
-
-CaptainHook::OutgoingJob.perform_later(event.id)
 ```
+
+### Custom Adapter
+
+Create a custom adapter for your provider:
+
+```ruby
+module CaptainHook
+  module Adapters
+    class MyProvider < Base
+      def verify_signature(payload:, headers:)
+        # Implement signature verification
+        expected_sig = generate_signature(payload)
+        actual_sig = headers["X-My-Provider-Signature"]
+        expected_sig == actual_sig
+      end
+
+      def extract_event_id(payload)
+        payload["id"]
+      end
+
+      def extract_event_type(payload)
+        payload["type"]
+      end
+    end
+  end
+end
+```
+
+## Admin Interface
+
+Access the admin interface at `/captain_hook/admin`:
+
+- **Providers**: Manage webhook providers and view their settings
+- **Incoming Events**: View all received webhooks with filtering
+- **Handlers**: View registered handlers per provider
 
 ## Security
 
 **Never store secrets in the database.** Use environment variables or Rails encrypted credentials.
 
 All incoming webhooks are verified:
-1. Token authentication
-2. Provider-specific signature verification
-3. Timestamp validation
+1. Provider must be active
+2. Token authentication
+3. Provider-specific signature verification
+4. Timestamp validation (optional, but recommended)
+5. Rate limiting (optional, but recommended)
+6. Payload size limits (optional, but recommended)
 
-Outgoing webhooks include SSRF protection and signature generation.
+## Testing
+
+Use the included webhook tester at `/webhook_tester` to test your webhook configuration.
 
 ## Documentation
 
-- **Full README**: See above for comprehensive documentation
-- **Integration Guide**: [docs/integration_from_other_gems.md](docs/integration_from_other_gems.md)
+- **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)
 - **Architecture**: [docs/gem_template/](docs/gem_template/) (template reference)
 
 ## License

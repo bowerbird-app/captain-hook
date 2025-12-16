@@ -11,8 +11,21 @@ module CaptainHook
       provider_name = params[:provider]
       token = params[:token]
 
-      # Get provider configuration
-      provider_config = CaptainHook.configuration.provider(provider_name)
+      # Get provider from database first, then fall back to configuration
+      provider = CaptainHook::Provider.find_by(name: provider_name)
+      provider_config = if provider
+                          # Check if provider is active
+                          unless provider.active?
+                            render json: { error: "Provider is inactive" }, status: :forbidden
+                            return
+                          end
+                          
+                          # Convert Provider model to ProviderConfig
+                          CaptainHook.configuration.provider(provider_name)
+                        else
+                          # Fall back to in-memory configuration
+                          CaptainHook.configuration.provider(provider_name)
+                        end
 
       unless provider_config
         render json: { error: "Unknown provider" }, status: :not_found
