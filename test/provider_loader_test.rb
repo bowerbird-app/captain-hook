@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "fileutils"
+require "tmpdir"
 
 class ProviderLoaderTest < Minitest::Test
   def setup

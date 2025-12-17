@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "yaml"
+
 module CaptainHook
   # Loads and registers webhook providers from installed gems
   # Scans for captain_hook_providers.yml files in gem directories
