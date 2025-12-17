@@ -69,3 +69,5 @@ group :development do
 end
 
 gem "makeup_artist", "~> 0.4.3", git: "https://github.com/bowerbird-app/makeup-artist.git"
+
+gem "pry"

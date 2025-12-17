@@ -10,13 +10,6 @@ require "captain_hook/time_window_validator"
 require "captain_hook/signature_generator"
 require "captain_hook/instrumentation"
 
-# Load adapters
-require "captain_hook/adapters/base"
-require "captain_hook/adapters/stripe"
-require "captain_hook/adapters/webhook_site"
-require "captain_hook/adapters/paypal"
-require "captain_hook/adapters/square"
-
 # Load services
 require "captain_hook/services/base_service"
 require "captain_hook/services/rate_limiter"

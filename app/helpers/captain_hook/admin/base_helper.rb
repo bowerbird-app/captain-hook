@@ -40,19 +40,32 @@ module CaptainHook
       def available_adapter_classes
         adapters = []
 
-        # Scan the adapters directory
-        adapter_dir = File.join(CaptainHook::Engine.root, "lib", "captain_hook", "adapters")
-        Dir.glob(File.join(adapter_dir, "*.rb")).each do |file|
-          adapter_name = File.basename(file, ".rb")
-          next if adapter_name == "base" # Skip the base class
+        # Scan multiple locations for adapters
+        scan_paths = [
+          # Application adapters (Rails app)
+          Rails.root.join("app", "adapters", "captain_hook", "adapters"),
+          # Loaded gems with adapters
+          *Gem.loaded_specs.values.map do |spec|
+            File.join(spec.gem_dir, "app", "adapters", "captain_hook", "adapters")
+          end
+        ]
 
-          class_name = "CaptainHook::Adapters::#{adapter_name.camelize}"
-          display_name = adapter_name.titleize
-          adapters << [display_name, class_name]
+        scan_paths.each do |adapter_dir|
+          next unless File.directory?(adapter_dir)
+
+          Dir.glob(File.join(adapter_dir, "*.rb")).each do |file|
+            adapter_name = File.basename(file, ".rb")
+            next if adapter_name == "base" # Skip the base class
+            next if adapter_name.start_with?("_") # Skip partials
+
+            class_name = "CaptainHook::Adapters::#{adapter_name.camelize}"
+            display_name = adapter_name.titleize
+            adapters << [display_name, class_name]
+          end
         end
 
-        # Sort alphabetically and add Base at the end
-        adapters.sort_by(&:first) + [["Base (No Verification)", "CaptainHook::Adapters::Base"]]
+        # Remove duplicates and sort alphabetically, then add Base at the end
+        adapters.uniq.sort_by(&:first) + [["Base (No Verification)", "CaptainHook::Adapters::Base"]]
       end
     end
   end
