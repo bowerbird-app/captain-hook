@@ -50,6 +50,20 @@ module CaptainHook
       CaptainHook::Hooks.run(:after_initialize, self)
     end
 
+    # Auto-load providers and handlers from gems
+    initializer "captain_hook.load_gem_configurations", after: :load_config_initializers do
+      Rails.application.config.after_initialize do
+        # Auto-load providers from all gems
+        CaptainHook::ProviderLoader.load_from_gems
+
+        # Auto-load handlers from all gems
+        CaptainHook::HandlerLoader.load_from_gems
+      rescue StandardError => e
+        Rails.logger.error("CaptainHook: Failed to load gem configurations: #{e.message}")
+        Rails.logger.error(e.backtrace.first(5).join("\n")) if e.backtrace
+      end
+    end
+
     # Apply model extensions when models are loaded
     initializer "captain_hook.apply_model_extensions" do
       ActiveSupport.on_load(:active_record) do

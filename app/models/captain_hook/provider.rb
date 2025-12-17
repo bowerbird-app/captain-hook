@@ -27,6 +27,9 @@ module CaptainHook
     scope :active, -> { where(active: true) }
     scope :inactive, -> { where(active: false) }
     scope :by_name, -> { order(:name) }
+    scope :from_gem, ->(gem_name) { where(gem_source: gem_name) }
+    scope :gem_provided, -> { where.not(gem_source: nil) }
+    scope :manually_created, -> { where(gem_source: nil) }
 
     # Callbacks
     before_validation :normalize_name
@@ -79,6 +82,16 @@ module CaptainHook
     # Deactivate provider
     def deactivate!
       update!(active: false)
+    end
+
+    # Check if provider is provided by a gem
+    def gem_provided?
+      gem_source.present?
+    end
+
+    # Check if provider is manually created
+    def manually_created?
+      gem_source.blank?
     end
 
     private

@@ -12,6 +12,7 @@ module CaptainHook
       :retry_delays,
       :max_attempts,
       :priority,
+      :gem_source,
       keyword_init: true
     ) do
       def initialize(**kwargs)
@@ -20,6 +21,7 @@ module CaptainHook
         self.retry_delays ||= [30, 60, 300, 900, 3600]
         self.max_attempts ||= 5
         self.priority ||= 100
+        self.gem_source ||= nil
       end
 
       # Get delay for a given attempt (0-indexed)

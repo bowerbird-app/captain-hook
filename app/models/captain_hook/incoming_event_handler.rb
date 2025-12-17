@@ -29,6 +29,9 @@ module CaptainHook
     scope :by_priority, -> { order(priority: :asc, handler_class: :asc) }
     scope :locked, -> { where.not(locked_at: nil) }
     scope :unlocked, -> { where(locked_at: nil) }
+    scope :from_gem, ->(gem_name) { where(gem_source: gem_name) }
+    scope :gem_provided, -> { where.not(gem_source: nil) }
+    scope :manually_created, -> { where(gem_source: nil) }
 
     # Acquire lock for processing (optimistic locking)
     def acquire_lock!(worker_id)
