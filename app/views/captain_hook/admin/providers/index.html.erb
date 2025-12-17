@@ -1,7 +1,7 @@
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Webhook Providers</h1>
-    <%= link_to "Add Provider", new_admin_provider_path, class: "btn btn-primary" %>
+    <%= button_to "Scan for Providers", scan_admin_providers_path, method: :post, class: "btn btn-primary", data: { confirm: "This will scan for provider YAML files in captain_hook/providers/ directories. Continue?" } %>
   </div>
 
   <div class="card">
@@ -55,7 +55,7 @@
       <% else %>
         <div class="alert alert-info">
           <p class="mb-2"><strong>No providers configured yet.</strong></p>
-          <p class="mb-0">Providers represent webhook sources like Stripe, OpenAI, GitHub, etc. <%= link_to "Add your first provider", new_admin_provider_path %> to start receiving webhooks.</p>
+          <p class="mb-0">Providers are discovered from YAML files in the <code>captain_hook/providers/</code> directory. <%= button_to "Scan for providers", scan_admin_providers_path, method: :post, class: "btn btn-sm btn-primary d-inline-block", data: { confirm: "This will scan for provider YAML files. Continue?" } %> to discover and create them.</p>
         </div>
       <% end %>
     </div>
@@ -69,11 +69,17 @@
         Providers represent external services that send webhooks to your application.
         Each provider has a unique webhook URL that you can share with the service.
       </p>
+      <p class="card-text">
+        <strong>Provider Discovery:</strong> CaptainHook automatically discovers providers from YAML files.
+        Create provider configuration files in <code>captain_hook/providers/</code> directory in your Rails app
+        or in any gem. Click "Scan for Providers" to discover and create them.
+      </p>
       <ul>
         <li><strong>Name:</strong> Unique identifier for the provider (lowercase, underscores only)</li>
         <li><strong>Adapter:</strong> Handles signature verification for this provider</li>
         <li><strong>Token:</strong> Automatically generated secure token for the webhook URL</li>
         <li><strong>Handlers:</strong> Ruby classes that process events from this provider</li>
+        <li><strong>Configuration:</strong> Define providers in YAML with signing secrets from ENV variables</li>
       </ul>
     </div>
   </div>

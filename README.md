@@ -100,28 +100,58 @@ $ ruby generate_keys.rb
 
 **Important**: Environment variables take precedence over the local file. Never commit `local_encryption_keys.yml` to version control.
 
-### 2. Create a Provider
+### 2. Configure Providers
 
-Via Admin UI: Navigate to `/captain_hook/admin/providers` and click "Add Provider"
+CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
-Or via Rails console:
+**Create the directory structure:**
 
-```ruby
-provider = CaptainHook::Provider.create!(
-  name: "stripe",
-  display_name: "Stripe",
-  description: "Stripe payment webhooks",
-  signing_secret: ENV["STRIPE_WEBHOOK_SECRET"],
-  adapter_class: "CaptainHook::Adapters::Stripe",
-  timestamp_tolerance_seconds: 300,
-  max_payload_size_bytes: 1_048_576,
-  rate_limit_requests: 100,
-  rate_limit_period: 60,
-  active: true
-)
+```bash
+mkdir -p captain_hook/providers
+mkdir -p captain_hook/handlers
+mkdir -p captain_hook/adapters  # Optional, for custom adapters
 ```
 
-The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption.
+**Create a provider YAML file** (e.g., `captain_hook/providers/stripe.yml`):
+
+```yaml
+# captain_hook/providers/stripe.yml
+name: stripe
+display_name: Stripe
+description: Stripe payment and subscription webhooks
+adapter_class: CaptainHook::Adapters::Stripe
+active: true
+
+# Security settings
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
+
+# Rate limiting (optional)
+rate_limit_requests: 100
+rate_limit_period: 60
+
+# Payload size limit (optional, in bytes)
+max_payload_size_bytes: 1048576
+```
+
+**Set environment variables:**
+
+```bash
+# .env or your environment
+STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
+```
+
+**Discover providers:**
+
+1. Navigate to `/captain_hook/admin/providers`
+2. Click "Scan for Providers"
+3. CaptainHook will automatically create provider records from your YAML files
+
+Providers are automatically discovered from:
+- Your Rails app: `Rails.root/captain_hook/providers/*.yml`
+- Loaded gems: `<gem_root>/captain_hook/providers/*.yml`
+
+The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
 
 ### 3. Get Your Webhook URL
 
@@ -140,10 +170,10 @@ Share this URL with your provider (e.g., in Stripe's webhook settings). The toke
 
 ### 4. Create a Handler
 
-Create a handler class in `app/handlers/`:
+Create a handler class in `captain_hook/handlers/`:
 
 ```ruby
-# app/handlers/stripe_payment_succeeded_handler.rb
+# captain_hook/handlers/stripe_payment_succeeded_handler.rb
 class StripePaymentSucceededHandler
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
@@ -156,6 +186,8 @@ Handler method signature:
 - `event`: The `CaptainHook::IncomingEvent` record
 - `payload`: The parsed JSON payload (Hash)
 - `metadata`: Additional metadata (Hash with `:timestamp`, `:headers`, etc.)
+
+**Note**: While handlers can also be placed in `app/handlers/`, the recommended location is `captain_hook/handlers/` to keep all webhook-related code organized together.
 
 ### 5. Register the Handler
 

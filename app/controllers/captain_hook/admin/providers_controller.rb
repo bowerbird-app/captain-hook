@@ -55,6 +55,38 @@ module CaptainHook
         end
       end
 
+      # POST /captain_hook/admin/providers/scan
+      def scan
+        # Discover providers from YAML files
+        discovery = CaptainHook::Services::ProviderDiscovery.new
+        provider_definitions = discovery.call
+
+        if provider_definitions.empty?
+          redirect_to admin_providers_url, 
+                      alert: "No provider configuration files found. Add YAML files to captain_hook/providers/ directory."
+          return
+        end
+
+        # Sync discovered providers to database
+        sync = CaptainHook::Services::ProviderSync.new(provider_definitions)
+        results = sync.call
+
+        # Build flash message
+        messages = []
+        messages << "Created #{results[:created].size} provider(s)" if results[:created].any?
+        messages << "Updated #{results[:updated].size} provider(s)" if results[:updated].any?
+        messages << "Skipped #{results[:skipped].size} provider(s)" if results[:skipped].any?
+
+        if results[:errors].any?
+          error_details = results[:errors].map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
+          redirect_to admin_providers_url, alert: "Scan completed with errors: #{error_details}"
+        elsif messages.any?
+          redirect_to admin_providers_url, notice: "Scan completed! #{messages.join(', ')}"
+        else
+          redirect_to admin_providers_url, notice: "Scan completed. All providers are up to date."
+        end
+      end
+
       private
 
       def set_provider
