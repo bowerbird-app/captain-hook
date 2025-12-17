@@ -45,6 +45,12 @@ A comprehensive Rails engine for receiving and processing webhooks from external
   - Automatic archival of old events
   - Configurable retention period
 
+- **Inter-Gem Communication**
+  - Auto-discovery of webhook providers from installed gems
+  - Zero-configuration webhook handler registration
+  - Support for both YAML and programmatic registration
+  - Decoupled gem integration without tight coupling
+
 ## Installation
 
 Add this line to your application's Gemfile:
@@ -433,8 +439,89 @@ CaptainHook.register_handler(
 )
 ```
 
+## Inter-Gem Communication
+
+CaptainHook supports **inter-gem communication**, allowing other gems to automatically register webhook providers and handlers without requiring manual configuration in the host application.
+
+### Quick Example
+
+Install a gem that integrates with CaptainHook:
+
+```ruby
+# Gemfile
+gem 'captain_hook'
+gem 'stripe_billing_gem'  # Automatically provides Stripe webhooks
+gem 'github_integration'  # Automatically provides GitHub webhooks
+```
+
+After running `bundle install` and restarting:
+
+1. Providers are automatically created in the database
+2. Handlers are automatically registered
+3. Webhook URLs are immediately available in the admin UI
+4. All webhooks are processed automatically
+
+### Creating an Integrating Gem
+
+#### Method 1: YAML Configuration (Recommended)
+
+Create `config/captain_hook_providers.yml` in your gem:
+
+```yaml
+providers:
+  - name: stripe
+    display_name: Stripe
+    adapter_class: MyGem::StripeAdapter
+    description: Stripe payment webhooks
+    default_config:
+      timestamp_tolerance_seconds: 300
+      max_payload_size_bytes: 1048576
+```
+
+Create `config/captain_hook_handlers.yml` in your gem:
+
+```yaml
+handlers:
+  - provider: stripe
+    event_type: invoice.paid
+    handler_class: MyGem::StripeInvoiceHandler
+    priority: 100
+    async: true
+```
+
+#### Method 2: Programmatic Registration
+
+In your gem's engine:
+
+```ruby
+module MyGem
+  class Engine < ::Rails::Engine
+    initializer "my_gem.register_with_captain_hook", after: :load_config_initializers do
+      Rails.application.config.after_initialize do
+        CaptainHook.register_provider(
+          name: "stripe",
+          display_name: "Stripe",
+          adapter_class: "MyGem::StripeAdapter",
+          gem_source: "my_gem"
+        )
+        
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "invoice.paid",
+          handler_class: "MyGem::StripeInvoiceHandler",
+          gem_source: "my_gem"
+        )
+      end
+    end
+  end
+end
+```
+
+For complete documentation, see [docs/INTER_GEM_COMMUNICATION.md](docs/INTER_GEM_COMMUNICATION.md).
+
 ## Documentation
 
+- **Inter-Gem Communication**: [docs/INTER_GEM_COMMUNICATION.md](docs/INTER_GEM_COMMUNICATION.md)
 - **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)
 - **Architecture**: [docs/gem_template/](docs/gem_template/) (template reference)
 
