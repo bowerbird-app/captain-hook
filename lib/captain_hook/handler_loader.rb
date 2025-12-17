@@ -35,7 +35,7 @@ module CaptainHook
       # @param gem_name [String] Name of the gem providing these handlers
       # @return [Integer] Number of handlers registered
       def register_handlers_from_file(path, gem_name:)
-        config = YAML.load_file(path)
+        config = YAML.safe_load_file(path, permitted_classes: [], aliases: true)
         return 0 unless config && config["handlers"]
 
         handlers = config["handlers"]

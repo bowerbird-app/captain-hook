@@ -35,7 +35,7 @@ module CaptainHook
       # @param gem_name [String] Name of the gem providing these providers
       # @return [Integer] Number of providers registered
       def register_providers_from_file(path, gem_name:)
-        config = YAML.load_file(path)
+        config = YAML.safe_load_file(path, permitted_classes: [], aliases: true)
         return 0 unless config && config["providers"]
 
         providers = config["providers"]
@@ -52,7 +52,10 @@ module CaptainHook
       # @param provider_def [Hash] Provider definition
       # @param gem_name [String] Name of the gem providing this provider
       def register_provider_from_config(provider_def, gem_name:)
-        return unless defined?(CaptainHook::Provider)
+        unless defined?(CaptainHook::Provider)
+          Rails.logger.warn("CaptainHook: Provider model not loaded, skipping provider registration from #{gem_name}") if defined?(Rails)
+          return nil
+        end
 
         provider = CaptainHook::Provider.find_or_initialize_by(
           name: provider_def["name"],

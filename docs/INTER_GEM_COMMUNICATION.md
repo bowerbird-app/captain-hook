@@ -311,3 +311,17 @@ Both handlers will execute when a `stripe.invoice.paid` webhook is received, in 
 - Gems must be loaded before CaptainHook's initializers run
 - Database must be migrated and available at boot time
 - Handler classes must be autoloadable via standard Rails conventions
+
+## Security Considerations
+
+1. **Trusted Gems Only**: Only install webhook integration gems from trusted sources. YAML configuration files and handler code from gems run with your application's full privileges.
+
+2. **Safe YAML Loading**: CaptainHook uses `YAML.safe_load_file` to prevent arbitrary code execution from malicious YAML files.
+
+3. **Handler Code Review**: Review handler code from third-party gems before installation, as handlers have full access to your application's models and data.
+
+4. **Signing Secrets**: Never commit webhook signing secrets to gem source code. Use environment variables or Rails credentials for sensitive data.
+
+5. **Gem Updates**: When updating gems that provide webhook handlers, review changes to ensure no malicious code was introduced.
+
+6. **Access Control**: Consider which gems should have access to your webhook data. Some webhooks may contain sensitive information.

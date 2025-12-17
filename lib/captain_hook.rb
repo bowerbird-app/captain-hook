@@ -61,7 +61,10 @@ module CaptainHook
     # @option options [Boolean] :active Whether provider is active (default: true)
     # @return [CaptainHook::Provider] The created or updated provider
     def register_provider(name:, display_name:, adapter_class:, gem_source: nil, **options)
-      return unless defined?(CaptainHook::Provider)
+      unless defined?(CaptainHook::Provider)
+        Rails.logger.warn("CaptainHook: Provider model not loaded, skipping provider registration for #{name}") if defined?(Rails)
+        return nil
+      end
 
       provider = CaptainHook::Provider.find_or_initialize_by(
         name: name,
