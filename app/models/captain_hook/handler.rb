@@ -44,6 +44,11 @@ module CaptainHook
       "#{provider}:#{event_type}"
     end
 
+    # Get the associated Provider record
+    def provider_record
+      CaptainHook::Provider.find_by(name: provider)
+    end
+
     private
 
     def retry_delays_must_be_array_of_integers
