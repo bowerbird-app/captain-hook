@@ -35,7 +35,7 @@ module CaptainHook
     # Generate webhook URL for this provider
     def webhook_url(base_url: nil)
       base = base_url || detect_base_url
-      "#{base}/captain_hook/#{name}/#{token}"
+      "#{base}/captain_hook/incoming/#{name}/#{token}"
     end
 
     # Check if rate limiting is enabled

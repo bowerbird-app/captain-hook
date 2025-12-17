@@ -107,7 +107,7 @@ module CaptainHook
           # Reconstruct from provider config
           # You may need to adjust this based on your setup
           base_url = detect_base_url
-          "#{base_url}/captain_hook/square/#{provider_config.token}"
+          "#{base_url}/captain_hook/incoming/square/#{provider_config.token}"
         end
       end
 

@@ -19,5 +19,5 @@ CaptainHook::Engine.routes.draw do
   root to: redirect("/captain_hook/admin")
 
   # Public incoming webhook endpoint (must come AFTER admin routes)
-  post ":provider/:token", to: "incoming#create", as: :incoming_webhook
+  post "incoming/:provider/:token", to: "incoming#create", as: :incoming_webhook
 end

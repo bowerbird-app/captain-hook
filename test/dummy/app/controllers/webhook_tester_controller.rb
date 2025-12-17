@@ -67,7 +67,7 @@ class WebhookTesterController < ApplicationController
     end
 
     # Make a real HTTP request to the app (using localhost to avoid port visibility issues)
-    uri = URI.parse("http://localhost:3004/captain_hook/#{provider_name}/#{token}")
+    uri = URI.parse("http://localhost:3004/captain_hook/incoming/#{provider_name}/#{token}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = false
     
