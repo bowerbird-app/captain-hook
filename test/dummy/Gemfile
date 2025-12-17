@@ -3,6 +3,9 @@ source "https://rubygems.org"
 # Use the captain_hook engine
 gem "captain_hook", path: "../.."
 
+# Marikit Country List - test webhook integration
+gem "marikit_country_list", git: "https://github.com/bowerbird-app/marikit-country-list.git"
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
@@ -69,3 +72,5 @@ group :development do
 end
 
 gem "makeup_artist", "~> 0.4.3", git: "https://github.com/bowerbird-app/makeup-artist.git"
+
+gem "pry"

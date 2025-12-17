@@ -36,35 +36,6 @@ Rails.application.config.after_initialize do
     max_attempts: 3
   )
 
-  # Handler for Stripe payment_intent events
-  # Handles: payment_intent.created, payment_intent.succeeded, payment_intent.payment_failed
-  CaptainHook.register_handler(
-    provider: "stripe",
-    event_type: "payment_intent.created",
-    handler_class: "StripePaymentIntentHandler",
-    priority: 100,
-    async: true,
-    max_attempts: 3
-  )
-
-  CaptainHook.register_handler(
-    provider: "stripe",
-    event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentIntentHandler",
-    priority: 100,
-    async: true,
-    max_attempts: 3
-  )
-
-  CaptainHook.register_handler(
-    provider: "stripe",
-    event_type: "payment_intent.payment_failed",
-    handler_class: "StripePaymentIntentHandler",
-    priority: 100,
-    async: true,
-    max_attempts: 3
-  )
-
   # Handler for Square bank_account events
   # Handles: bank_account.created, bank_account.verified, bank_account.disabled, bank_account.updated
   CaptainHook.register_handler(
