@@ -9,6 +9,7 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><%= @provider.display_name || @provider.name.titleize %></h1>
     <div>
+      <%= button_to "Scan Handlers", scan_handlers_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered handlers in your application code. Continue?" } %>
       <%= link_to "Edit", edit_admin_provider_path(@provider), class: "btn btn-secondary" %>
       <%= link_to "View Handlers", admin_provider_handlers_path(@provider), class: "btn btn-info" %>
     </div>

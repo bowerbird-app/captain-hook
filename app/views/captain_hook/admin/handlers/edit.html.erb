@@ -1,0 +1,142 @@
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
+      <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
+      <li class="breadcrumb-item"><%= link_to "Handlers", admin_provider_handlers_path(@provider) %></li>
+      <li class="breadcrumb-item active" aria-current="page">Edit</li>
+    </ol>
+  </nav>
+
+  <h1 class="mb-4">Edit Handler</h1>
+
+  <div class="card">
+    <div class="card-body">
+      <%= form_with(model: @handler, url: admin_provider_handler_path(@provider, @handler), method: :patch, local: true) do |f| %>
+        <% if @handler.errors.any? %>
+          <div class="alert alert-danger">
+            <h5><%= pluralize(@handler.errors.count, "error") %> prohibited this handler from being saved:</h5>
+            <ul class="mb-0">
+              <% @handler.errors.each do |error| %>
+                <li><%= error.full_message %></li>
+              <% end %>
+            </ul>
+          </div>
+        <% end %>
+
+        <!-- Read-only fields -->
+        <div class="mb-3">
+          <label class="form-label">Provider</label>
+          <input type="text" class="form-control" value="<%= @provider.name %>" disabled>
+          <small class="text-muted">Provider cannot be changed</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Handler Class</label>
+          <input type="text" class="form-control" value="<%= @handler.handler_class %>" disabled>
+          <small class="text-muted">Handler class cannot be changed</small>
+        </div>
+
+        <!-- Event Type -->
+        <div class="mb-3">
+          <%= f.label :event_type, class: "form-label" %>
+          <%= f.text_field :event_type, class: "form-control" %>
+          <small class="text-muted">The webhook event type this handler processes (e.g., "payment.succeeded")</small>
+        </div>
+
+        <!-- Async/Sync Toggle -->
+        <div class="mb-3">
+          <%= f.label :async, "Execution Mode", class: "form-label" %>
+          <div class="form-check">
+            <%= f.radio_button :async, true, class: "form-check-input", id: "async_true" %>
+            <%= f.label :async, "Async (Run in background job)", for: "async_true", class: "form-check-label" %>
+          </div>
+          <div class="form-check">
+            <%= f.radio_button :async, false, class: "form-check-input", id: "async_false" %>
+            <%= f.label :async, "Sync (Run immediately in request)", for: "async_false", class: "form-check-label" %>
+          </div>
+          <small class="text-muted">
+            <strong>Async:</strong> Handler runs in a background job (recommended for most cases)<br>
+            <strong>Sync:</strong> Handler runs immediately in the webhook request (only for fast handlers)
+          </small>
+        </div>
+
+        <!-- Priority -->
+        <div class="mb-3">
+          <%= f.label :priority, class: "form-label" %>
+          <%= f.number_field :priority, class: "form-control" %>
+          <small class="text-muted">Lower numbers execute first (e.g., 10 runs before 100)</small>
+        </div>
+
+        <!-- Max Attempts -->
+        <div class="mb-3">
+          <%= f.label :max_attempts, "Maximum Retry Attempts", class: "form-label" %>
+          <%= f.number_field :max_attempts, class: "form-control", min: 1 %>
+          <small class="text-muted">Number of times to retry on failure (minimum 1)</small>
+        </div>
+
+        <!-- Retry Delays -->
+        <div class="mb-3">
+          <%= f.label :retry_delays, "Retry Delays (seconds)", class: "form-label" %>
+          <%= f.text_field :retry_delays, 
+                           class: "form-control", 
+                           value: @handler.retry_delays.join(", "),
+                           placeholder: "30, 60, 300, 900, 3600" %>
+          <small class="text-muted">
+            Comma-separated list of delay times in seconds between retries.<br>
+            Example: <code>30, 60, 300, 900, 3600</code> means wait 30s, then 60s, then 5min, then 15min, then 1hr between retries.
+          </small>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <%= f.submit "Update Handler", class: "btn btn-primary" %>
+          <%= link_to "Cancel", admin_provider_handlers_path(@provider), class: "btn btn-secondary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="card mt-4 border-danger">
+    <div class="card-header bg-danger text-white">
+      <h5 class="mb-0">Danger Zone</h5>
+    </div>
+    <div class="card-body">
+      <h6>Delete Handler</h6>
+      <p class="text-muted mb-3">
+        Soft-deleting this handler will prevent it from being re-added during future scans.
+        The handler will remain in the database but marked as deleted.
+      </p>
+      <%= button_to "Delete Handler", 
+                    admin_provider_handler_path(@provider, @handler), 
+                    method: :delete, 
+                    class: "btn btn-danger", 
+                    data: { confirm: "Are you sure you want to delete this handler? It will be skipped during future scans." } %>
+    </div>
+  </div>
+</div>
+
+<script>
+// Parse retry_delays before form submission
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('form');
+  const retryDelaysInput = document.querySelector('#handler_retry_delays');
+  
+  form.addEventListener('submit', function(e) {
+    // Convert comma-separated string to JSON array
+    const delaysString = retryDelaysInput.value;
+    const delaysArray = delaysString.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    
+    // Create a hidden field with JSON array
+    const hiddenField = document.createElement('input');
+    hiddenField.type = 'hidden';
+    hiddenField.name = 'handler[retry_delays]';
+    hiddenField.value = JSON.stringify(delaysArray);
+    
+    form.appendChild(hiddenField);
+    
+    // Remove the original field from submission
+    retryDelaysInput.disabled = true;
+  });
+});
+</script>
