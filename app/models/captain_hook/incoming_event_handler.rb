@@ -96,5 +96,15 @@ module CaptainHook
         locked_by: nil
       )
     end
+
+    # Check if handler is provided by a gem
+    def gem_provided?
+      gem_source.present?
+    end
+
+    # Check if handler is manually created
+    def manually_created?
+      gem_source.blank?
+    end
   end
 end
