@@ -47,13 +47,11 @@ module CaptainHook
 
         providers = config["providers"]
         
-        # Validate providers is an array or hash
-        unless providers.is_a?(Array) || providers.is_a?(Hash)
-          Rails.logger.warn("CaptainHook: Invalid providers format in #{path} from #{gem_name}") if defined?(Rails)
+        # Validate providers is an array
+        unless providers.is_a?(Array)
+          Rails.logger.warn("CaptainHook: Invalid providers format in #{path} from #{gem_name} - must be an array") if defined?(Rails)
           return 0
         end
-        
-        providers = [providers] unless providers.is_a?(Array)
 
         providers.each do |provider_def|
           register_provider_from_config(provider_def, gem_name: gem_name)

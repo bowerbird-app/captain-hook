@@ -47,13 +47,11 @@ module CaptainHook
 
         handlers = config["handlers"]
         
-        # Validate handlers is an array or hash
-        unless handlers.is_a?(Array) || handlers.is_a?(Hash)
-          Rails.logger.warn("CaptainHook: Invalid handlers format in #{path} from #{gem_name}") if defined?(Rails)
+        # Validate handlers is an array
+        unless handlers.is_a?(Array)
+          Rails.logger.warn("CaptainHook: Invalid handlers format in #{path} from #{gem_name} - must be an array") if defined?(Rails)
           return 0
         end
-        
-        handlers = [handlers] unless handlers.is_a?(Array)
 
         handlers.each do |handler_def|
           register_handler_from_config(handler_def, gem_name: gem_name)
@@ -76,11 +74,8 @@ module CaptainHook
           retry_delays: handler_def["retry_delays"],
           gem_source: gem_name
         )
-      rescue ArgumentError => e
-        Rails.logger.warn("CaptainHook: Invalid handler configuration in #{gem_name}: #{e.message}") if defined?(Rails)
-        raise # Re-raise validation errors
-      rescue NoMethodError => e
-        Rails.logger.error("CaptainHook: Handler class not found for #{handler_def['handler_class']} from #{gem_name}: #{e.message}") if defined?(Rails)
+      rescue ArgumentError, NoMethodError => e
+        Rails.logger.warn("CaptainHook: Failed to register handler #{handler_def['handler_class']} from #{gem_name}: #{e.message}") if defined?(Rails)
         nil
       end
     end
