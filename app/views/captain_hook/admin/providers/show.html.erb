@@ -64,7 +64,10 @@
           <% if @provider.signing_secret.present? %>
             <span class="badge bg-success">Configured</span>
           <% else %>
-            <span class="badge bg-warning">Not Set</span>
+            <span class="badge bg-secondary">Not Set</span>
+            <div class="text-muted small mt-1">
+              ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
+            </div>
           <% end %>
         </dd>
 

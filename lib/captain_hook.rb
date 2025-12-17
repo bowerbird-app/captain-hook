@@ -21,6 +21,8 @@ require "captain_hook/adapters/square"
 require "captain_hook/services/base_service"
 require "captain_hook/services/rate_limiter"
 require "captain_hook/services/example_service"
+require "captain_hook/services/provider_discovery"
+require "captain_hook/services/provider_sync"
 
 module CaptainHook
   class << self
