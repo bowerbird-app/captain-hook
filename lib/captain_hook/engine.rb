@@ -58,9 +58,16 @@ module CaptainHook
 
         # Auto-load handlers from all gems
         CaptainHook::HandlerLoader.load_from_gems
+      rescue Psych::SyntaxError, YAML::SyntaxError => e
+        Rails.logger.error("CaptainHook: YAML syntax error loading gem configurations: #{e.message}")
+        raise # Fail fast on YAML errors
+      rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::NoDatabaseError => e
+        Rails.logger.error("CaptainHook: Database not available for loading gem configurations: #{e.message}")
+        raise # Fail fast on database errors
       rescue StandardError => e
-        Rails.logger.error("CaptainHook: Failed to load gem configurations: #{e.message}")
+        Rails.logger.error("CaptainHook: Unexpected error loading gem configurations: #{e.message}")
         Rails.logger.error(e.backtrace.first(5).join("\n")) if e.backtrace
+        raise # Fail fast on unexpected errors during initialization
       end
     end
 

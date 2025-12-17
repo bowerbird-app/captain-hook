@@ -21,7 +21,14 @@ module CaptainHook
             count = register_providers_from_file(config_path, gem_name: gem_name)
             loaded_count += count
             Rails.logger.info("CaptainHook: Loaded #{count} provider(s) from #{gem_name}") if defined?(Rails)
+          rescue Psych::SyntaxError, YAML::SyntaxError => e
+            Rails.logger.error("CaptainHook: Invalid YAML in #{gem_name}: #{e.message}") if defined?(Rails)
+          rescue ActiveRecord::RecordInvalid => e
+            Rails.logger.error("CaptainHook: Invalid provider data in #{gem_name}: #{e.message}") if defined?(Rails)
           rescue StandardError => e
+            # Re-raise critical errors like database connection issues
+            raise if e.is_a?(ActiveRecord::ConnectionNotEstablished) || e.is_a?(ActiveRecord::NoDatabaseError)
+            
             Rails.logger.error("CaptainHook: Failed to load providers from #{gem_name}: #{e.message}") if defined?(Rails)
           end
         end
@@ -39,6 +46,13 @@ module CaptainHook
         return 0 unless config && config["providers"]
 
         providers = config["providers"]
+        
+        # Validate providers is an array or hash
+        unless providers.is_a?(Array) || providers.is_a?(Hash)
+          Rails.logger.warn("CaptainHook: Invalid providers format in #{path} from #{gem_name}") if defined?(Rails)
+          return 0
+        end
+        
         providers = [providers] unless providers.is_a?(Array)
 
         providers.each do |provider_def|

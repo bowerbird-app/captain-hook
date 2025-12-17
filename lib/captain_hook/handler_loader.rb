@@ -21,7 +21,14 @@ module CaptainHook
             count = register_handlers_from_file(config_path, gem_name: gem_name)
             loaded_count += count
             Rails.logger.info("CaptainHook: Loaded #{count} handler(s) from #{gem_name}") if defined?(Rails)
+          rescue Psych::SyntaxError, YAML::SyntaxError => e
+            Rails.logger.error("CaptainHook: Invalid YAML in #{gem_name}: #{e.message}") if defined?(Rails)
+          rescue NoMethodError => e
+            Rails.logger.error("CaptainHook: Handler registry error in #{gem_name}: #{e.message}") if defined?(Rails)
           rescue StandardError => e
+            # Re-raise critical errors like database connection issues
+            raise if e.is_a?(ActiveRecord::ConnectionNotEstablished) || e.is_a?(ActiveRecord::NoDatabaseError)
+            
             Rails.logger.error("CaptainHook: Failed to load handlers from #{gem_name}: #{e.message}") if defined?(Rails)
           end
         end
@@ -39,6 +46,13 @@ module CaptainHook
         return 0 unless config && config["handlers"]
 
         handlers = config["handlers"]
+        
+        # Validate handlers is an array or hash
+        unless handlers.is_a?(Array) || handlers.is_a?(Hash)
+          Rails.logger.warn("CaptainHook: Invalid handlers format in #{path} from #{gem_name}") if defined?(Rails)
+          return 0
+        end
+        
         handlers = [handlers] unless handlers.is_a?(Array)
 
         handlers.each do |handler_def|
@@ -62,8 +76,11 @@ module CaptainHook
           retry_delays: handler_def["retry_delays"],
           gem_source: gem_name
         )
-      rescue StandardError => e
-        Rails.logger.warn("CaptainHook: Failed to register handler #{handler_def['handler_class']}: #{e.message}") if defined?(Rails)
+      rescue ArgumentError => e
+        Rails.logger.warn("CaptainHook: Invalid handler configuration in #{gem_name}: #{e.message}") if defined?(Rails)
+        raise # Re-raise validation errors
+      rescue NoMethodError => e
+        Rails.logger.error("CaptainHook: Handler class not found for #{handler_def['handler_class']} from #{gem_name}: #{e.message}") if defined?(Rails)
         nil
       end
     end
