@@ -68,9 +68,10 @@ Run the installer:
 $ rails generate captain_hook:install
 ```
 
-This will create:
-- An initializer at `config/initializers/captain_hook.rb`
-- A configuration file at `config/captain_hook.yml`
+This will:
+- Mount the engine at `/captain_hook` in your routes
+- Create an initializer at `config/initializers/captain_hook.rb`
+- Configure Tailwind CSS (if detected) to include engine views
 
 Run migrations:
 
@@ -198,32 +199,36 @@ In `config/initializers/captain_hook.rb`:
 
 ```ruby
 CaptainHook.configure do |config|
-  # Admin interface settings
-  config.admin_parent_controller = "ApplicationController"
-  config.admin_layout = "application"
-  
-  # Data retention (days)
-  config.retention_days = 90
+  # Optional: Configure admin settings
+  # config.admin_parent_controller = "ApplicationController"
+  # config.admin_layout = "application"
+  # config.retention_days = 90
 end
 
-# Register handler for specific event type
-CaptainHook.register_handler(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  handler_class: "StripePaymentSucceededHandler",
-  priority: 100,
-  async: true
-)
+# Register handlers - must be inside after_initialize block
+Rails.application.config.after_initialize do
+  # Register handler for specific event type
+  CaptainHook.register_handler(
+    provider: "stripe",
+    event_type: "payment_intent.succeeded",
+    handler_class: "StripePaymentSucceededHandler",
+    priority: 100,
+    async: true,
+    max_attempts: 3
+  )
 
-# Register handler for multiple event types with wildcard
-CaptainHook.register_handler(
-  provider: "square",
-  event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-  handler_class: "SquareBankAccountHandler",
-  priority: 100,
-  async: true
-)
+  # Register handler for multiple event types with wildcard
+  CaptainHook.register_handler(
+    provider: "square",
+    event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
+    handler_class: "SquareBankAccountHandler",
+    priority: 100,
+    async: true
+  )
+end
 ```
+
+**Important**: Handler registration must be inside `Rails.application.config.after_initialize` to ensure CaptainHook is fully loaded.
 
 ### 6. Test with Sandbox
 
@@ -292,16 +297,17 @@ The adapter dropdown in the admin UI automatically detects all available adapter
 Need to integrate a provider not listed above? Create a custom adapter:
 
 ```ruby
-# lib/captain_hook/adapters/my_provider.rb
+# app/adapters/captain_hook/adapters/my_provider.rb
 module CaptainHook
   module Adapters
     class MyProvider < Base
       def verify_signature(payload:, headers:)
         # Implement provider-specific signature verification
-        expected_sig = generate_hmac(payload, signing_secret)
-        actual_sig = extract_header(headers, "X-My-Provider-Signature")
+        signature = headers["X-My-Provider-Signature"]
+        return false if signature.blank?
         
-        Rack::Utils.secure_compare(expected_sig, actual_sig)
+        expected = generate_hmac(provider_config.signing_secret, payload)
+        secure_compare(signature, expected)
       end
 
       def extract_event_id(payload)
@@ -309,31 +315,27 @@ module CaptainHook
       end
 
       def extract_event_type(payload)
-        payload["type"]
+        payload["type"] || "unknown"
       end
 
       def extract_timestamp(headers)
-        time_str = extract_header(headers, "X-My-Provider-Timestamp")
+        time_str = headers["X-My-Provider-Timestamp"]
         Time.parse(time_str).to_i rescue nil
       end
 
       private
 
-      def generate_hmac(payload, secret)
-        OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
+      def generate_hmac(secret, data)
+        OpenSSL::HMAC.hexdigest("SHA256", secret, data)
       end
     end
   end
 end
 ```
 
-Then require it in `lib/captain_hook.rb`:
+Place adapters in `app/adapters/captain_hook/adapters/` - they'll be automatically discovered by the admin UI dropdown.
 
-```ruby
-require "captain_hook/adapters/my_provider"
-```
-
-**Full documentation**: See [docs/gem_template/ADAPTERS.md](docs/gem_template/ADAPTERS.md) for detailed adapter creation guide with examples for Stripe, Square, PayPal, and more.
+**Full documentation**: See [docs/ADAPTERS.md](docs/ADAPTERS.md) for detailed adapter creation guide with examples for Stripe, Square, PayPal, and more.
 
 ## Security & Encryption
 
@@ -408,7 +410,16 @@ The sandbox bypasses signature verification for easy testing.
 
 Most providers offer webhook testing tools:
 
-- **Stripe**: Use the Stripe CLI `stripe trigger payment_intent.succeeded`
+- **Stripe CLI**: 
+  ```bash
+  # Trigger test events
+  stripe trigger payment_intent.succeeded
+  
+  # Or forward webhooks to your local server
+  stripe listen --forward-to localhost:3000/captain_hook/incoming/stripe/YOUR_TOKEN
+  ```
+  Replace `YOUR_TOKEN` with your provider's token from the admin UI.
+
 - **Square**: Use the Square Sandbox webhook simulator
 - **PayPal**: Use the PayPal webhook simulator in the developer dashboard
 
@@ -478,8 +489,23 @@ CaptainHook.register_handler(
 
 ## Documentation
 
-- **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)
-- **Architecture**: [docs/gem_template/](docs/gem_template/) (template reference)
+### For Gem Developers
+
+**Building a gem that needs webhook support?** 
+
+See our comprehensive guide: [**Setting Up Webhooks in Your Gem**](docs/GEM_WEBHOOK_SETUP.md)
+
+This guide shows you how to create provider adapters, handler classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
+
+### General Documentation
+
+- **Handler Management**: [docs/HANDLER_MANAGEMENT.md](docs/HANDLER_MANAGEMENT.md) - Managing handlers via admin UI
+- **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](docs/PROVIDER_DISCOVERY.md) - File-based provider configuration
+- **Custom Adapters**: [docs/CUSTOM_ADAPTERS.md](docs/CUSTOM_ADAPTERS.md) - Creating adapters for new providers
+- **Adapters Reference**: [docs/ADAPTERS.md](docs/ADAPTERS.md) - Detailed adapter implementation guide
+- **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
+- **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md) - Technical overview
+- **Visual Guide**: [docs/VISUAL_GUIDE.md](docs/VISUAL_GUIDE.md) - Screenshots and UI walkthrough
 
 ## License
 
