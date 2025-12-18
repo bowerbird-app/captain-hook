@@ -108,15 +108,30 @@ $ ruby generate_keys.rb
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
+**CaptainHook ships with adapters for common providers:**
+- Stripe
+- Square
+- PayPal
+- WebhookSite (testing)
+
 **Create the directory structure:**
 
 ```bash
 mkdir -p captain_hook/providers
 mkdir -p captain_hook/handlers
-mkdir -p captain_hook/adapters  # Optional, for custom adapters
 ```
 
 **Create a provider YAML file** (e.g., `captain_hook/providers/stripe.yml`):
+
+You can copy from the example templates shipped with CaptainHook:
+
+```bash
+# Example templates are in the gem at captain_hook/providers/*.yml.example
+# Copy and customize for your needs
+cp captain_hook/providers/stripe.yml.example captain_hook/providers/stripe.yml
+```
+
+Or create from scratch:
 
 ```yaml
 # captain_hook/providers/stripe.yml
@@ -156,6 +171,26 @@ Providers are automatically discovered from:
 - Loaded gems: `<gem_root>/captain_hook/providers/*.yml`
 
 The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
+
+**Multiple Instances of Same Provider:**
+
+You can have multiple instances of the same provider type (e.g., multiple Stripe accounts):
+
+```yaml
+# captain_hook/providers/stripe_account_a.yml
+name: stripe_account_a
+display_name: Stripe (Account A)
+adapter_class: CaptainHook::Adapters::Stripe
+signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
+
+# captain_hook/providers/stripe_account_b.yml
+name: stripe_account_b
+display_name: Stripe (Account B)  
+adapter_class: CaptainHook::Adapters::Stripe
+signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
+```
+
+Each gets its own webhook URL and can have different handlers.
 
 ### 3. Get Your Webhook URL
 
@@ -271,30 +306,47 @@ Handlers can be configured with:
 
 ## Adapters
 
-CaptainHook includes adapters for popular webhook providers:
+CaptainHook ships with built-in adapters for popular webhook providers. Adapters handle provider-specific signature verification and event extraction.
 
 ### Built-in Adapters
 
-- **Stripe**: HMAC-SHA256 signature verification with hex encoding
-- **Square**: HMAC-SHA256 signature verification with Base64 encoding
-- **PayPal**: Certificate-based verification (simplified for testing)
-- **WebhookSite**: Simple testing adapter (no signature verification)
+CaptainHook includes these adapters out of the box:
+
+- **Stripe** (`CaptainHook::Adapters::Stripe`)
+  - HMAC-SHA256 signature verification with hex encoding
+  - Timestamp validation for replay attack prevention
+  - Supports Stripe's signature format: `t=timestamp,v1=signature`
+
+- **Square** (`CaptainHook::Adapters::Square`)
+  - HMAC-SHA256 signature verification with Base64 encoding
+  - Notification URL validation
+  - Supports X-Square-Hmacsha256-Signature header
+
+- **PayPal** (`CaptainHook::Adapters::Paypal`)
+  - Certificate-based verification (simplified)
+  - Transmission ID and timestamp validation
+  - Supports PayPal's transmission headers
+
+- **WebhookSite** (`CaptainHook::Adapters::WebhookSite`)
+  - No signature verification (testing only)
+  - Use for local development and testing
 
 ### Using an Adapter
 
-```ruby
-CaptainHook::Provider.create!(
-  name: "stripe",
-  adapter_class: "CaptainHook::Adapters::Stripe",
-  signing_secret: ENV["STRIPE_WEBHOOK_SECRET"]
-)
+Adapters are specified in your provider YAML configuration:
+
+```yaml
+# captain_hook/providers/stripe.yml
+name: stripe
+adapter_class: CaptainHook::Adapters::Stripe
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 ```
 
-The adapter dropdown in the admin UI automatically detects all available adapters.
+The admin UI automatically detects all available adapters (both built-in and custom) in the adapter dropdown.
 
 ### Creating a Custom Adapter
 
-Need to integrate a provider not listed above? Create a custom adapter:
+Need to integrate a provider not listed above? Create a custom adapter in your Rails application:
 
 ```ruby
 # app/adapters/captain_hook/adapters/my_provider.rb
