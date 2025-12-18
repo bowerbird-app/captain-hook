@@ -90,7 +90,22 @@
     </div>
   <% end %>
 
-  <% if @registry_handlers.any? %>
+  <% 
+    # Find registry handlers that are NOT in the database
+    unsynced_handlers = {}
+    @registry_handlers.each do |event_type, handler_configs|
+      handler_configs.each do |config|
+        # Check if this handler exists in DB
+        db_match = @db_handlers.find { |h| h.event_type == event_type && h.handler_class == config.handler_class }
+        unless db_match
+          unsynced_handlers[event_type] ||= []
+          unsynced_handlers[event_type] << config
+        end
+      end
+    end
+  %>
+  
+  <% if unsynced_handlers.any? %>
     <div class="card mb-4">
       <div class="card-header">
         <h5 class="mb-0">Registered Handlers (In-Memory Registry)</h5>
@@ -101,7 +116,7 @@
           Click "Scan Handlers" above to sync them.
         </p>
         
-        <% @registry_handlers.each do |event_type, handler_configs| %>
+        <% unsynced_handlers.each do |event_type, handler_configs| %>
           <div class="mb-4">
             <h6 class="border-bottom pb-2">
               Event Type: <code><%= event_type %></code>
