@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed inter-gem communication documentation
 
 ### Added
+- **Built-in adapters**: CaptainHook now ships with adapters for common webhook providers
+  - Stripe adapter (`CaptainHook::Adapters::Stripe`)
+  - Square adapter (`CaptainHook::Adapters::Square`)
+  - PayPal adapter (`CaptainHook::Adapters::Paypal`)
+  - WebhookSite adapter (`CaptainHook::Adapters::WebhookSite`) for testing
+- **Adapter discovery service**: Automatically discovers available adapters (built-in and custom)
+- **Provider templates**: Example YAML configurations for common providers in `captain_hook/providers/*.yml.example`
+- **Multi-tenant provider support**: Can have multiple instances of the same provider type with different credentials
 - **Provider Management**: New `Provider` model for database-backed webhook provider configuration
 - Provider admin interface at `/captain_hook/admin/providers`
   - Create, read, update, and delete webhook providers
@@ -29,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced security documentation and explanations in admin UI
 
 ### Changed
+- **Architecture**: Adapters now live in the CaptainHook gem, not in consuming gems or applications
+  - Custom adapters should be created in `app/adapters/captain_hook/adapters/` in the host application
+  - Consuming gems only need to provide handlers and provider YAML configs
+- **Documentation**: Completely rewritten to emphasize built-in adapters and multi-tenant setups
+  - README.md updated with built-in adapter information
+  - docs/GEM_WEBHOOK_SETUP.md streamlined to focus on using built-in adapters
+  - docs/ADAPTERS.md updated with contributing guidelines
 - Admin interface now defaults to providers list instead of incoming events
 - Webhook tester page reworded to focus on provider connectivity testing
 - Configuration now supports both in-memory and database-backed providers
