@@ -493,6 +493,12 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 ```
 your_rails_app/
 │
+├── app/
+│   └── adapters/                    # ← Only if you need custom adapters
+│       └── captain_hook/            #    for providers not built into
+│           └── adapters/            #    CaptainHook (rare)
+│               └── custom_provider.rb
+│
 ├── config/
 │   ├── initializers/
 │   │   └── captain_hook.rb         # Handler registrations
@@ -505,13 +511,10 @@ your_rails_app/
 │   │   ├── square.yml              # Square provider config
 │   │   └── paypal.yml              # PayPal provider config
 │   │
-│   ├── handlers/                    # ← Event handler classes
-│   │   ├── stripe_payment_intent_handler.rb
-│   │   ├── square_bank_account_handler.rb
-│   │   └── paypal_payment_handler.rb
-│   │
-│   └── adapters/                    # ← Custom adapters (optional)
-│       └── custom_service_adapter.rb
+│   └── handlers/                    # ← Event handler classes
+│       ├── stripe_payment_intent_handler.rb
+│       ├── square_bank_account_handler.rb
+│       └── paypal_payment_handler.rb
 │
 └── .env                             # Environment variables (gitignored)
     STRIPE_WEBHOOK_SECRET=whsec_xxx
@@ -524,10 +527,6 @@ your_rails_app/
 my_payment_gem/
 │
 ├── app/
-│   ├── adapters/
-│   │   └── captain_hook/
-│   │       └── adapters/
-│   │           └── my_provider.rb  # Custom adapter
 │   └── jobs/
 │       └── my_gem/
 │           └── webhooks/
@@ -536,12 +535,14 @@ my_payment_gem/
 │
 ├── captain_hook/                    # ← Auto-discovered by CaptainHook
 │   └── providers/
-│       └── my_provider.yml         # Provider config shipped with gem
+│       └── stripe.yml              # Use built-in CaptainHook::Adapters::Stripe
 │
 └── lib/
     └── my_gem/
         └── engine.rb               # Register handlers here
 ```
+
+**Note**: Most gems use CaptainHook's built-in adapters (Stripe, Square, PayPal, WebhookSite). Only create a custom adapter in your **Rails application** (not in your gem) if you need to support a provider that CaptainHook doesn't have built-in support for.
 
 ## Configuration Examples
 
@@ -962,21 +963,21 @@ CaptainHook's discovery and management system provides:
 captain_hook/
 ├── providers/           # Provider YAML configs
 │   └── *.yml
-├── handlers/            # Handler classes
-│   └── *_handler.rb
-└── adapters/            # Custom adapters
-    └── *_adapter.rb
+└── handlers/            # Handler classes
+    └── *_handler.rb
 
 config/
 └── initializers/
     └── captain_hook.rb  # Handler registration
 
-app/
-└── adapters/
+app/                         # Only if you need custom adapters
+└── adapters/                # for unsupported providers (rare)
     └── captain_hook/
-        └── adapters/    # App-level custom adapters
-            └── *.rb
+        └── adapters/
+            └── custom_provider.rb
 ```
+
+**Note**: Custom adapters are only needed if you're using a provider that CaptainHook doesn't have built-in support for. Most users won't need this directory.
 
 ## Troubleshooting
 

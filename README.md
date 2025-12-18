@@ -108,11 +108,13 @@ $ ruby generate_keys.rb
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
-**CaptainHook ships with adapters for common providers:**
-- Stripe
-- Square
-- PayPal
-- WebhookSite (testing)
+**CaptainHook ships with built-in adapters for common providers:**
+- **Stripe** - `CaptainHook::Adapters::Stripe`
+- **Square** - `CaptainHook::Adapters::Square`  
+- **PayPal** - `CaptainHook::Adapters::Paypal`
+- **WebhookSite** - `CaptainHook::Adapters::WebhookSite` (testing)
+
+**You don't need to create adapters for these providers** - just reference them in your provider YAML config.
 
 **Create the directory structure:**
 
