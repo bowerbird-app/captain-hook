@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.metadata["rubygems_mfa_required"] = "true"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    Dir["{app,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+    Dir["{app,captain_hook,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
 
   spec.add_dependency "kaminari", "~> 1.2"
