@@ -25,6 +25,9 @@ A comprehensive Rails engine for receiving and processing webhooks from external
   - View and manage providers
   - View incoming events with filtering
   - View registered handlers per provider
+  - **Edit and configure handlers** (async/sync, retries, priority)
+  - **Scan and sync handlers** from application code
+  - **Soft-delete handlers** to prevent re-addition
   - Monitor event processing status
   - Track handler execution
 
@@ -377,9 +380,17 @@ All incoming webhooks are verified:
 Access the admin interface at `/captain_hook/admin`:
 
 - **Providers**: Manage webhook providers, view webhook URLs, configure settings
+  - **Scan for Providers**: Discover providers from YAML files and sync to database
+  - **Scan Handlers**: Discover and sync handlers for each provider
 - **Incoming Events**: View all received webhooks with filtering and search
-- **Handlers**: View registered handlers per provider and their execution status
+- **Handlers**: View, edit, and manage registered handlers per provider
+  - Configure async/sync execution mode
+  - Set retry attempts and delays
+  - Adjust handler priority
+  - Soft-delete handlers to prevent re-addition
 - **Sandbox**: Test webhooks without triggering real events from providers
+
+See [Handler Management](docs/HANDLER_MANAGEMENT.md) for detailed documentation on managing handlers.
 
 ## Testing Webhooks
 

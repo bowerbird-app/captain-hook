@@ -4,7 +4,7 @@ module CaptainHook
   module Admin
     # Admin controller for managing webhook providers
     class ProvidersController < BaseController
-      before_action :set_provider, only: %i[show edit update destroy]
+      before_action :set_provider, only: %i[show edit update destroy scan_handlers]
 
       # GET /captain_hook/admin/providers
       def index
@@ -71,19 +71,62 @@ module CaptainHook
         sync = CaptainHook::Services::ProviderSync.new(provider_definitions)
         results = sync.call
 
+        # Also scan and sync handlers
+        handler_discovery = CaptainHook::Services::HandlerDiscovery.new
+        handler_definitions = handler_discovery.call
+        
+        handler_sync = CaptainHook::Services::HandlerSync.new(handler_definitions)
+        handler_results = handler_sync.call
+
         # Build flash message
         messages = []
         messages << "Created #{results[:created].size} provider(s)" if results[:created].any?
         messages << "Updated #{results[:updated].size} provider(s)" if results[:updated].any?
         messages << "Skipped #{results[:skipped].size} provider(s)" if results[:skipped].any?
+        messages << "Created #{handler_results[:created].size} handler(s)" if handler_results[:created].any?
+        messages << "Updated #{handler_results[:updated].size} handler(s)" if handler_results[:updated].any?
+        messages << "Skipped #{handler_results[:skipped].size} deleted handler(s)" if handler_results[:skipped].any?
 
-        if results[:errors].any?
-          error_details = results[:errors].map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
+        all_errors = results[:errors] + handler_results[:errors].map { |e| { name: e[:handler], error: e[:error] } }
+        
+        if all_errors.any?
+          error_details = all_errors.map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
           redirect_to admin_providers_url, alert: "Scan completed with errors: #{error_details}"
         elsif messages.any?
           redirect_to admin_providers_url, notice: "Scan completed! #{messages.join(', ')}"
         else
-          redirect_to admin_providers_url, notice: "Scan completed. All providers are up to date."
+          redirect_to admin_providers_url, notice: "Scan completed. All providers and handlers are up to date."
+        end
+      end
+
+      # POST /captain_hook/admin/providers/:id/scan_handlers
+      def scan_handlers
+        # Discover handlers from HandlerRegistry for this provider
+        handler_definitions = CaptainHook::Services::HandlerDiscovery.for_provider(@provider.name)
+
+        if handler_definitions.empty?
+          redirect_to [:admin, @provider], 
+                      alert: "No handlers registered for this provider. Register handlers in your application code."
+          return
+        end
+
+        # Sync discovered handlers to database
+        sync = CaptainHook::Services::HandlerSync.new(handler_definitions)
+        results = sync.call
+
+        # Build flash message
+        messages = []
+        messages << "Created #{results[:created].size} handler(s)" if results[:created].any?
+        messages << "Updated #{results[:updated].size} handler(s)" if results[:updated].any?
+        messages << "Skipped #{results[:skipped].size} deleted handler(s)" if results[:skipped].any?
+
+        if results[:errors].any?
+          error_details = results[:errors].map { |e| "#{e[:handler]}: #{e[:error]}" }.join("; ")
+          redirect_to [:admin, @provider], alert: "Scan completed with errors: #{error_details}"
+        elsif messages.any?
+          redirect_to [:admin, @provider], notice: "Handler scan completed! #{messages.join(', ')}"
+        else
+          redirect_to [:admin, @provider], notice: "Handler scan completed. All handlers are up to date."
         end
       end
 

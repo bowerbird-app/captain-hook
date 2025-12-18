@@ -7,7 +7,10 @@
     </ol>
   </nav>
 
-  <h1 class="mb-4">Event Handlers for <%= @provider.display_name || @provider.name.titleize %></h1>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Event Handlers for <%= @provider.display_name || @provider.name.titleize %></h1>
+    <%= button_to "Scan Handlers", scan_handlers_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered handlers in your application code. Continue?" } %>
+  </div>
 
   <div class="card mb-4">
     <div class="card-body">
@@ -15,6 +18,10 @@
       <p class="card-text">
         Handlers are Ruby classes that process incoming webhook events from this provider.
         They are registered in your application code using <code>CaptainHook.register_handler</code>.
+      </p>
+      <p class="card-text">
+        Click <strong>"Scan Handlers"</strong> to discover handlers from your application code and sync them to the database.
+        Once synced, you can configure them here (async/sync, retries, priority, etc.).
       </p>
       <p class="card-text mb-0">
         <strong>Example:</strong>
@@ -29,13 +36,72 @@
     </div>
   </div>
 
-  <% if @handlers.any? %>
-    <div class="card">
+  <% if @db_handlers.any? %>
+    <div class="card mb-4">
       <div class="card-header">
-        <h5 class="mb-0">Registered Handlers</h5>
+        <h5 class="mb-0">Configured Handlers</h5>
       </div>
       <div class="card-body">
-        <% @handlers.each do |event_type, handler_configs| %>
+        <p class="text-muted">These handlers have been synced to the database and can be configured.</p>
+        
+        <% @db_handlers.group_by(&:event_type).each do |event_type, handlers| %>
+          <div class="mb-4">
+            <h6 class="border-bottom pb-2">
+              Event Type: <code><%= event_type %></code>
+            </h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Priority</th>
+                    <th>Handler Class</th>
+                    <th>Execution</th>
+                    <th>Max Attempts</th>
+                    <th>Retry Delays</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% handlers.each do |handler| %>
+                    <tr>
+                      <td><span class="badge bg-secondary"><%= handler.priority %></span></td>
+                      <td><code><%= handler.handler_class %></code></td>
+                      <td>
+                        <% if handler.async %>
+                          <span class="badge bg-info">Async</span>
+                        <% else %>
+                          <span class="badge bg-warning">Sync</span>
+                        <% end %>
+                      </td>
+                      <td><%= handler.max_attempts %></td>
+                      <td><small><%= handler.retry_delays.join(", ") %>s</small></td>
+                      <td>
+                        <%= link_to "Edit", edit_admin_provider_handler_path(@provider, handler), class: "btn btn-sm btn-outline-primary" %>
+                        <%= button_to "Delete", admin_provider_handler_path(@provider, handler), method: :delete, class: "btn btn-sm btn-outline-danger", data: { confirm: "Are you sure? This will soft-delete the handler and it won't be re-added during scans." } %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @registry_handlers.any? %>
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Registered Handlers (In-Memory Registry)</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          These handlers are registered in your application code but not yet synced to the database.
+          Click "Scan Handlers" above to sync them.
+        </p>
+        
+        <% @registry_handlers.each do |event_type, handler_configs| %>
           <div class="mb-4">
             <h6 class="border-bottom pb-2">
               Event Type: <code><%= event_type %></code>
@@ -74,7 +140,9 @@
         <% end %>
       </div>
     </div>
-  <% else %>
+  <% end %>
+
+  <% if @db_handlers.empty? && @registry_handlers.empty? %>
     <div class="alert alert-info">
       <h5>No handlers registered</h5>
       <p class="mb-2">
@@ -88,6 +156,7 @@
         <li>Create a handler class (e.g., <code>app/handlers/my_handler.rb</code>)</li>
         <li>Register it in <code>config/initializers/captain_hook.rb</code></li>
         <li>Restart your application</li>
+        <li>Click "Scan Handlers" to sync them to the database</li>
       </ol>
     </div>
   <% end %>

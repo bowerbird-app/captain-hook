@@ -16,6 +16,8 @@ require "captain_hook/services/rate_limiter"
 require "captain_hook/services/example_service"
 require "captain_hook/services/provider_discovery"
 require "captain_hook/services/provider_sync"
+require "captain_hook/services/handler_discovery"
+require "captain_hook/services/handler_sync"
 
 module CaptainHook
   class << self

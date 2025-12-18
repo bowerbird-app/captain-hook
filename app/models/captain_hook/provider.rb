@@ -12,6 +12,7 @@ module CaptainHook
 
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
+    has_many :handlers, primary_key: :name, foreign_key: :provider, class_name: "CaptainHook::Handler", dependent: :destroy
 
     # Validations
     validates :name, presence: true, uniqueness: true,
