@@ -3,5 +3,6 @@ class ApplicationController < ActionController::Base
   allow_browser versions: :modern
 
   # Changes to the importmap will invalidate the etag for HTML responses
-  stale_when_importmap_changes
+  # Only call if the method is available (importmap-rails gem is loaded)
+  stale_when_importmap_changes if respond_to?(:stale_when_importmap_changes)
 end
