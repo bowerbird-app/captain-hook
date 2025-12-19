@@ -6,9 +6,9 @@ module CaptainHook
   module Adapters
     class BaseAdapterTest < Minitest::Test
       def setup
-        @config = OpenStruct.new(
-          name: "test_provider",
-          signing_secret: "test_secret"
+        @config = Struct.new(:name, :signing_secret).new(
+          "test_provider",
+          "test_secret"
         )
         @adapter = Base.new(@config)
       end

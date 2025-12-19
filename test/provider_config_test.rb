@@ -99,7 +99,7 @@ module CaptainHook
         "name" => "test",
         "adapter_class" => "CaptainHook::Adapters::Stripe"
       )
-      
+
       assert_nothing_raised do
         config.adapter_class.constantize
       end
@@ -109,12 +109,12 @@ module CaptainHook
 
     def test_resolves_env_variable_in_signing_secret
       ENV["TEST_WEBHOOK_SECRET"] = "secret_from_env"
-      
+
       config = ProviderConfig.new(
         "name" => "test",
         "signing_secret" => "ENV[TEST_WEBHOOK_SECRET]"
       )
-      
+
       assert_equal "secret_from_env", config.resolve_signing_secret
     ensure
       ENV.delete("TEST_WEBHOOK_SECRET")
@@ -125,7 +125,7 @@ module CaptainHook
         "name" => "test",
         "signing_secret" => "literal_secret"
       )
-      
+
       assert_equal "literal_secret", config.resolve_signing_secret
     end
 
@@ -134,7 +134,7 @@ module CaptainHook
         "name" => "test",
         "signing_secret" => "ENV[NONEXISTENT_VAR]"
       )
-      
+
       # Should return nil or empty string for missing ENV vars
       result = config.resolve_signing_secret
       assert [nil, ""].include?(result)
@@ -145,7 +145,7 @@ module CaptainHook
     def test_active_predicate_method
       active_config = ProviderConfig.new("name" => "test", "active" => true)
       inactive_config = ProviderConfig.new("name" => "test", "active" => false)
-      
+
       assert active_config.active?
       refute inactive_config.active?
     end
@@ -155,14 +155,14 @@ module CaptainHook
     def test_configs_with_same_name_are_equal
       config1 = ProviderConfig.new("name" => "stripe")
       config2 = ProviderConfig.new("name" => "stripe")
-      
+
       assert_equal config1, config2
     end
 
     def test_configs_with_different_names_are_not_equal
       config1 = ProviderConfig.new("name" => "stripe")
       config2 = ProviderConfig.new("name" => "square")
-      
+
       refute_equal config1, config2
     end
 
@@ -182,7 +182,7 @@ module CaptainHook
 
     def test_converts_to_hash
       hash = @provider_config.to_h
-      
+
       assert_instance_of Hash, hash
       assert_equal "stripe", hash["name"]
       assert_equal "Stripe", hash["display_name"]
@@ -190,7 +190,7 @@ module CaptainHook
 
     def test_to_h_includes_all_attributes
       hash = @provider_config.to_h
-      
+
       assert_includes hash.keys, "name"
       assert_includes hash.keys, "display_name"
       assert_includes hash.keys, "adapter_class"
@@ -205,7 +205,7 @@ module CaptainHook
         "source" => "application",
         "source_file" => "/path/to/config.yml"
       )
-      
+
       assert_equal "application", config_with_source.source
       assert_equal "/path/to/config.yml", config_with_source.source_file
     end
@@ -217,7 +217,7 @@ module CaptainHook
         "name" => "test",
         "description" => "Test webhook provider"
       )
-      
+
       assert_equal "Test webhook provider", config.description
     end
 
@@ -226,7 +226,7 @@ module CaptainHook
         "name" => "test",
         "webhook_url" => "https://example.com/webhooks"
       )
-      
+
       assert_equal "https://example.com/webhooks", config.webhook_url
     end
 
@@ -238,7 +238,7 @@ module CaptainHook
         "timestamp_tolerance_seconds" => "600",
         "rate_limit_requests" => "200"
       )
-      
+
       # Should handle string-to-integer conversion
       assert_kind_of Integer, config.timestamp_tolerance_seconds
       assert_kind_of Integer, config.rate_limit_requests
@@ -250,7 +250,7 @@ module CaptainHook
         "description" => nil,
         "display_name" => nil
       )
-      
+
       assert_nil config.description
       # Display name might default to name
       assert [nil, "test"].include?(config.display_name)

@@ -56,7 +56,7 @@ module CaptainHook
 
       succeeded_handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
       failed_handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.failed")
-      
+
       assert_equal 1, succeeded_handlers.size
       assert_equal 1, failed_handlers.size
       assert_equal "PaymentHandler", succeeded_handlers.first.handler_class
@@ -290,7 +290,7 @@ module CaptainHook
       )
 
       config = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      
+
       assert_equal 10, config.delay_for_attempt(0)
       assert_equal 20, config.delay_for_attempt(1)
       assert_equal 30, config.delay_for_attempt(2)
@@ -308,7 +308,7 @@ module CaptainHook
       )
 
       config = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      
+
       # Should return default 3600 when delays array is empty
       assert_equal 3600, config.delay_for_attempt(0)
       assert_equal 3600, config.delay_for_attempt(5)
@@ -352,7 +352,7 @@ module CaptainHook
       threads.each(&:join)
 
       # All threads should get the same result
-      assert results.all? { |r| r.size == 1 }
+      assert(results.all? { |r| r.size == 1 })
     end
   end
 end
