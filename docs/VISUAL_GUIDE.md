@@ -407,81 +407,104 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 │              IncomingController#create                      │
 └──────────────────┬──────────────────────────────────────────┘
                    │
-        ┌──────────┴──────────────┐
-        │                         │
-        ▼                         ▼
-┌──────────────────┐    ┌─────────────────────┐
-│ Verify Token     │    │  Find Provider      │
-│ (URL parameter)  │    │  by name            │
-└────────┬─────────┘    └──────────┬──────────┘
-         │                         │
-         └───────────┬─────────────┘
-                     │
-                     ▼
-            ┌─────────────────┐
-            │ Load Adapter    │
-            │ Verify Signature│
-            │ (via adapter)   │
-            └────────┬────────┘
-                     │
-                     ▼
+                   ▼
+        ┌────────────────────────┐
+        │ 1. Find Provider       │
+        │    by name             │
+        │ 2. Check Active?       │
+        │ 3. Verify Token        │
+        │    (URL parameter)     │
+        └────────┬───────────────┘
+                 │
+                 ▼
         ┌─────────────────────────┐
-        │ Validate Timestamp      │
-        │ Check Rate Limits       │
-        │ Check Payload Size      │
+        │ Security Checks         │
+        │ (in order):             │
+        │ 4. Rate Limiting        │
+        │ 5. Payload Size         │
+        │ 6. Signature Verify     │
+        │    (via adapter)        │
+        │ 7. Timestamp Validate   │
+        └────────┬────────────────┘
+                 │
+                 ▼
+        ┌─────────────────────────┐
+        │ 8. Parse JSON Payload   │
+        │ 9. Extract Event ID     │
+        │ 10. Extract Event Type  │
+        │     (via adapter)       │
         └────────┬────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           Create IncomingEvent Record                       │
-│   Store event in database with status: 'pending'            │
-└──────────────────┬──────────────────────────────────────────┘
-                   │
-                   ▼
-┌─────────────────────────────────────────────────────────────┐
-│       Find Registered Handlers for Event Type               │
-│   Query HandlerRegistry + Database for matching handlers    │
+│   11. Create IncomingEvent Record (Idempotent)              │
+│   find_or_create_by_external!(provider, external_id)        │
+│   Unique index prevents duplicates                          │
 └──────────────────┬──────────────────────────────────────────┘
                    │
         ┌──────────┴──────────────┐
         │                         │
         ▼                         ▼
 ┌──────────────────┐    ┌─────────────────────┐
-│ For Each Handler │    │  Create Handler     │
-│ (by priority)    │    │  Execution Record   │
-└────────┬─────────┘    └──────────┬──────────┘
-         │                         │
+│ New Event?       │    │  Duplicate Event?   │
+│ Status: received │    │  Status: duplicate  │
+│ Return 201       │    │  Return 200 OK      │
+└────────┬─────────┘    └─────────────────────┘
+         │
+         ▼
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   12. Find Registered Handlers for Event Type               │
+│   HandlerRegistry.handlers_for(provider, event_type)        │
+│   Returns handler configs sorted by priority                │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   13. For Each Handler Config (by priority)                 │
+│   Create IncomingEventHandler record:                       │
+│   - handler_class, priority, status: pending                │
+└──────────────────┬──────────────────────────────────────────┘
+         │
          └───────────┬─────────────┘
                      │
         ┌────────────┴────────────┐
         │                         │
         ▼                         ▼
 ┌──────────────────┐    ┌─────────────────────┐
-│ Async Handler?   │    │  Sync Handler?      │
-│ Enqueue Job      │    │  Execute Now        │
-│ (IncomingHandler │    │  (Inline)           │
-│  Job)            │    │                     │
+│ 14a. Async?      │    │  14b. Sync?         │
+│ perform_later    │    │  perform(inline)    │
+│ IncomingHandler  │    │  IncomingHandler    │
+│ Job              │    │  Job                │
 └────────┬─────────┘    └──────────┬──────────┘
          │                         │
          └───────────┬─────────────┘
                      │
                      ▼
-        ┌─────────────────────────┐
-        │ Handler Executes:       │
-        │ handler.handle(         │
-        │   event: event,         │
-        │   payload: payload,     │
-        │   metadata: metadata    │
-        │ )                       │
-        └────────┬────────────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-        ▼                 ▼
-┌──────────────┐  ┌──────────────┐
-│ Success      │  │ Error        │
-│ Mark Complete│  │ Retry Later  │
-└──────────────┘  └──────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│   15. IncomingHandlerJob Execution                          │
+│   - Acquire optimistic lock on handler record               │
+│   - Increment attempt_count                                 │
+│   - Instantiate handler class: handler_class.constantize    │
+│   - Call handler.handle(event:, payload:, metadata:)        │
+└────────┬────────────────────────────────────────────────────┘
+         │
+        ┌┴────────┐
+        │         │
+        ▼         ▼
+┌──────────┐  ┌──────────────────────────────────────────────┐
+│ Success  │  │ Error                                        │
+│ Status:  │  │ Status: failed                               │
+│ processed│  │ Check max_attempts:                          │
+│ Mark     │  │ - If exceeded: stop                          │
+│ handler  │  │ - Else: schedule retry with backoff         │
+│ complete │  │   (delays: 30s, 60s, 300s, 900s, 3600s)     │
+│          │  │ - Reset status: pending                      │
+│ Update   │  │ - Enqueue with wait: delay.seconds           │
+│ event    │  │                                              │
+│ status   │  │ Update event status                          │
+└──────────┘  └──────────────────────────────────────────────┘
 ```
 
 ## File Structure

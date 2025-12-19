@@ -2,6 +2,26 @@
 
 A comprehensive Rails engine for receiving and processing webhooks from external providers with features including signature verification, rate limiting, retry logic, and admin UI.
 
+## How It Works
+
+CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
+
+1. **Provider Setup**: Define providers in YAML files (`captain_hook/providers/*.yml`), click "Scan for Providers" to sync to database
+2. **Handler Registration**: Register handlers in `config/initializers/captain_hook.rb`, click "Scan Handlers" to sync to database
+3. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
+4. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
+5. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
+6. **Handler Execution**: Looks up handlers from registry, creates execution records, enqueues jobs
+7. **Background Processing**: `IncomingHandlerJob` executes handlers with retry logic and exponential backoff
+8. **Observability**: ActiveSupport::Notifications events for monitoring
+
+**Key Architecture Points:**
+- **File-based Discovery**: Providers and adapters auto-discovered from YAML files in app or gems
+- **In-Memory Registry**: Handlers stored in thread-safe `HandlerRegistry` then synced to database
+- **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
+- **Async by Default**: Handlers run in background jobs with configurable retry delays
+- **Provider Adapters**: Each provider has adapter class for signature verification (Stripe, Square, PayPal, etc.)
+
 ## Features
 
 - **Incoming Webhooks**
