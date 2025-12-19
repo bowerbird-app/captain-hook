@@ -21,6 +21,7 @@ Metrics/ClassLength:
   Max: 150
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
     - 'lib/captain_hook/hooks.rb'
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
@@ -29,11 +30,13 @@ Metrics/ModuleLength:
   Max: 200
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
 
 Metrics/MethodLength:
   Max: 30
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
     - 'lib/generators/**/*'
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
@@ -43,6 +46,7 @@ Metrics/AbcSize:
   Max: 30
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
     - 'lib/generators/**/*'
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
@@ -60,20 +64,40 @@ Metrics/PerceivedComplexity:
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
 
+Metrics/BlockLength:
+  Exclude:
+    - 'test/**/*'
+    - 'spec/**/*'
+
 # Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
 
 # Allow nested method definitions in tests (common for testing behavior)
 Lint/NestedMethodDefinition:
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
+
+# Allow constants defined in test blocks
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - 'test/**/*'
+    - 'spec/**/*'
+
+# Allow unused method arguments in test handlers
+Lint/UnusedMethodArgument:
+  Exclude:
+    - 'test/**/*'
+    - 'spec/**/*'
 
 # Allow underscores in test method names (test_something_100 is fine)
 Naming/VariableNumber:
   Exclude:
     - 'test/**/*'
+    - 'spec/**/*'
 
 # Don't require super in service initialize methods
 Lint/MissingSuper:
@@ -95,3 +119,5 @@ Naming/PredicateMethod:
   Exclude:
     - 'lib/captain_hook/adapters/base.rb'
     - 'lib/captain_hook/signature_generator.rb'
+    - 'spec/**/*'
+    - 'test/**/*'

@@ -40,6 +40,9 @@ test/dummy/config/master.key
 test/dummy/config/credentials/*.key
 test/dummy/config/local_encryption_keys.yml
 
+# RSpec
+spec/examples.txt
+
 # Build artifacts
 *.gem
 pkg/

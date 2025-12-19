@@ -10,6 +10,11 @@ gem "sprockets-rails"
 
 group :development, :test do
   gem "debug"
+  gem "rspec-rails", "~> 6.1"
+  gem "factory_bot_rails", "~> 6.4"
+  gem "faker", "~> 3.2"
+  gem "shoulda-matchers", "~> 6.0"
+  gem "webmock", "~> 3.19"
 end
 
 group :development do

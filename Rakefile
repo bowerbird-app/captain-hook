@@ -9,6 +9,20 @@ Rake::TestTask.new(:test) do |t|
   t.verbose = false
 end
 
+# Load RSpec rake tasks
+begin
+  require "rspec/core/rake_task"
+  
+  RSpec::Core::RakeTask.new(:spec) do |t|
+    t.rspec_opts = "--color --format documentation"
+  end
+  
+  desc "Run RSpec tests"
+  task rspec: :spec
+rescue LoadError
+  # RSpec not available, skip
+end
+
 namespace :test do
   desc "Run rename verification tests to validate gem naming consistency"
   task :rename_verification do
