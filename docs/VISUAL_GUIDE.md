@@ -120,6 +120,177 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Handler Registration & Discovery
+
+### Handler Registration Locations
+
+Handlers can be registered in two places:
+
+**1. Rails Application** (`config/initializers/captain_hook.rb`):
+```ruby
+# config/initializers/captain_hook.rb
+Rails.application.config.after_initialize do
+  CaptainHook.register_handler(
+    provider: "stripe",
+    event_type: "payment_intent.succeeded",
+    handler_class: "StripePaymentIntentSucceededHandler",
+    priority: 100,
+    async: true
+  )
+end
+```
+
+**2. Third-Party Gems** (in their engine initializer):
+```ruby
+# lib/my_gem/engine.rb
+module MyGem
+  class Engine < ::Rails::Engine
+    initializer "my_gem.register_captain_hook_handlers", after: :load_config_initializers do
+      Rails.application.config.after_initialize do
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "payment_intent.succeeded",
+          handler_class: "MyGem::Webhooks::PaymentIntentSucceededHandler",
+          priority: 100,
+          async: true
+        )
+      end
+    end
+  end
+end
+```
+
+### Handler Registration Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   Rails Boot Sequence                       │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   1. Load Gems (including 3rd party with handlers)          │
+│      Gem engines load their initializers                    │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   2. Load Application Initializers                          │
+│      config/initializers/captain_hook.rb runs               │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   3. after_initialize Blocks Execute                        │
+│      All CaptainHook.register_handler calls run             │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   4. Handlers Stored in HandlerRegistry                     │
+│      In-memory thread-safe hash:                            │
+│      {"stripe:payment_intent.succeeded" => [HandlerConfig]} │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   5. Admin UI: Click "Scan Handlers"                        │
+│      Triggers HandlerDiscovery service                      │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   6. HandlerDiscovery Reads HandlerRegistry                 │
+│      Converts in-memory configs to hash definitions         │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   7. HandlerSync Persists to Database                       │
+│      Creates Handler records for admin UI configuration     │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│   8. Runtime: Webhook Arrives                               │
+│      IncomingController queries HandlerRegistry             │
+│      (NOT database - registry is source of truth)           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Why `after_initialize` is Required
+
+```ruby
+# ❌ WRONG - Will fail because CaptainHook not loaded yet
+CaptainHook.register_handler(...)
+
+# ✅ CORRECT - Waits for Rails to finish loading
+Rails.application.config.after_initialize do
+  CaptainHook.register_handler(...)
+end
+```
+
+The `after_initialize` block ensures:
+1. CaptainHook engine is fully loaded
+2. All dependencies are available
+3. HandlerRegistry is initialized
+4. Thread-safe registration across gems and app
+
+### Example: 3rd Party Gem Handler Discovery
+
+```
+my_payment_gem/
+├── lib/
+│   └── my_payment_gem/
+│       ├── engine.rb                    # ← Registers handlers here
+│       └── webhooks/
+│           ├── payment_succeeded_handler.rb
+│           └── refund_processed_handler.rb
+│
+└── captain_hook/
+    └── providers/
+        └── stripe.yml                   # ← Provider config
+```
+
+**Gem Engine** (`lib/my_payment_gem/engine.rb`):
+```ruby
+module MyPaymentGem
+  class Engine < ::Rails::Engine
+    isolate_namespace MyPaymentGem
+
+    initializer "my_payment_gem.register_handlers", after: :load_config_initializers do
+      Rails.application.config.after_initialize do
+        # Register handler for payment succeeded
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "payment_intent.succeeded",
+          handler_class: "MyPaymentGem::Webhooks::PaymentSucceededHandler",
+          priority: 100,
+          async: true,
+          max_attempts: 5,
+          retry_delays: [30, 60, 300, 900, 3600]
+        )
+
+        # Register handler for refund processed
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "charge.refunded",
+          handler_class: "MyPaymentGem::Webhooks::RefundProcessedHandler",
+          priority: 100,
+          async: true
+        )
+      end
+    end
+  end
+end
+```
+
+**Result**: When Rails app boots with this gem:
+- Gem's handlers automatically registered in HandlerRegistry
+- Appear in admin UI after "Scan Handlers"
+- Execute when matching webhooks arrive
+- No configuration needed in host Rails app
+
 ## Handler Management UI
 
 ### Provider Show Page
