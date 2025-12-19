@@ -74,6 +74,25 @@ Rails.application.config.after_initialize do
     max_attempts: 3
   )
 
+  # Explicit registrations for dummy app Stripe handlers
+  CaptainHook.register_handler(
+    provider: "stripe",
+    event_type: "payment_intent.created",
+    handler_class: "StripePaymentIntentCreatedHandler",
+    priority: 100,
+    async: true,
+    max_attempts: 3
+  )
+
+  CaptainHook.register_handler(
+    provider: "stripe",
+    event_type: "charge.updated",
+    handler_class: "StripeChargeUpdatedHandler",
+    priority: 100,
+    async: true,
+    max_attempts: 3
+  )
+
   Rails.logger.info "🎣 Registered WebhookSiteTestHandler for webhook_site:test events"
   Rails.logger.info "💳 Registered StripePaymentIntentHandler for stripe payment_intent.* events"
   Rails.logger.info "🟦 Registered SquareBankAccountHandler for square bank_account.* events"

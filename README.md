@@ -200,10 +200,10 @@ Each provider gets a unique webhook URL with a secure token. The URL is automati
 
 ```ruby
 provider.webhook_url
-# => "https://your-app.com/captain_hook/incoming/stripe/abc123token..."
+# => "https://your-app.com/captain_hook/stripe/abc123token..."
 ```
 
-**The URL format**: `/captain_hook/incoming/:provider_name/:token`
+**The URL format**: `/captain_hook/:provider_name/:token`
 
 Share this URL with your provider (e.g., in Stripe's webhook settings). The token ensures that only requests to the correct URL are processed.
 
@@ -470,7 +470,7 @@ Most providers offer webhook testing tools:
   stripe trigger payment_intent.succeeded
   
   # Or forward webhooks to your local server
-  stripe listen --forward-to localhost:3000/captain_hook/incoming/stripe/YOUR_TOKEN
+  stripe listen --forward-to localhost:3000/captain_hook/stripe/YOUR_TOKEN
   ```
   Replace `YOUR_TOKEN` with your provider's token from the admin UI.
 
