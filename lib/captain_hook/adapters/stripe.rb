@@ -12,7 +12,8 @@ module CaptainHook
       # Verify Stripe webhook signature
       # Stripe sends signature as: t=timestamp,v1=signature
       def verify_signature(payload:, headers:)
-        signature_header = headers[SIGNATURE_HEADER] || headers[SIGNATURE_HEADER.downcase]
+        # Rails normalizes headers to Capitalized-Case format
+        signature_header = headers[SIGNATURE_HEADER]
         return false if signature_header.blank?
 
         timestamp, signatures = parse_signature_header(signature_header)
@@ -34,7 +35,7 @@ module CaptainHook
 
       # Extract timestamp from Stripe signature header
       def extract_timestamp(headers)
-        signature_header = headers[SIGNATURE_HEADER] || headers[SIGNATURE_HEADER.downcase]
+        signature_header = headers[SIGNATURE_HEADER]
         return nil if signature_header.blank?
 
         timestamp, = parse_signature_header(signature_header)
