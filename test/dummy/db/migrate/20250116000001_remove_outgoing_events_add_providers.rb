@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-# This migration comes from captain_hook (originally 20250116000001)
 
 class RemoveOutgoingEventsAddProviders < ActiveRecord::Migration[8.0]
   def up

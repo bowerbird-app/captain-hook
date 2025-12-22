@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# This migration comes from captain_hook (originally 20250101000002)
 class CreateCaptainHookIncomingEvents < ActiveRecord::Migration[7.0]
   def change
     create_table :captain_hook_incoming_events, id: :uuid do |t|

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# This migration comes from captain_hook (originally 20250101000001)
 # Example migration for CaptainHook engine.
 #
 # This migration creates a sample table to demonstrate the migration generator.

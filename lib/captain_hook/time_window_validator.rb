@@ -12,14 +12,37 @@ module CaptainHook
 
     # Validate that timestamp is within tolerance window
     # @param timestamp [Integer] Unix timestamp
+    # @param tolerance [Integer, nil] Override tolerance (optional)
     # @return [Boolean] true if within tolerance
-    def valid?(timestamp)
+    def valid?(timestamp, tolerance: nil)
       return false if timestamp.blank?
 
+      tolerance_to_use = tolerance || tolerance_seconds
       current_time = Time.current.to_i
       age = (current_time - timestamp.to_i).abs
 
-      age <= tolerance_seconds
+      age <= tolerance_to_use
+    end
+
+    # Validate with detailed result
+    # @param timestamp [Integer] Unix timestamp
+    # @param tolerance [Integer, nil] Override tolerance (optional)
+    # @return [Hash] Hash with :valid and :error keys
+    def validate(timestamp, tolerance: nil)
+      return { valid: false, error: "Timestamp is missing" } if timestamp.blank?
+
+      tolerance_to_use = tolerance || tolerance_seconds
+      current_time = Time.current.to_i
+      timestamp_int = timestamp.to_i
+      age = current_time - timestamp_int
+
+      if age > tolerance_to_use
+        { valid: false, error: "Timestamp is too old (expired)" }
+      elsif age < -tolerance_to_use
+        { valid: false, error: "Timestamp is too far in the future (not yet valid)" }
+      else
+        { valid: true, error: nil }
+      end
     end
 
     # Check if timestamp is too old

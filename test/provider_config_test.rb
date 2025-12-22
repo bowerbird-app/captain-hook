@@ -100,9 +100,9 @@ module CaptainHook
         "adapter_class" => "CaptainHook::Adapters::Stripe"
       )
 
-      assert_nothing_raised do
-        config.adapter_class.constantize
-      end
+      # Should not raise an error
+      adapter_class = config.adapter_class.constantize
+      assert_kind_of Class, adapter_class
     end
 
     # === ENV Variable Resolution Tests ===

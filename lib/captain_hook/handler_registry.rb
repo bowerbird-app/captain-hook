@@ -16,7 +16,7 @@ module CaptainHook
     ) do
       def initialize(**kwargs)
         super
-        self.async ||= true
+        self.async = true if async.nil?
         self.retry_delays ||= [30, 60, 300, 900, 3600]
         self.max_attempts ||= 5
         self.priority ||= 100

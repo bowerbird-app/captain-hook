@@ -9,74 +9,44 @@ module CaptainHook
   class SignatureGenerator
     attr_reader :secret
 
-    def initialize(secret)
+    def initialize(secret = nil)
       @secret = secret
     end
 
     # Generate signature for payload
-    # @param payload [Hash] The webhook payload
-    # @param timestamp [Integer, nil] Unix timestamp (defaults to current time)
-    # @return [Hash] Hash containing signature, timestamp, and signed_data
-    def generate(payload, timestamp: nil)
-      timestamp ||= Time.current.to_i
-
-      # Convert payload to canonical JSON (sorted keys)
-      canonical_json = canonical_json(payload)
-
-      # Create signed data: timestamp.json
-      signed_data = "#{timestamp}.#{canonical_json}"
-
+    # @param payload [String, Hash] The webhook payload
+    # @param secret [String] The signing secret
+    # @param algorithm [Symbol] Hash algorithm (:sha256 or :sha1)
+    # @return [String] The hexadecimal signature
+    def generate(payload, secret, algorithm: :sha256)
+      raise ArgumentError, "payload cannot be nil" if payload.nil?
+      
+      # Convert to string if hash
+      payload_string = payload.is_a?(String) ? payload : JSON.generate(payload)
+      
+      # Normalize algorithm name
+      algo_name = algorithm.to_s.upcase.sub("SHA", "SHA")
+      
       # Generate HMAC signature
-      signature = OpenSSL::HMAC.hexdigest("SHA256", secret, signed_data)
-
-      {
-        signature: signature,
-        timestamp: timestamp,
-        signed_data: signed_data
-      }
+      OpenSSL::HMAC.hexdigest(algo_name, secret, payload_string)
     end
 
     # Verify a signature
-    # @param payload [Hash] The webhook payload
+    # @param payload [String, Hash] The webhook payload
+    # @param secret [String] The signing secret
     # @param signature [String] The signature to verify
-    # @param timestamp [Integer] The timestamp used in signing
-    # @param tolerance [Integer] Tolerance in seconds for timestamp validation
+    # @param algorithm [Symbol] Hash algorithm (:sha256 or :sha1)
     # @return [Boolean] true if signature is valid
-    def verify(payload:, signature:, timestamp:, tolerance: 300)
-      # Check timestamp tolerance
-      return false unless timestamp_valid?(timestamp, tolerance)
-
-      # Regenerate signature
-      expected = generate(payload, timestamp: timestamp)
-
+    def verify(payload, secret, signature, algorithm: :sha256)
+      return false if signature.blank?
+      
+      expected = generate(payload, secret, algorithm: algorithm)
+      
       # Constant-time comparison
-      secure_compare(signature, expected[:signature])
+      secure_compare(signature, expected)
     end
 
     private
-
-    # Convert hash to canonical JSON (sorted keys)
-    def canonical_json(hash)
-      JSON.generate(sort_hash(hash))
-    end
-
-    # Recursively sort hash keys for canonical representation
-    def sort_hash(obj)
-      case obj
-      when Hash
-        obj.keys.sort.to_h { |k| [k, sort_hash(obj[k])] }
-      when Array
-        obj.map { |item| sort_hash(item) }
-      else
-        obj
-      end
-    end
-
-    # Check if timestamp is within tolerance
-    def timestamp_valid?(timestamp, tolerance)
-      current_time = Time.current.to_i
-      (current_time - timestamp.to_i).abs <= tolerance
-    end
 
     # Constant-time string comparison
     def secure_compare(a, b)
