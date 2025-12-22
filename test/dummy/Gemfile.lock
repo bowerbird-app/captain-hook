@@ -430,7 +430,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
-  makeup_artist (~> 0.4.3)!
+  makeup_artist!
   marikit_country_list!
   pg (~> 1.1)
   propshaft

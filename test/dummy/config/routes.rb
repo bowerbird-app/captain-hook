@@ -3,7 +3,7 @@ Rails.application.routes.draw do
   mount CaptainHook::Engine, at: "/captain_hook"
 
   # Mount MakeupArtist style guide (temporarily disabled)
-  # mount MakeupArtist::Engine, at: "/makeup_artist"
+  mount MakeupArtist::Engine, at: "/makeup_artist"
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

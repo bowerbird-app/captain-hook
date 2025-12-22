@@ -4,7 +4,7 @@
 @source "../../../../../app/views/**/*.erb";
 
 /* MakeupArtist gem views - auto-added by generator */
-@source "/usr/local/bundle/ruby/3.3.0/bundler/gems/makeup-artist-fc1684bc2772/app/views/**/*.erb";
+@source "/usr/local/bundle/ruby/3.3.0/bundler/gems/makeup-artist-26138e4a67be/app/views/**/*.erb";
 
 /* MakeupArtist theme variables - required for component styling */
-@import "../../../config/makeup_artist/ui_theme.css";
+@import "../../../config/makeup_artist/theme.css";

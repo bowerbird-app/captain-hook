@@ -20,13 +20,13 @@ module CaptainHook
     # @return [String] The hexadecimal signature
     def generate(payload, secret, algorithm: :sha256)
       raise ArgumentError, "payload cannot be nil" if payload.nil?
-      
+
       # Convert to string if hash
       payload_string = payload.is_a?(String) ? payload : JSON.generate(payload)
-      
+
       # Normalize algorithm name
       algo_name = algorithm.to_s.upcase.sub("SHA", "SHA")
-      
+
       # Generate HMAC signature
       OpenSSL::HMAC.hexdigest(algo_name, secret, payload_string)
     end
@@ -39,9 +39,9 @@ module CaptainHook
     # @return [Boolean] true if signature is valid
     def verify(payload, secret, signature, algorithm: :sha256)
       return false if signature.blank?
-      
+
       expected = generate(payload, secret, algorithm: algorithm)
-      
+
       # Constant-time comparison
       secure_compare(signature, expected)
     end
