@@ -20,3 +20,8 @@ Minitest.backtrace_filter = Minitest::BacktraceFilter.new
 
 # Load support files
 Dir["#{File.dirname(__FILE__)}/support/**/*.rb"].each { |f| require f }
+
+# Enable transactional tests to automatically rollback database changes after each test
+class ActiveSupport::TestCase
+  self.use_transactional_tests = true
+end
