@@ -328,7 +328,7 @@ module CaptainHook
     def test_payload_size_limit_enabled_returns_true_when_present_and_positive
       config = ProviderConfig.new(
         "name" => "test",
-        "max_payload_size_bytes" => 1048576
+        "max_payload_size_bytes" => 1_048_576
       )
 
       assert config.payload_size_limit_enabled?
