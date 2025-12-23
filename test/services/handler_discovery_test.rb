@@ -93,6 +93,59 @@ module CaptainHook
         handlers = HandlerDiscovery.for_provider("unknown_provider")
         assert_equal [], handlers
       end
+
+      test "handles multiple handlers for same event type" do
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "payment.succeeded",
+          handler_class: "Handler1",
+          priority: 100
+        )
+
+        CaptainHook.register_handler(
+          provider: "stripe",
+          event_type: "payment.succeeded",
+          handler_class: "Handler2",
+          priority: 200
+        )
+
+        handlers = @discovery.call
+        stripe_payment_handlers = handlers.select do |h|
+          h["provider"] == "stripe" && h["event_type"] == "payment.succeeded"
+        end
+
+        assert_equal 2, stripe_payment_handlers.size
+      end
+
+      test "handler class is converted to string" do
+        CaptainHook.register_handler(
+          provider: "test",
+          event_type: "test.event",
+          handler_class: Object # Using a class object
+        )
+
+        handlers = @discovery.call
+        assert_equal "Object", handlers.first["handler_class"]
+        assert handlers.first["handler_class"].is_a?(String)
+      end
+
+      test "discovered handlers include all required fields" do
+        CaptainHook.register_handler(
+          provider: "test",
+          event_type: "test.event",
+          handler_class: "TestHandler"
+        )
+
+        handler = @discovery.call.first
+
+        assert handler.key?("provider")
+        assert handler.key?("event_type")
+        assert handler.key?("handler_class")
+        assert handler.key?("async")
+        assert handler.key?("max_attempts")
+        assert handler.key?("priority")
+        assert handler.key?("retry_delays")
+      end
     end
   end
 end

@@ -139,5 +139,67 @@ module CaptainHook
         assert_equal ["Detail 1", "Detail 2"], result.errors
       end
     end
+
+    # Test hooks integration
+    class ServiceWithHooks < BaseService
+      def perform
+        success("result")
+      end
+    end
+
+    def test_service_runs_before_hooks
+      hook_called = false
+      CaptainHook.configuration.hooks.before_service { hook_called = true }
+
+      ServiceWithHooks.call
+
+      assert hook_called
+    ensure
+      CaptainHook.configuration.hooks.clear!
+    end
+
+    def test_service_runs_after_hooks
+      hook_called = false
+      result_value = nil
+      CaptainHook.configuration.hooks.after_service { |result| 
+        hook_called = true
+        result_value = result.value
+      }
+
+      ServiceWithHooks.call
+
+      assert hook_called
+      assert_equal "result", result_value
+    ensure
+      CaptainHook.configuration.hooks.clear!
+    end
+
+    def test_service_runs_around_hooks
+      order = []
+      CaptainHook.configuration.hooks.around_service do |service, block|
+        order << :before
+        result = block.call
+        order << :after
+        result
+      end
+
+      result = ServiceWithHooks.call
+      order << :done
+
+      assert_equal [:before, :after, :done], order
+      assert result.success?
+    ensure
+      CaptainHook.configuration.hooks.clear!
+    end
+
+    def test_perform_raises_not_implemented_error
+      service = BaseService.new
+
+      error = assert_raises(NotImplementedError) do
+        service.send(:perform)
+      end
+
+      assert_includes error.message, "#perform must be implemented"
+    end
   end
 end

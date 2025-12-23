@@ -183,5 +183,68 @@ module CaptainHook
       # Should be able to validate 1000 timestamps in less than 0.1 seconds
       assert elapsed < 0.1, "Validation should be fast, took #{elapsed} seconds"
     end
+
+    def test_validate_returns_hash_with_valid_key
+      timestamp = (Time.current - 100).to_i
+      result = @validator.validate(timestamp)
+
+      assert result.is_a?(Hash)
+      assert result.key?(:valid)
+      assert result[:valid]
+    end
+
+    def test_validate_includes_error_message_when_invalid
+      old_timestamp = (Time.current - 400).to_i
+      result = @validator.validate(old_timestamp)
+
+      refute result[:valid]
+      assert_includes result[:error], "too old"
+    end
+
+    def test_validate_returns_error_for_future_timestamp
+      future_timestamp = (Time.current + 400).to_i
+      result = @validator.validate(future_timestamp)
+
+      refute result[:valid]
+      assert_includes result[:error], "too far in the future"
+    end
+
+    def test_age_returns_timestamp_age_in_seconds
+      timestamp = (Time.current - 100).to_i
+      age = @validator.age(timestamp)
+
+      assert age.is_a?(Integer)
+      assert age >= 99
+      assert age <= 101
+    end
+
+    def test_age_returns_nil_for_blank_timestamp
+      assert_nil @validator.age(nil)
+      assert_nil @validator.age("")
+    end
+
+    def test_too_old_returns_true_for_expired_timestamp
+      old_timestamp = (Time.current - 400).to_i
+
+      assert @validator.too_old?(old_timestamp)
+    end
+
+    def test_too_old_returns_false_for_valid_timestamp
+      valid_timestamp = (Time.current - 100).to_i
+
+      refute @validator.too_old?(valid_timestamp)
+    end
+
+    def test_too_new_returns_true_for_future_timestamp
+      future_timestamp = (Time.current + 400).to_i
+
+      assert @validator.too_new?(future_timestamp)
+    end
+
+    def test_too_new_returns_false_for_valid_timestamp
+      valid_timestamp = (Time.current - 100).to_i
+
+      refute @validator.too_new?(valid_timestamp)
+    end
   end
 end

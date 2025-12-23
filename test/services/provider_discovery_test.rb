@@ -74,6 +74,60 @@ module CaptainHook
           FileUtils.rm_rf(temp_dir)
         end
       end
+
+      test "load_provider_file returns nil for non-hash YAML" do
+        temp_dir = Rails.root.join("tmp", "test_providers")
+        FileUtils.mkdir_p(temp_dir)
+        file_path = temp_dir.join("array.yml")
+
+        begin
+          File.write(file_path, "- item1\n- item2")
+
+          result = @discovery.send(:load_provider_file, file_path.to_s, source: "test")
+          assert_nil result, "Should return nil for YAML that doesn't parse to a Hash"
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+
+      test "load_provider_file adds source metadata" do
+        providers = @discovery.call
+        first_provider = providers.first
+
+        assert first_provider["source_file"].present?
+        assert first_provider["source"].present?
+      end
+
+      test "scan_directory only processes yml and yaml files" do
+        temp_dir = Rails.root.join("tmp", "test_providers")
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          # Create files with different extensions
+          File.write(temp_dir.join("valid.yml"), "name: test1\nadapter_class: Test")
+          File.write(temp_dir.join("valid.yaml"), "name: test2\nadapter_class: Test")
+          File.write(temp_dir.join("ignored.txt"), "name: test3\nadapter_class: Test")
+          File.write(temp_dir.join("ignored.rb"), "name: test4\nadapter_class: Test")
+
+          discovery = ProviderDiscovery.new
+          discovery.send(:scan_directory, temp_dir, source: "test")
+
+          providers = discovery.instance_variable_get(:@discovered_providers)
+          assert_equal 2, providers.size
+          assert providers.all? { |p| p["name"].start_with?("test") }
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+
+      test "scan_gem_providers checks loaded gems" do
+        # This test verifies the method can run without errors
+        discovery = ProviderDiscovery.new
+
+        assert_nothing_raised do
+          discovery.send(:scan_gem_providers)
+        end
+      end
     end
   end
 end

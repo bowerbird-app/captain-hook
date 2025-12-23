@@ -191,6 +191,49 @@ module CaptainHook
       refute @generator.verify(@payload, @secret, nil)
     end
 
+    def test_verify_returns_false_for_blank_signature
+      refute @generator.verify(@payload, @secret, "")
+      refute @generator.verify(@payload, @secret, "   ")
+    end
+
+    def test_verify_algorithm_must_match_generation_algorithm
+      signature_sha256 = @generator.generate(@payload, @secret, algorithm: :sha256)
+
+      # Verifying with sha1 should fail even though signature was valid for sha256
+      refute @generator.verify(@payload, @secret, signature_sha256, algorithm: :sha1)
+    end
+
+    def test_secure_compare_returns_false_for_different_lengths
+      a = "short"
+      b = "much_longer_string"
+
+      refute @generator.send(:secure_compare, a, b)
+    end
+
+    def test_secure_compare_returns_true_for_identical_strings
+      a = "exact_match"
+      b = "exact_match"
+
+      assert @generator.send(:secure_compare, a, b)
+    end
+
+    def test_secure_compare_returns_false_for_different_strings_same_length
+      a = "string1"
+      b = "string2"
+
+      refute @generator.send(:secure_compare, a, b)
+    end
+
+    def test_secure_compare_returns_false_for_blank_first_argument
+      refute @generator.send(:secure_compare, "", "something")
+      refute @generator.send(:secure_compare, nil, "something")
+    end
+
+    def test_secure_compare_returns_false_for_blank_second_argument
+      refute @generator.send(:secure_compare, "something", "")
+      refute @generator.send(:secure_compare, "something", nil)
+    end
+
     # === Performance Tests ===
 
     def test_generation_is_fast

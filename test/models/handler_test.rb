@@ -183,5 +183,73 @@ module CaptainHook
 
       assert_nil @handler.provider_record
     end
+
+    test "by_priority scope orders by priority ascending" do
+      @handler.priority = 200
+      @handler.save!
+
+      handler2 = Handler.create!(
+        provider: "square",
+        event_type: "payment.succeeded",
+        handler_class: "Handler2",
+        async: true,
+        max_attempts: 5,
+        priority: 100,
+        retry_delays: [30, 60]
+      )
+
+      handler3 = Handler.create!(
+        provider: "paypal",
+        event_type: "payment.succeeded",
+        handler_class: "Handler3",
+        async: true,
+        max_attempts: 5,
+        priority: 150,
+        retry_delays: [30, 60]
+      )
+
+      ordered = Handler.by_priority
+      assert_equal [handler2.id, handler3.id, @handler.id], ordered.pluck(:id)
+    end
+
+    test "for_event_type scope filters by event type" do
+      @handler.save!
+
+      handler2 = Handler.create!(
+        provider: "stripe",
+        event_type: "payment.failed",
+        handler_class: "FailureHandler",
+        async: true,
+        max_attempts: 5,
+        priority: 100,
+        retry_delays: [30, 60]
+      )
+
+      succeeded_handlers = Handler.for_event_type("payment.succeeded")
+      failed_handlers = Handler.for_event_type("payment.failed")
+
+      assert_includes succeeded_handlers, @handler
+      assert_not_includes succeeded_handlers, handler2
+      assert_includes failed_handlers, handler2
+      assert_not_includes failed_handlers, @handler
+    end
+
+    test "retry_delays cannot be empty array" do
+      @handler.retry_delays = []
+      assert_not @handler.valid?
+      assert_includes @handler.errors[:retry_delays], "can't be blank"
+    end
+
+    test "retry_delays cannot contain zero" do
+      @handler.retry_delays = [30, 0, 60]
+      assert_not @handler.valid?
+      assert_includes @handler.errors[:retry_delays], "must be an array of positive integers"
+    end
+
+    test "retry_delays cannot contain negative numbers" do
+      @handler.retry_delays = [30, -60, 90]
+      assert_not @handler.valid?
+      assert_includes @handler.errors[:retry_delays], "must be an array of positive integers"
+    end
   end
 end

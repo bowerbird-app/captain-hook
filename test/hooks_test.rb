@@ -413,4 +413,46 @@ class HooksTest < Minitest::Test
 
     assert_equal "Proc: value", result
   end
+
+  def test_execute_hook_with_to_proc_object
+    obj = Object.new
+    def obj.to_proc
+      proc { |arg| "to_proc: #{arg}" }
+    end
+
+    result = @hooks.send(:execute_hook, obj, "test")
+
+    assert_equal "to_proc: test", result
+  end
+
+  def test_handle_hook_error_raises_when_raise_on_error_enabled
+    @hooks.raise_on_error = true
+    error = StandardError.new("Test error")
+
+    assert_raises(CaptainHook::Hooks::HookError) do
+      @hooks.send(:handle_hook_error, error, :test_event, {})
+    end
+  end
+
+  def test_handle_hook_error_logs_when_raise_on_error_disabled
+    @hooks.raise_on_error = false
+    error = StandardError.new("Test error")
+    error.set_backtrace(["line1", "line2", "line3"])
+
+    # Should not raise, just log
+    @hooks.send(:handle_hook_error, error, :test_event, {})
+
+    # Test passes if no error raised
+    assert true
+  end
+
+  def test_log_hook_error_with_backtrace
+    error = StandardError.new("Error with backtrace")
+    error.set_backtrace(["file1.rb:10", "file2.rb:20", "file3.rb:30"])
+
+    # Should log without raising
+    @hooks.send(:log_hook_error, error, :test_event, {})
+
+    assert true
+  end
 end

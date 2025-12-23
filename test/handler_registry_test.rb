@@ -432,5 +432,33 @@ module CaptainHook
 
       assert_equal 100, config.priority
     end
+
+    def test_handler_config_returns_nil_when_no_retry_delays
+      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+        provider: "test",
+        event_type: "test",
+        handler_class: "TestHandler",
+        retry_delays: nil
+      )
+
+      # Should use default when retry_delays is nil
+      assert_equal [30, 60, 300, 900, 3600], config.retry_delays
+    end
+
+    def test_providers_returns_unique_provider_names
+      @registry.register(provider: "stripe", event_type: "payment.succeeded", handler_class: "Handler1")
+      @registry.register(provider: "stripe", event_type: "payment.failed", handler_class: "Handler2")
+      @registry.register(provider: "paypal", event_type: "sale.completed", handler_class: "Handler3")
+
+      providers = @registry.providers
+      assert_equal 2, providers.size
+      assert_includes providers, "stripe"
+      assert_includes providers, "paypal"
+    end
+
+    def test_providers_returns_empty_array_when_no_registrations
+      providers = @registry.providers
+      assert_equal [], providers
+    end
   end
 end

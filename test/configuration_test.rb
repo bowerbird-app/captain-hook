@@ -172,5 +172,13 @@ module CaptainHook
       assert @config.providers.key?("test")
       assert_instance_of CaptainHook::ProviderConfig, @config.providers["test"]
     end
+
+    def test_hooks_returns_hooks_instance
+      assert_instance_of CaptainHook::Hooks, @config.hooks
+    end
+
+    def test_handler_registry_returns_registry_instance
+      assert_instance_of CaptainHook::HandlerRegistry, @config.handler_registry
+    end
   end
 end

@@ -166,6 +166,87 @@ module CaptainHook
         provider = CaptainHook::Provider.find_by(name: "default_active_provider")
         assert provider.active?, "Provider should be active by default"
       end
+
+      test "valid_provider_definition checks for name presence" do
+        sync = ProviderSync.new([])
+        result = sync.send(:valid_provider_definition?, { "adapter_class" => "Test" })
+        refute result, "Should be invalid without name"
+      end
+
+      test "valid_provider_definition checks for adapter_class presence" do
+        sync = ProviderSync.new([])
+        result = sync.send(:valid_provider_definition?, { "name" => "test" })
+        refute result, "Should be invalid without adapter_class"
+      end
+
+      test "resolve_signing_secret returns nil for blank value" do
+        sync = ProviderSync.new([])
+        assert_nil sync.send(:resolve_signing_secret, nil)
+        assert_nil sync.send(:resolve_signing_secret, "")
+      end
+
+      test "resolve_signing_secret returns direct value when not ENV reference" do
+        sync = ProviderSync.new([])
+        assert_equal "direct_secret", sync.send(:resolve_signing_secret, "direct_secret")
+      end
+
+      test "only updates signing_secret when value changes" do
+        # Create provider with initial secret
+        provider = CaptainHook::Provider.create!(
+          name: "test_provider",
+          adapter_class: "CaptainHook::Adapters::Base",
+          signing_secret: "original_secret"
+        )
+
+        # Try to sync with same secret (via ENV)
+        ENV["SAME_SECRET"] = "original_secret"
+        definitions = [
+          {
+            "name" => "test_provider",
+            "adapter_class" => "CaptainHook::Adapters::Base",
+            "signing_secret" => "ENV[SAME_SECRET]",
+            "source" => "test"
+          }
+        ]
+
+        sync = ProviderSync.new(definitions)
+        sync.call
+
+        provider.reload
+        # Secret should remain the same
+        assert_equal "original_secret", provider.signing_secret
+      ensure
+        ENV.delete("SAME_SECRET")
+      end
+
+      test "updates signing_secret when value is different" do
+        # Create provider with initial secret
+        provider = CaptainHook::Provider.create!(
+          name: "test_provider",
+          adapter_class: "CaptainHook::Adapters::Base",
+          signing_secret: "old_secret"
+        )
+
+        # Sync with different secret
+        ENV["NEW_SECRET"] = "new_secret"
+        definitions = [
+          {
+            "name" => "test_provider",
+            "adapter_class" => "CaptainHook::Adapters::Base",
+            "signing_secret" => "ENV[NEW_SECRET]",
+            "source" => "test"
+          }
+        ]
+
+        sync = ProviderSync.new(definitions)
+        sync.call
+
+        provider.reload
+        # Secret should be updated
+        assert_equal "new_secret", provider.signing_secret
+      ensure
+        ENV.delete("NEW_SECRET")
+      end
     end
   end
 end

@@ -255,5 +255,57 @@ module CaptainHook
       # Display name might default to name
       assert [nil, "test"].include?(config.display_name)
     end
+
+    def test_bracket_access_for_valid_fields
+      config = ProviderConfig.new(
+        "name" => "test",
+        "description" => "test description"
+      )
+
+      assert_equal "test description", config["description"]
+    end
+
+    def test_bracket_access_returns_nil_for_undefined_keys
+      config = ProviderConfig.new("name" => "test")
+
+      assert_nil config["undefined_key"]
+    end
+
+    def test_to_h_returns_all_attributes
+      config = ProviderConfig.new(
+        "name" => "test",
+        "signing_secret" => "secret",
+        "adapter_class" => "TestAdapter"
+      )
+
+      hash = config.to_h
+      assert hash.is_a?(Hash)
+      assert_equal "test", hash["name"]
+      assert hash.key?("signing_secret")
+      assert hash.key?("adapter_class")
+    end
+
+    def test_config_with_empty_string_values
+      config = ProviderConfig.new(
+        "name" => "test",
+        "signing_secret" => "",
+        "description" => ""
+      )
+
+      assert_equal "", config.signing_secret
+      assert_equal "", config.description
+    end
+
+    def test_active_defaults_to_true
+      config = ProviderConfig.new("name" => "test")
+
+      assert config.active?
+    end
+
+    def test_adapter_class_defaults_to_base
+      config = ProviderConfig.new("name" => "test")
+
+      assert_equal "CaptainHook::Adapters::Base", config.adapter_class
+    end
   end
 end

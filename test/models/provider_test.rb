@@ -323,5 +323,40 @@ module CaptainHook
 
       assert_instance_of CaptainHook::Adapters::Base, adapter
     end
+
+    test "adapter falls back to Base adapter when adapter_class invalid" do
+      @provider.adapter_class = "NonExistent::Adapter"
+      @provider.save!
+
+      adapter = @provider.adapter
+
+      assert_instance_of CaptainHook::Adapters::Base, adapter
+    end
+
+    test "signing_secret uses ENV override when present" do
+      ENV["TEST_PROVIDER_WEBHOOK_SECRET"] = "env_secret"
+
+      secret = @provider.signing_secret
+
+      assert_equal "env_secret", secret
+    ensure
+      ENV.delete("TEST_PROVIDER_WEBHOOK_SECRET")
+    end
+
+    test "signing_secret returns database value when no ENV override" do
+      ENV.delete("TEST_PROVIDER_WEBHOOK_SECRET")
+
+      secret = @provider.signing_secret
+
+      assert_equal "test_secret", secret
+    end
+
+    test "signing_secret returns database value when name is blank" do
+      @provider.name = nil
+
+      secret = @provider.signing_secret
+
+      assert_equal "test_secret", secret
+    end
   end
 end
