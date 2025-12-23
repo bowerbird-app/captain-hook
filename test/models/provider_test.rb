@@ -358,5 +358,46 @@ module CaptainHook
 
       assert_equal "test_secret", secret
     end
+
+    test "generate_token creates unique token" do
+      provider = CaptainHook::Provider.new(
+        name: "token_test",
+        adapter_class: "TestAdapter"
+      )
+      provider.save!
+
+      assert_not_nil provider.token
+      assert provider.token.length >= 32
+    end
+
+    test "normalize_name is called before validation" do
+      provider = CaptainHook::Provider.new(
+        name: "MixedCase_Name",
+        adapter_class: "TestAdapter"
+      )
+      provider.valid?
+
+      assert_equal "mixedcase_name", provider.name
+    end
+
+    test "timestamp_validation_enabled checks for presence" do
+      provider = CaptainHook::Provider.new(
+        name: "test",
+        adapter_class: "TestAdapter",
+        timestamp_tolerance_seconds: 300
+      )
+
+      assert provider.timestamp_validation_enabled?
+    end
+
+    test "timestamp_validation_enabled returns false when nil" do
+      provider = CaptainHook::Provider.new(
+        name: "test",
+        adapter_class: "TestAdapter",
+        timestamp_tolerance_seconds: nil
+      )
+
+      refute provider.timestamp_validation_enabled?
+    end
   end
 end

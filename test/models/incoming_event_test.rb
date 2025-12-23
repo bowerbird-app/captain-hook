@@ -297,5 +297,33 @@ module CaptainHook
         )
       end
     end
+
+    test "mark_replayed! sets status to replayed" do
+      @event.mark_replayed!
+      @event.reload
+
+      assert_equal "replayed", @event.dedup_state
+    end
+
+    test "start_processing! updates status to processing" do
+      @event.start_processing!
+      @event.reload
+
+      assert_equal "processing", @event.status
+    end
+
+    test "mark_failed! sets status to failed" do
+      @event.mark_failed!
+      @event.reload
+
+      assert_equal "failed", @event.status
+    end
+
+    test "mark_processed! sets status to processed" do
+      @event.mark_processed!
+      @event.reload
+
+      assert_equal "processed", @event.status
+    end
   end
 end

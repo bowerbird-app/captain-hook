@@ -455,4 +455,24 @@ class HooksTest < Minitest::Test
 
     assert true
   end
+
+  def test_on_registers_custom_event_hook
+    called = false
+
+    @hooks.on(:custom_event) { called = true }
+    @hooks.run(:custom_event)
+
+    assert called
+  end
+
+  def test_on_custom_event_with_priority
+    order = []
+
+    @hooks.on(:custom_event, priority: 20) { order << 2 }
+    @hooks.on(:custom_event, priority: 10) { order << 1 }
+
+    @hooks.run(:custom_event)
+
+    assert_equal [1, 2], order
+  end
 end

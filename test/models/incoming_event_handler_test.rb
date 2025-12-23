@@ -293,5 +293,53 @@ module CaptainHook
 
       assert_equal 0, handler.lock_version
     end
+
+    test "reset_for_retry! resets status and clears locks" do
+      @handler.save!
+      @handler.update!(status: :failed, locked_at: Time.current, locked_by: "worker_1")
+
+      @handler.reset_for_retry!
+      @handler.reload
+
+      assert_equal "pending", @handler.status
+      assert_nil @handler.locked_at
+      assert_nil @handler.locked_by
+    end
+
+    test "increment_attempts! updates last_attempt_at" do
+      @handler.save!
+      old_time = @handler.last_attempt_at
+
+      @handler.increment_attempts!
+      @handler.reload
+
+      assert_not_nil @handler.last_attempt_at
+    end
+
+    test "locked scope returns locked handlers" do
+      @handler.save!
+      locked_handler = @event.incoming_event_handlers.create!(
+        handler_class: "LockedHandler",
+        priority: 100,
+        locked_at: Time.current,
+        locked_by: "worker_1"
+      )
+
+      assert_includes IncomingEventHandler.locked, locked_handler
+      refute_includes IncomingEventHandler.locked, @handler
+    end
+
+    test "unlocked scope returns unlocked handlers" do
+      @handler.save!
+      locked_handler = @event.incoming_event_handlers.create!(
+        handler_class: "LockedHandler",
+        priority: 100,
+        locked_at: Time.current,
+        locked_by: "worker_1"
+      )
+
+      assert_includes IncomingEventHandler.unlocked, @handler
+      refute_includes IncomingEventHandler.unlocked, locked_handler
+    end
   end
 end

@@ -307,5 +307,100 @@ module CaptainHook
 
       assert_equal "CaptainHook::Adapters::Base", config.adapter_class
     end
+
+    def test_rate_limiting_enabled_returns_true_when_both_present
+      config = ProviderConfig.new(
+        "name" => "test",
+        "rate_limit_requests" => 100,
+        "rate_limit_period" => 60
+      )
+
+      assert config.rate_limiting_enabled?
+    end
+
+    def test_rate_limiting_enabled_returns_true_with_defaults
+      config = ProviderConfig.new("name" => "test")
+
+      # Defaults are set, so rate limiting is enabled by default
+      assert config.rate_limiting_enabled?
+    end
+
+    def test_payload_size_limit_enabled_returns_true_when_present_and_positive
+      config = ProviderConfig.new(
+        "name" => "test",
+        "max_payload_size_bytes" => 1048576
+      )
+
+      assert config.payload_size_limit_enabled?
+    end
+
+    def test_payload_size_limit_enabled_returns_false_when_zero
+      config = ProviderConfig.new(
+        "name" => "test",
+        "max_payload_size_bytes" => 0
+      )
+
+      refute config.payload_size_limit_enabled?
+    end
+
+    def test_timestamp_validation_enabled_returns_true_when_positive
+      config = ProviderConfig.new(
+        "name" => "test",
+        "timestamp_tolerance_seconds" => 300
+      )
+
+      assert config.timestamp_validation_enabled?
+    end
+
+    def test_timestamp_validation_enabled_returns_false_when_zero
+      config = ProviderConfig.new(
+        "name" => "test",
+        "timestamp_tolerance_seconds" => 0
+      )
+
+      refute config.timestamp_validation_enabled?
+    end
+
+    def test_adapter_returns_adapter_instance
+      config = ProviderConfig.new(
+        "name" => "test",
+        "adapter_class" => "CaptainHook::Adapters::Base"
+      )
+
+      adapter = config.adapter
+      assert_instance_of CaptainHook::Adapters::Base, adapter
+    end
+
+    def test_adapter_is_memoized
+      config = ProviderConfig.new(
+        "name" => "test",
+        "adapter_class" => "CaptainHook::Adapters::Base"
+      )
+
+      adapter1 = config.adapter
+      adapter2 = config.adapter
+      assert_same adapter1, adapter2
+    end
+
+    def test_display_name_can_be_explicitly_nil
+      config = ProviderConfig.new(
+        "name" => "test",
+        "display_name" => nil
+      )
+
+      # When explicitly nil, display_name remains nil (doesn't default to name.titleize)
+      assert_nil config.display_name
+    end
+
+    def test_to_h_compacts_nil_values
+      config = ProviderConfig.new(
+        "name" => "test",
+        "description" => nil
+      )
+
+      hash = config.to_h
+      refute hash.key?("description"), "Nil values should be compacted"
+      assert hash.key?("name")
+    end
   end
 end
