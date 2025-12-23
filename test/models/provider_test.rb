@@ -169,6 +169,8 @@ module CaptainHook
     end
 
     test "webhook_url detects codespaces environment" do
+      original_app_url = ENV["APP_URL"]
+      ENV.delete("APP_URL")
       ENV["CODESPACES"] = "true"
       ENV["CODESPACE_NAME"] = "my-codespace"
       ENV["PORT"] = "3004"
@@ -176,6 +178,7 @@ module CaptainHook
       url = @provider.webhook_url
       assert_includes url, "https://my-codespace-3004.app.github.dev"
     ensure
+      ENV["APP_URL"] = original_app_url if original_app_url
       ENV.delete("CODESPACES")
       ENV.delete("CODESPACE_NAME")
       ENV.delete("PORT")
