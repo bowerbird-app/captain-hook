@@ -43,7 +43,7 @@ module CaptainHook
       test "handles missing directory gracefully" do
         # Create a new instance and stub the Rails.root to a non-existent directory
         discovery = ProviderDiscovery.new
-        
+
         # Should not raise an error
         assert_nothing_raised do
           discovery.call
@@ -54,21 +54,21 @@ module CaptainHook
         # Create a temporary malformed YAML file
         temp_dir = Rails.root.join("tmp", "test_providers")
         FileUtils.mkdir_p(temp_dir)
-        
+
         begin
           File.write(temp_dir.join("malformed.yml"), "invalid: yaml: content:\n  - no closing")
-          
+
           # Stub the scan to include our temp directory
           discovery = ProviderDiscovery.new
           discovery.define_singleton_method(:scan_application_providers) do
             scan_directory(temp_dir, source: "test")
           end
-          
+
           # Should not raise an error
           assert_nothing_raised do
             providers = discovery.call
             # Should have empty or valid providers only
-            assert providers.all? { |p| p.is_a?(Hash) }
+            assert(providers.all? { |p| p.is_a?(Hash) })
           end
         ensure
           FileUtils.rm_rf(temp_dir)
