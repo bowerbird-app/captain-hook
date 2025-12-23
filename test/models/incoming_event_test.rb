@@ -9,7 +9,7 @@ module CaptainHook
         name: "test_provider",
         adapter_class: "CaptainHook::Adapters::Base"
       )
-      
+
       @event = CaptainHook::IncomingEvent.create!(
         provider: @provider.name,
         external_id: "evt_123",
@@ -59,26 +59,26 @@ module CaptainHook
 
     test "status enum values" do
       assert_equal "received", @event.status
-      
+
       @event.status = :processing
       assert @event.status_processing?
-      
+
       @event.status = :processed
       assert @event.status_processed?
-      
+
       @event.status = :partially_processed
       assert @event.status_partially_processed?
-      
+
       @event.status = :failed
       assert @event.status_failed?
     end
 
     test "dedup_state enum values" do
       assert_equal "unique", @event.dedup_state
-      
+
       @event.dedup_state = :duplicate
       assert @event.dedup_state_duplicate?
-      
+
       @event.dedup_state = :replayed
       assert @event.dedup_state_replayed?
     end
@@ -91,7 +91,7 @@ module CaptainHook
         external_id: "evt_456",
         event_type: "test.event"
       )
-      
+
       events = CaptainHook::IncomingEvent.by_provider(@provider.name)
       assert_includes events, @event
       refute_includes events, other_event
@@ -103,7 +103,7 @@ module CaptainHook
         external_id: "evt_456",
         event_type: "other.event"
       )
-      
+
       events = CaptainHook::IncomingEvent.by_event_type("test.event")
       assert_includes events, @event
       refute_includes events, other_event
@@ -116,7 +116,7 @@ module CaptainHook
         external_id: "evt_456",
         event_type: "test.event"
       )
-      
+
       archived_events = CaptainHook::IncomingEvent.archived
       assert_includes archived_events, @event
       refute_includes archived_events, not_archived
@@ -129,7 +129,7 @@ module CaptainHook
         external_id: "evt_456",
         event_type: "test.event"
       )
-      
+
       active_events = CaptainHook::IncomingEvent.not_archived
       assert_includes active_events, not_archived
       refute_includes active_events, @event
@@ -144,7 +144,7 @@ module CaptainHook
           event_type: "test.event"
         )
       end
-      
+
       recent = CaptainHook::IncomingEvent.recent
       assert_equal @event.id, recent.first.id
       assert_equal old_event.id, recent.last.id
@@ -224,7 +224,7 @@ module CaptainHook
     test "recalculate_status! marks as processed when all handlers processed" do
       handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
       handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :processed)
-      
+
       @event.recalculate_status!
       assert @event.status_processed?
     end
@@ -232,7 +232,7 @@ module CaptainHook
     test "recalculate_status! marks as failed when all handlers failed" do
       handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :failed)
       handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
-      
+
       @event.recalculate_status!
       assert @event.status_failed?
     end
@@ -240,14 +240,14 @@ module CaptainHook
     test "recalculate_status! marks as partially_processed when some handlers failed" do
       handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
       handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
-      
+
       @event.recalculate_status!
       assert @event.status_partially_processed?
     end
 
     test "recalculate_status! marks as processing when none processed or failed" do
       handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :pending)
-      
+
       @event.recalculate_status!
       assert @event.status_processing?
     end
@@ -255,7 +255,7 @@ module CaptainHook
     test "recalculate_status! does nothing when no handlers" do
       @event.status = :processing
       @event.save!
-      
+
       @event.recalculate_status!
       assert @event.status_processing?
     end
@@ -268,7 +268,7 @@ module CaptainHook
 
     test "destroys associated handlers when destroyed" do
       handler = @event.incoming_event_handlers.create!(handler_class: "TestHandler")
-      
+
       assert_difference "CaptainHook::IncomingEventHandler.count", -1 do
         @event.destroy
       end
@@ -282,7 +282,7 @@ module CaptainHook
         external_id: @event.external_id,
         event_type: "different.event"
       )
-      
+
       assert_raises(ActiveRecord::RecordNotUnique) do
         duplicate.save!(validate: false)
       end

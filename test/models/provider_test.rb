@@ -55,7 +55,7 @@ module CaptainHook
     test "token must be unique" do
       provider1 = CaptainHook::Provider.create!(name: "provider1", adapter_class: "Test")
       provider2 = CaptainHook::Provider.new(name: "provider2", adapter_class: "Test", token: provider1.token)
-      
+
       refute provider2.valid?
       assert_includes provider2.errors[:token], "has already been taken"
     end
@@ -63,10 +63,10 @@ module CaptainHook
     test "validates timestamp_tolerance_seconds is positive integer" do
       @provider.timestamp_tolerance_seconds = -1
       refute @provider.valid?
-      
+
       @provider.timestamp_tolerance_seconds = 0
       refute @provider.valid?
-      
+
       @provider.timestamp_tolerance_seconds = 300
       assert @provider.valid?
     end
@@ -74,10 +74,10 @@ module CaptainHook
     test "validates max_payload_size_bytes is positive integer" do
       @provider.max_payload_size_bytes = -1
       refute @provider.valid?
-      
+
       @provider.max_payload_size_bytes = 0
       refute @provider.valid?
-      
+
       @provider.max_payload_size_bytes = 1024
       assert @provider.valid?
     end
@@ -85,10 +85,10 @@ module CaptainHook
     test "validates rate_limit_requests is positive integer" do
       @provider.rate_limit_requests = -1
       refute @provider.valid?
-      
+
       @provider.rate_limit_requests = 0
       refute @provider.valid?
-      
+
       @provider.rate_limit_requests = 100
       assert @provider.valid?
     end
@@ -96,10 +96,10 @@ module CaptainHook
     test "validates rate_limit_period is positive integer" do
       @provider.rate_limit_period = -1
       refute @provider.valid?
-      
+
       @provider.rate_limit_period = 0
       refute @provider.valid?
-      
+
       @provider.rate_limit_period = 60
       assert @provider.valid?
     end
@@ -109,7 +109,7 @@ module CaptainHook
     test "generates token before validation if blank" do
       provider = CaptainHook::Provider.new(name: "new_provider", adapter_class: "Test")
       assert_nil provider.token
-      
+
       provider.valid?
       assert_not_nil provider.token
       assert provider.token.length > 20
@@ -119,7 +119,7 @@ module CaptainHook
       original_token = @provider.token
       @provider.name = "updated_name"
       @provider.save!
-      
+
       assert_equal original_token, @provider.reload.token
     end
 
@@ -127,7 +127,7 @@ module CaptainHook
 
     test "active scope returns only active providers" do
       inactive = CaptainHook::Provider.create!(name: "inactive", adapter_class: "Test", active: false)
-      
+
       active_providers = CaptainHook::Provider.active
       assert_includes active_providers, @provider
       refute_includes active_providers, inactive
@@ -135,7 +135,7 @@ module CaptainHook
 
     test "inactive scope returns only inactive providers" do
       inactive = CaptainHook::Provider.create!(name: "inactive", adapter_class: "Test", active: false)
-      
+
       inactive_providers = CaptainHook::Provider.inactive
       assert_includes inactive_providers, inactive
       refute_includes inactive_providers, @provider
@@ -144,7 +144,7 @@ module CaptainHook
     test "by_name scope orders by name" do
       z_provider = CaptainHook::Provider.create!(name: "z_provider", adapter_class: "Test")
       a_provider = CaptainHook::Provider.create!(name: "a_provider", adapter_class: "Test")
-      
+
       ordered = CaptainHook::Provider.by_name
       assert_equal "a_provider", ordered.first.name
       assert_equal "z_provider", ordered.last.name
@@ -161,7 +161,7 @@ module CaptainHook
       ENV.delete("APP_URL")
       ENV.delete("CODESPACES")
       ENV["PORT"] = "3000"
-      
+
       url = @provider.webhook_url
       assert_includes url, "http://localhost:3000"
     ensure
@@ -172,7 +172,7 @@ module CaptainHook
       ENV["CODESPACES"] = "true"
       ENV["CODESPACE_NAME"] = "my-codespace"
       ENV["PORT"] = "3004"
-      
+
       url = @provider.webhook_url
       assert_includes url, "https://my-codespace-3004.app.github.dev"
     ensure
@@ -184,14 +184,14 @@ module CaptainHook
     test "rate_limiting_enabled? returns true when configured" do
       @provider.rate_limit_requests = 100
       @provider.rate_limit_period = 60
-      
+
       assert @provider.rate_limiting_enabled?
     end
 
     test "rate_limiting_enabled? returns false when not configured" do
       @provider.rate_limit_requests = nil
       @provider.rate_limit_period = nil
-      
+
       refute @provider.rate_limiting_enabled?
     end
 
@@ -222,9 +222,9 @@ module CaptainHook
     test "signing_secret reads from environment variable" do
       @provider.name = "stripe"
       @provider.save!
-      
+
       ENV["STRIPE_WEBHOOK_SECRET"] = "env_secret"
-      
+
       assert_equal "env_secret", @provider.reload.signing_secret
     ensure
       ENV.delete("STRIPE_WEBHOOK_SECRET")
@@ -233,16 +233,16 @@ module CaptainHook
     test "signing_secret falls back to database when env var not set" do
       @provider.name = "square"
       @provider.save!
-      
+
       ENV.delete("SQUARE_WEBHOOK_SECRET")
-      
+
       assert_equal "test_secret", @provider.reload.signing_secret
     end
 
     test "activate! sets active to true" do
       @provider.update!(active: false)
       @provider.activate!
-      
+
       assert @provider.reload.active?
     end
 
@@ -258,7 +258,7 @@ module CaptainHook
 
     test "adapter handles invalid adapter_class gracefully" do
       @provider.adapter_class = "NonExistent::Adapter"
-      
+
       adapter = @provider.adapter
       assert_kind_of CaptainHook::Adapters::Base, adapter
     end
@@ -281,12 +281,12 @@ module CaptainHook
         payload: {},
         headers: {}
       )
-      
+
       # Rails 8 raises RecordNotDestroyed when restrict_with_error dependency exists
       assert_raises(ActiveRecord::RecordNotDestroyed) do
         @provider.destroy!
       end
-      
+
       # Verify provider still exists
       assert CaptainHook::Provider.exists?(@provider.id)
     end
@@ -297,7 +297,7 @@ module CaptainHook
         event_type: "test.event",
         handler_class: "TestHandler"
       )
-      
+
       assert_difference "CaptainHook::Handler.count", -1 do
         @provider.destroy
       end
@@ -308,12 +308,12 @@ module CaptainHook
     test "signing_secret is encrypted" do
       @provider.signing_secret = "super_secret"
       @provider.save!
-      
+
       # Check raw database value is not the plain text
       raw_value = ActiveRecord::Base.connection.execute(
         "SELECT signing_secret FROM captain_hook_providers WHERE id = '#{@provider.id}'"
       ).first["signing_secret"]
-      
+
       refute_equal "super_secret", raw_value
       assert_equal "super_secret", @provider.reload.signing_secret
     end

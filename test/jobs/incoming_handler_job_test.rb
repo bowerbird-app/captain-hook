@@ -9,7 +9,7 @@ module CaptainHook
         name: "test_provider",
         adapter_class: "CaptainHook::Adapters::Base"
       )
-      
+
       @event = CaptainHook::IncomingEvent.create!(
         provider: @provider.name,
         external_id: "evt_123",
@@ -17,18 +17,20 @@ module CaptainHook
         payload: { "data" => "test" },
         metadata: {}
       )
-      
+
       @handler_record = @event.incoming_event_handlers.create!(
         handler_class: "MockHandler",
         priority: 100
       )
 
       # Mock handler class
-      Object.const_set(:MockHandler, Class.new do
-        def handle(event:, payload:, metadata:)
-          # Successfully handled
-        end
-      end) unless defined?(MockHandler)
+      unless defined?(MockHandler)
+        Object.const_set(:MockHandler, Class.new do
+          def handle(event:, payload:, metadata:)
+            # Successfully handled
+          end
+        end)
+      end
 
       # Register handler
       CaptainHook.handler_registry.register(
@@ -56,7 +58,7 @@ module CaptainHook
 
     test "job acquires lock before processing" do
       worker_id = "test_worker"
-      
+
       IncomingHandlerJob.perform_now(@handler_record.id, worker_id: worker_id)
 
       @handler_record.reload
@@ -66,7 +68,7 @@ module CaptainHook
 
     test "job increments attempt count" do
       initial_count = @handler_record.attempt_count
-      
+
       IncomingHandlerJob.perform_now(@handler_record.id)
 
       @handler_record.reload
@@ -76,7 +78,7 @@ module CaptainHook
     test "job updates event status after processing" do
       @event.status = :processing
       @event.save!
-      
+
       IncomingHandlerJob.perform_now(@handler_record.id)
 
       @event.reload
@@ -111,16 +113,14 @@ module CaptainHook
       @handler_record.reload
       # Handler should be marked as failed or retry scheduled
       assert(@handler_record.status_failed? || @handler_record.status_pending?)
-      if @handler_record.error_message
-        assert_includes @handler_record.error_message, "Handler failed"
-      end
+      assert_includes @handler_record.error_message, "Handler failed" if @handler_record.error_message
 
       Object.send(:remove_const, :FailingHandler)
     end
 
     test "job does not process when handler config not found" do
       CaptainHook.handler_registry.clear!
-      
+
       IncomingHandlerJob.perform_now(@handler_record.id)
 
       @handler_record.reload
@@ -132,7 +132,7 @@ module CaptainHook
     test "job does not process if lock cannot be acquired" do
       # Lock handler by setting an old lock_version to simulate concurrent update
       @handler_record.update!(locked_at: Time.current, locked_by: "other_worker", status: :processing)
-      
+
       # This job will try to acquire lock but should fail due to optimistic locking
       # The acquire_lock! will catch StaleObjectError and return false, causing early return
       assert_nothing_raised do
@@ -147,7 +147,7 @@ module CaptainHook
 
     test "job passes event and payload to handler" do
       received_args = {}
-      
+
       Object.const_set(:TrackingHandler, Class.new do
         define_method(:handle) do |event:, payload:, metadata:|
           received_args[:event] = event
@@ -243,7 +243,7 @@ module CaptainHook
 
     test "job uses configuration retention_days when not specified" do
       CaptainHook.configuration.retention_days = 30
-      
+
       event_60_days = nil
       travel_to 60.days.ago do
         event_60_days = CaptainHook::IncomingEvent.create!(
