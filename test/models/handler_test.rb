@@ -79,7 +79,7 @@ module CaptainHook
     end
 
     test "retry_delays must be integers not strings" do
-      @handler.retry_delays = ["30", "60"]
+      @handler.retry_delays = %w[30 60]
       assert_not @handler.valid?
       assert_includes @handler.errors[:retry_delays], "must be an array of positive integers"
     end

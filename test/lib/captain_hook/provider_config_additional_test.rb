@@ -67,7 +67,7 @@ module CaptainHook
       config = ProviderConfig.new(name: "test", active: true)
 
       hash = config.to_h
-      assert hash.keys.all? { |k| k.is_a?(String) }
+      assert(hash.keys.all? { |k| k.is_a?(String) })
     end
 
     def test_initialize_with_string_keys
@@ -172,5 +172,6 @@ module CaptainHook
       config.active = nil
 
       refute config.active?
-    end  end
+    end
+  end
 end

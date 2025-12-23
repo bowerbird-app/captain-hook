@@ -310,7 +310,7 @@ class HooksTest < Minitest::Test
       "final_result"
     end
 
-    assert_equal [:before, :block, :after], executed
+    assert_equal %i[before block after], executed
     assert_equal "final_result", result
   end
 
@@ -336,7 +336,7 @@ class HooksTest < Minitest::Test
       "result"
     end
 
-    assert_equal [:outer_before, :inner_before, :block, :inner_after, :outer_after], order
+    assert_equal %i[outer_before inner_before block inner_after outer_after], order
   end
 
   def test_run_around_passes_context_to_hooks

@@ -71,8 +71,8 @@ module CaptainHook
     end
 
     def test_with_large_tolerance
-      validator = TimeWindowValidator.new(tolerance_seconds: 86400) # 1 day
-      timestamp = (Time.now - 43200).to_i # 12 hours ago
+      validator = TimeWindowValidator.new(tolerance_seconds: 86_400) # 1 day
+      timestamp = (Time.now - 43_200).to_i # 12 hours ago
 
       assert validator.valid?(timestamp)
     end
