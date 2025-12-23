@@ -169,7 +169,7 @@ module CaptainHook
     end
 
     test "webhook_url detects codespaces environment" do
-      original_app_url = ENV["APP_URL"]
+      original_app_url = ENV.fetch("APP_URL", nil)
       ENV.delete("APP_URL")
       ENV["CODESPACES"] = "true"
       ENV["CODESPACE_NAME"] = "my-codespace"
