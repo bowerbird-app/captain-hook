@@ -42,5 +42,135 @@ module CaptainHook
       assert config1.handler_registry.handlers_registered?(provider: "stripe", event_type: "test")
       refute config2.handler_registry.handlers_registered?(provider: "stripe", event_type: "test")
     end
+
+    def test_to_h_returns_configuration_summary
+      @config.admin_parent_controller = "AdminController"
+      @config.retention_days = 30
+      @config.register_provider("stripe", signing_secret: "secret")
+
+      hash = @config.to_h
+
+      assert_equal "AdminController", hash[:admin_parent_controller]
+      assert_equal 30, hash[:retention_days]
+      assert_includes hash[:providers], "stripe"
+      assert hash[:hooks_registered].is_a?(Hash)
+    end
+
+    def test_merge_updates_attributes
+      @config.merge!(
+        admin_parent_controller: "NewController",
+        retention_days: 45
+      )
+
+      assert_equal "NewController", @config.admin_parent_controller
+      assert_equal 45, @config.retention_days
+    end
+
+    def test_merge_ignores_unknown_attributes
+      @config.merge!(unknown_attribute: "value")
+
+      # Should not raise error, just ignore unknown attributes
+      assert_equal "ApplicationController", @config.admin_parent_controller
+    end
+
+    def test_merge_handles_string_keys
+      @config.merge!(
+        "admin_parent_controller" => "StringKeyController",
+        "retention_days" => 60
+      )
+
+      assert_equal "StringKeyController", @config.admin_parent_controller
+      assert_equal 60, @config.retention_days
+    end
+
+    def test_merge_returns_nil_for_non_enumerable
+      result = @config.merge!(nil)
+      assert_nil result
+
+      result = @config.merge!("not a hash")
+      assert_nil result
+    end
+
+    def test_provider_returns_db_provider_first
+      # Create a provider in the database
+      db_provider = CaptainHook::Provider.create!(
+        name: "stripe",
+        display_name: "Stripe",
+        adapter_class: "StripeAdapter",
+        signing_secret: "db_secret",
+        active: true
+      )
+
+      # Also register in memory
+      @config.register_provider("stripe", signing_secret: "memory_secret")
+
+      # Should prioritize database
+      provider_config = @config.provider("stripe")
+      assert_equal "db_secret", provider_config.signing_secret
+    ensure
+      db_provider&.destroy
+    end
+
+    def test_provider_falls_back_to_memory_registration
+      @config.register_provider("webhook_site", signing_secret: "memory_secret")
+
+      provider_config = @config.provider("webhook_site")
+      assert_equal "memory_secret", provider_config.signing_secret
+    end
+
+    def test_provider_returns_nil_for_unknown_provider
+      assert_nil @config.provider("unknown_provider")
+    end
+
+    def test_provider_config_from_model_maps_attributes_correctly
+      provider_model = CaptainHook::Provider.create!(
+        name: "test_provider",
+        display_name: "Test Provider",
+        adapter_class: "TestAdapter",
+        signing_secret: "test_secret",
+        token: "test_token",
+        active: true,
+        timestamp_tolerance_seconds: 600,
+        max_payload_size_bytes: 2_097_152,
+        rate_limit_requests: 50,
+        rate_limit_period: 120
+      )
+
+      provider_config = @config.send(:provider_config_from_model, provider_model)
+
+      assert_equal "test_provider", provider_config.name
+      assert_equal "test_token", provider_config.token
+      assert_equal "test_secret", provider_config.signing_secret
+      assert_equal "TestAdapter", provider_config.adapter_class
+      assert_equal 600, provider_config.timestamp_tolerance_seconds
+      assert_equal 2_097_152, provider_config.max_payload_size_bytes
+      assert_equal 50, provider_config.rate_limit_requests
+      assert_equal 120, provider_config.rate_limit_period
+    ensure
+      provider_model&.destroy
+    end
+
+    def test_admin_parent_controller_default
+      assert_equal "ApplicationController", @config.admin_parent_controller
+    end
+
+    def test_admin_layout_default
+      assert_equal "application", @config.admin_layout
+    end
+
+    def test_retention_days_default
+      assert_equal 90, @config.retention_days
+    end
+
+    def test_providers_returns_hash
+      assert_instance_of Hash, @config.providers
+    end
+
+    def test_register_provider_stores_in_hash
+      @config.register_provider("test", signing_secret: "secret")
+
+      assert @config.providers.key?("test")
+      assert_instance_of CaptainHook::ProviderConfig, @config.providers["test"]
+    end
   end
 end

@@ -284,4 +284,133 @@ class HooksTest < Minitest::Test
   ensure
     CaptainHook.configuration.hooks.clear!
   end
+
+  # === run_around Tests ===
+
+  def test_run_around_with_no_hooks_executes_block
+    result = @hooks.run_around(:around_service, nil) do
+      "block_result"
+    end
+
+    assert_equal "block_result", result
+  end
+
+  def test_run_around_with_single_hook
+    executed = []
+
+    @hooks.around_service do |context, block|
+      executed << :before
+      result = block.call
+      executed << :after
+      result
+    end
+
+    result = @hooks.run_around(:around_service, "context") do
+      executed << :block
+      "final_result"
+    end
+
+    assert_equal [:before, :block, :after], executed
+    assert_equal "final_result", result
+  end
+
+  def test_run_around_with_multiple_hooks_chains_correctly
+    order = []
+
+    @hooks.around_service(priority: 10) do |_context, block|
+      order << :outer_before
+      result = block.call
+      order << :outer_after
+      result
+    end
+
+    @hooks.around_service(priority: 20) do |_context, block|
+      order << :inner_before
+      result = block.call
+      order << :inner_after
+      result
+    end
+
+    @hooks.run_around(:around_service, nil) do
+      order << :block
+      "result"
+    end
+
+    assert_equal [:outer_before, :inner_before, :block, :inner_after, :outer_after], order
+  end
+
+  def test_run_around_passes_context_to_hooks
+    captured_context = nil
+
+    @hooks.around_service do |context, block|
+      captured_context = context
+      block.call
+    end
+
+    @hooks.run_around(:around_service, "test_context") { "result" }
+
+    assert_equal "test_context", captured_context
+  end
+
+  def test_run_around_hook_can_modify_result
+    @hooks.around_service do |_context, block|
+      result = block.call
+      result.upcase
+    end
+
+    result = @hooks.run_around(:around_service, nil) { "lowercase" }
+
+    assert_equal "LOWERCASE", result
+  end
+
+  def test_class_run_around_delegates_to_configuration
+    CaptainHook.configuration.hooks.around_service do |_context, block|
+      result = block.call
+      result * 2
+    end
+
+    result = CaptainHook::Hooks.run_around(:around_service, nil) { 5 }
+
+    assert_equal 10, result
+  ensure
+    CaptainHook.configuration.hooks.clear!
+  end
+
+  # === Edge Case Tests ===
+
+  def test_extend_model_returns_nil_without_block
+    result = @hooks.extend_model(:Example)
+
+    assert_nil result
+  end
+
+  def test_extend_controller_returns_nil_without_block
+    result = @hooks.extend_controller(:HomeController)
+
+    assert_nil result
+  end
+
+  def test_registered_returns_false_for_non_existent_event
+    refute @hooks.registered?(:non_existent_event)
+  end
+
+  def test_execute_hook_with_callable_object
+    callable = Class.new do
+      def self.call(arg)
+        "Called with: #{arg}"
+      end
+    end
+
+    result = @hooks.send(:execute_hook, callable, "test")
+
+    assert_equal "Called with: test", result
+  end
+
+  def test_execute_hook_with_proc
+    my_proc = proc { |arg| "Proc: #{arg}" }
+
+    result = @hooks.send(:execute_hook, my_proc, "value")
+
+    assert_equal "Proc: value", result
+  end
 end

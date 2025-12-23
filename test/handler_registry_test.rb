@@ -354,5 +354,41 @@ module CaptainHook
       # All threads should get the same result
       assert(results.all? { |r| r.size == 1 })
     end
+    def test_handler_config_delay_for_attempt_returns_correct_delay
+      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+        provider: "test",
+        event_type: "test",
+        handler_class: "TestHandler",
+        retry_delays: [10, 20, 30]
+      )
+
+      assert_equal 10, config.delay_for_attempt(0)
+      assert_equal 20, config.delay_for_attempt(1)
+      assert_equal 30, config.delay_for_attempt(2)
+    end
+
+    def test_handler_config_delay_for_attempt_returns_last_delay_when_out_of_bounds
+      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+        provider: "test",
+        event_type: "test",
+        handler_class: "TestHandler",
+        retry_delays: [10, 20]
+      )
+
+      # Attempt beyond array should return last delay
+      assert_equal 20, config.delay_for_attempt(5)
+    end
+
+    def test_handler_config_delay_for_attempt_returns_default_when_empty_delays
+      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+        provider: "test",
+        event_type: "test",
+        handler_class: "TestHandler",
+        retry_delays: []
+      )
+
+      # Should return default 3600 when no delays configured
+      assert_equal 3600, config.delay_for_attempt(0)
+    end
   end
 end

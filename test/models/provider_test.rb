@@ -317,5 +317,11 @@ module CaptainHook
       refute_equal "super_secret", raw_value
       assert_equal "super_secret", @provider.reload.signing_secret
     end
+
+    test "adapter returns initialized adapter instance" do
+      adapter = @provider.adapter
+
+      assert_instance_of CaptainHook::Adapters::Base, adapter
+    end
   end
 end

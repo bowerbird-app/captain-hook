@@ -160,5 +160,28 @@ module CaptainHook
       @handler.save!
       assert_equal "stripe:payment.succeeded", @handler.registry_key
     end
+
+    test "provider_record returns associated Provider" do
+      provider = CaptainHook::Provider.create!(
+        name: "stripe",
+        display_name: "Stripe",
+        adapter_class: "StripeAdapter",
+        signing_secret: "secret",
+        active: true
+      )
+      @handler.save!
+
+      provider_record = @handler.provider_record
+
+      assert_equal provider.id, provider_record.id
+      assert_equal "stripe", provider_record.name
+    end
+
+    test "provider_record returns nil when provider not found" do
+      @handler.provider = "nonexistent"
+      @handler.save!
+
+      assert_nil @handler.provider_record
+    end
   end
 end
