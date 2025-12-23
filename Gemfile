@@ -15,6 +15,7 @@ group :development, :test do
   gem "faker", "~> 3.2"
   gem "shoulda-matchers", "~> 6.0"
   gem "webmock", "~> 3.19"
+  gem "simplecov", require: false
 end
 
 group :development do

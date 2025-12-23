@@ -43,6 +43,9 @@ test/dummy/config/local_encryption_keys.yml
 # RSpec
 spec/examples.txt
 
+# Test coverage
+coverage/
+
 # Build artifacts
 *.gem
 pkg/

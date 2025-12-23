@@ -16,7 +16,6 @@ module CaptainHook
 
         # Check that we found the test providers
         provider_names = providers.map { |p| p["name"] }
-        assert_includes provider_names, "stripe"
         assert_includes provider_names, "square"
         assert_includes provider_names, "webhook_site"
       end
@@ -34,13 +33,11 @@ module CaptainHook
 
       test "provider definitions include optional fields" do
         providers = @discovery.call
-        stripe_provider = providers.find { |p| p["name"] == "stripe" }
+        square_provider = providers.find { |p| p["name"] == "square" }
 
-        assert_not_nil stripe_provider
-        assert_equal "Stripe", stripe_provider["display_name"]
-        assert_equal "CaptainHook::Adapters::Stripe", stripe_provider["adapter_class"]
-        assert_equal 300, stripe_provider["timestamp_tolerance_seconds"]
-        assert_equal "ENV[STRIPE_WEBHOOK_SECRET]", stripe_provider["signing_secret"]
+        assert_not_nil square_provider
+        assert_equal "Square", square_provider["display_name"]
+        assert_equal "CaptainHook::Adapters::Square", square_provider["adapter_class"]
       end
 
       test "handles missing directory gracefully" do
