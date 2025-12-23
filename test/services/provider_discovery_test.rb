@@ -114,7 +114,7 @@ module CaptainHook
 
           providers = discovery.instance_variable_get(:@discovered_providers)
           assert_equal 2, providers.size
-          assert providers.all? { |p| p["name"].start_with?("test") }
+          assert(providers.all? { |p| p["name"].start_with?("test") })
         ensure
           FileUtils.rm_rf(temp_dir)
         end

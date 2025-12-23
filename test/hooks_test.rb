@@ -437,7 +437,7 @@ class HooksTest < Minitest::Test
   def test_handle_hook_error_logs_when_raise_on_error_disabled
     @hooks.raise_on_error = false
     error = StandardError.new("Test error")
-    error.set_backtrace(["line1", "line2", "line3"])
+    error.set_backtrace(%w[line1 line2 line3])
 
     # Should not raise, just log
     @hooks.send(:handle_hook_error, error, :test_event, {})

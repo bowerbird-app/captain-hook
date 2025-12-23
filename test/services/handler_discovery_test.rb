@@ -53,7 +53,7 @@ module CaptainHook
 
         assert_equal 2, handlers.size
         provider_names = handlers.map { |h| h["provider"] }
-        assert provider_names.all? { |p| p == "stripe" }
+        assert(provider_names.all? { |p| p == "stripe" })
       end
 
       test "discovers handlers for specific provider" do

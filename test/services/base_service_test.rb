@@ -161,10 +161,10 @@ module CaptainHook
     def test_service_runs_after_hooks
       hook_called = false
       result_value = nil
-      CaptainHook.configuration.hooks.after_service { |result| 
+      CaptainHook.configuration.hooks.after_service do |result|
         hook_called = true
         result_value = result.value
-      }
+      end
 
       ServiceWithHooks.call
 
@@ -186,7 +186,7 @@ module CaptainHook
       result = ServiceWithHooks.call
       order << :done
 
-      assert_equal [:before, :after, :done], order
+      assert_equal %i[before after done], order
       assert result.success?
     ensure
       CaptainHook.configuration.hooks.clear!
