@@ -39,6 +39,8 @@ class CaptainHookTest < Minitest::Test
   end
 
   def test_register_handler_convenience_method
+    CaptainHook.handler_registry.clear!
+
     CaptainHook.register_handler(
       provider: "test",
       event_type: "test.event",
