@@ -1,20 +1,3 @@
-GIT
-  remote: https://github.com/bowerbird-app/makeup-artist.git
-  revision: 26138e4a67be92a98abbf169d6bc037122c6e30e
-  specs:
-    makeup_artist (0.4.3)
-      importmap-rails
-      rails (>= 7.0)
-      stimulus-rails
-      tailwindcss-rails (>= 4.0)
-
-GIT
-  remote: https://github.com/bowerbird-app/marikit-country-list.git
-  revision: f723e04e63b6bc76ac0551c376804b98e3f6b9a2
-  specs:
-    marikit_country_list (0.1.0)
-      rails (>= 6.0)
-
 PATH
   remote: ../..
   specs:
@@ -104,6 +87,7 @@ GEM
     bcrypt_pbkdf (1.1.2)
     bcrypt_pbkdf (1.1.2-arm64-darwin)
     bcrypt_pbkdf (1.1.2-x86_64-darwin)
+    benchmark-ips (2.14.0)
     bigdecimal (4.0.1)
     bindex (0.8.1)
     bootsnap (1.19.0)
@@ -196,6 +180,7 @@ GEM
       net-pop
       net-smtp
     marcel (1.1.0)
+    memory_profiler (1.1.0)
     method_source (1.1.0)
     mini_magick (5.3.1)
       logger
@@ -421,6 +406,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  benchmark-ips
   bootsnap
   brakeman
   bundler-audit
@@ -430,8 +416,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
-  makeup_artist!
-  marikit_country_list!
+  memory_profiler
   pg (~> 1.1)
   propshaft
   pry
@@ -466,6 +451,7 @@ CHECKSUMS
   bcrypt_pbkdf (1.1.2) sha256=c2414c23ce66869b3eb9f643d6a3374d8322dfb5078125c82792304c10b94cf6
   bcrypt_pbkdf (1.1.2-arm64-darwin) sha256=afdd6feb6ed5a97b8e44caacb3f2d641b98af78e6a516d4a3520b69af5cf9fea
   bcrypt_pbkdf (1.1.2-x86_64-darwin) sha256=35f5639d0058e6c2cc2f856f9c0b14080543268d3047abe6bc81c513093caa0e
+  benchmark-ips (2.14.0) sha256=b72bc8a65d525d5906f8cd94270dccf73452ee3257a32b89fbd6684d3e8a9b1d
   bigdecimal (4.0.1) sha256=8b07d3d065a9f921c80ceaea7c9d4ae596697295b584c296fe599dd0ad01c4a7
   bindex (0.8.1) sha256=7b1ecc9dc539ed8bccfc8cb4d2732046227b09d6f37582ff12e50a5047ceb17e
   bootsnap (1.19.0) sha256=d3e54558c1a9ea10cb095eb1eb8e921ae83fd4d5764b8809f63aec18ce9f60b5
@@ -512,9 +498,8 @@ CHECKSUMS
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   loofah (2.25.0) sha256=df5ed7ac3bac6a4ec802df3877ee5cc86d027299f8952e6243b3dac446b060e6
   mail (2.9.0) sha256=6fa6673ecd71c60c2d996260f9ee3dd387d4673b8169b502134659ece6d34941
-  makeup_artist (0.4.3)
   marcel (1.1.0) sha256=fdcfcfa33cc52e93c4308d40e4090a5d4ea279e160a7f6af988260fa970e0bee
-  marikit_country_list (0.1.0)
+  memory_profiler (1.1.0) sha256=79a17df7980a140c83c469785905409d3027ca614c42c086089d128b805aa8f8
   method_source (1.1.0) sha256=181301c9c45b731b4769bc81e8860e72f9161ad7d66dd99103c9ab84f560f5c5
   mini_magick (5.3.1) sha256=29395dfd76badcabb6403ee5aff6f681e867074f8f28ce08d78661e9e4a351c4
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
