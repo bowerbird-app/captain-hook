@@ -62,8 +62,10 @@ module CaptainHook
 
         if provider_definitions.empty?
           redirect_to admin_providers_url,
-                    alert: "No provider configuration files found. " \
-                           "Add YAML files to captain_hook/providers/ directory."
+                      alert: "No provider configuration files found. " \
+                             "Add YAML files to captain_hook/providers/ directory."
+          return
+        end
 
         # Sync discovered providers to database
         sync = CaptainHook::Services::ProviderSync.new(provider_definitions)
