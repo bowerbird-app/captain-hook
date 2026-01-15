@@ -687,12 +687,6 @@ end
 ```
 your_rails_app/
 │
-├── app/
-│   └── adapters/                    # ← Only if you need custom adapters
-│       └── captain_hook/            #    for providers not built into
-│           └── adapters/            #    CaptainHook (rare)
-│               └── custom_provider.rb
-│
 ├── config/
 │   ├── initializers/
 │   │   └── captain_hook.rb         # Handler registrations
@@ -736,7 +730,7 @@ my_payment_gem/
         └── engine.rb               # Register handlers here
 ```
 
-**Note**: Most gems use CaptainHook's built-in adapters (Stripe, Square, PayPal, WebhookSite). Only create a custom adapter in your **Rails application** (not in your gem) if you need to support a provider that CaptainHook doesn't have built-in support for.
+**Note**: All adapters are built into CaptainHook (Stripe, Square, PayPal, WebhookSite, etc.). If you need support for a new provider, the CaptainHook gem must be updated to include the adapter. Host applications and other gems cannot create custom adapters.
 
 ## Configuration Examples
 
@@ -1098,7 +1092,7 @@ CaptainHook's discovery and management system provides:
 
 ```
 1. Create Structure
-   mkdir -p captain_hook/{providers,handlers,adapters}
+   mkdir -p captain_hook/{providers,handlers}
 
 2. Add Provider Config
    # captain_hook/providers/stripe.yml
@@ -1164,14 +1158,12 @@ config/
 └── initializers/
     └── captain_hook.rb  # Handler registration
 
-app/                         # Only if you need custom adapters
-└── adapters/                # for unsupported providers (rare)
-    └── captain_hook/
-        └── adapters/
-            └── custom_provider.rb
+app/
+  controllers/...
+  handlers/...                # ← Webhook handler classes
 ```
 
-**Note**: Custom adapters are only needed if you're using a provider that CaptainHook doesn't have built-in support for. Most users won't need this directory.
+**Note**: All webhook signature verification adapters are built into the CaptainHook gem. If you need support for a new provider, the CaptainHook gem itself must be updated. Host applications only create handlers (business logic) and provider YAML configs.
 
 ## Troubleshooting
 
@@ -1208,5 +1200,5 @@ app/                         # Only if you need custom adapters
 For more detailed information, see:
 - [Handler Management](HANDLER_MANAGEMENT.md) - Handler configuration and management
 - [Provider Discovery](PROVIDER_DISCOVERY.md) - Provider discovery system details
-- [Custom Adapters](CUSTOM_ADAPTERS.md) - Creating custom signature adapters
+- [Adapters](ADAPTERS.md) - Built-in signature verification adapters
 - [Gem Webhook Setup](GEM_WEBHOOK_SETUP.md) - Setting up webhooks in gems

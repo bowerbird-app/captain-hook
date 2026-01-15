@@ -199,10 +199,12 @@ CaptainHook.register_handler(
 )
 ```
 
-#### Creating a Custom Adapter (if needed)
+#### Need Support for a New Provider?
+
+Adapters can only be created within the CaptainHook gem itself to ensure consistent security verification:
 
 ```ruby
-# app/adapters/captain_hook/adapters/custom_provider.rb
+# lib/captain_hook/adapters/custom_provider.rb (in CaptainHook gem)
 module CaptainHook
   module Adapters
     class CustomProvider < Base
@@ -225,49 +227,51 @@ module CaptainHook
 end
 ```
 
+To add support for a new provider, submit a pull request to the CaptainHook gem or contact the maintainers.
+
 ### Discovery Mechanism
 
 The `AdapterDiscovery` service finds adapters from:
 
-1. **Built-in adapters** (in gem):
+1. **Built-in adapters** (in CaptainHook gem):
    - CaptainHook::Adapters::Stripe
    - CaptainHook::Adapters::Square
    - CaptainHook::Adapters::Paypal
    - CaptainHook::Adapters::WebhookSite
 
-2. **Custom adapters** (in app):
-   - Scans `app/adapters/captain_hook/adapters/*.rb`
-   - Automatically available in admin UI dropdown
+2. **Custom adapters**:
+   - Must be added to `lib/captain_hook/adapters/` in the CaptainHook gem
+   - Automatically available in admin UI dropdown after gem update
 
 ### Security Implications
 
 **Improved Security:**
 - ✅ Centralized security updates affect all users
-- ✅ Peer-reviewed implementations
+- ✅ Peer-reviewed implementations in CaptainHook gem
 - ✅ Consistent constant-time comparisons
 - ✅ Proper timestamp validation
+- ✅ All adapters audited before release
 
-**Maintained Flexibility:**
-- Custom adapters still possible for proprietary providers
+**Controlled Extension:**
+- New adapters must be added to CaptainHook gem (via PR)
 - Environment variable override still works
-- Application-specific verification logic supported
+- Application-specific handler logic supported
 
 ### Backward Compatibility
 
 **Breaking Change:**
-If a gem previously provided its own adapter for Stripe/Square/PayPal:
-- Remove the adapter file
-- Update provider YAML to use built-in adapter
+If a gem previously provided its own adapter:
+- Remove the adapter file from your application/gem
+- Update provider YAML to use built-in CaptainHook adapter
 - Handlers and registration code unchanged
 
 **Migration Path:**
-1. Remove `app/adapters/captain_hook/adapters/stripe.rb` (or square, paypal)
+1. Remove custom adapter files (adapters now in CaptainHook gem only)
 2. Update provider YAML: `adapter_class: CaptainHook::Adapters::Stripe`
 3. Test signature verification still works
 4. Deploy
 
 **Non-Breaking:**
-- Custom adapters for other providers still work
 - Handler registration unchanged
 - Provider discovery unchanged
 - Admin UI unchanged

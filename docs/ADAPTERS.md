@@ -1,4 +1,4 @@
-# Creating Custom Adapters
+# Built-in Adapters
 
 Adapters are the first line of defense in the webhook processing pipeline. They handle signature verification and metadata extraction specific to each webhook provider.
 
@@ -12,7 +12,7 @@ Each webhook provider (Stripe, PayPal, GitHub, etc.) has its own signature verif
 - PayPal (`CaptainHook::Adapters::Paypal`)
 - WebhookSite (`CaptainHook::Adapters::WebhookSite`) - testing only
 
-**You only need to create a custom adapter if your provider is not in the list above.**
+**Need support for a new provider?** The CaptainHook gem must be updated to include the adapter. Host applications and other gems cannot create custom adapters - this ensures consistent security and verification logic across all installations.
 
 ## Adapter Responsibilities
 
@@ -37,27 +37,32 @@ signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 
 No adapter code needed! CaptainHook handles all the signature verification.
 
-## Creating a Custom Adapter
+## Adding a New Adapter to CaptainHook
 
-Only create a custom adapter if CaptainHook doesn't have a built-in one for your provider.
+**Important**: Adapters can ONLY be added to the CaptainHook gem itself, not in host applications or other gems. This is an architectural decision to ensure:
+- Consistent security verification across all installations
+- Centralized testing and maintenance
+- Single source of truth for provider signature schemes
 
-### Where to Put Custom Adapters
+If you need support for a new provider, you must:
+1. Add the adapter to `lib/captain_hook/adapters/` in the CaptainHook gem
+2. Submit a pull request or update the gem internally
+3. Release a new version of CaptainHook
 
-**For host Rails applications:**
-- Create adapters in `app/adapters/captain_hook/adapters/`
-- They will be automatically discovered by CaptainHook
+### Where Adapters Live
 
-**For CaptainHook gem contributions:**
-- Add to `lib/captain_hook/adapters/` (see Contributing section below)
+**In CaptainHook gem only:**
+- Add to `lib/captain_hook/adapters/` in the CaptainHook repository
+- Load in `lib/captain_hook.rb` with `require "captain_hook/adapters/your_adapter"`
 
 ### 1. Create the Adapter Class
 
-**Example: Custom adapter for a fictional "AcmePayments" provider**
+**Example: Adding support for "AcmePayments" provider to CaptainHook**
 
-Create `app/adapters/captain_hook/adapters/acme_payments.rb`:
+Create `lib/captain_hook/adapters/acme_payments.rb` in the CaptainHook gem:
 
 ```ruby
-# app/adapters/captain_hook/adapters/acme_payments.rb
+# lib/captain_hook/adapters/acme_payments.rb
 module CaptainHook
   module Adapters
     class AcmePayments < Base
@@ -109,9 +114,23 @@ module CaptainHook
 end
 ```
 
-### 2. Use the Adapter
+### 2. Load the Adapter
 
-Create a provider configuration that references your custom adapter:
+Add the require statement to `lib/captain_hook.rb`:
+
+```ruby
+# Load adapters
+require "captain_hook/adapters/base"
+require "captain_hook/adapters/stripe"
+require "captain_hook/adapters/square"
+require "captain_hook/adapters/paypal"
+require "captain_hook/adapters/webhook_site"
+require "captain_hook/adapters/acme_payments"  # Add your new adapter
+```
+
+### 3. Use the Adapter
+
+Users can now reference your adapter in their provider YAML:
 
 ```yaml
 # captain_hook/providers/acme_payments.yml

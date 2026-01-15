@@ -27,7 +27,7 @@ Your gem provides two key components:
 
 CaptainHook provides:
 - **Built-in adapters** for common providers (Stripe, Square, PayPal, etc.)
-- **Adapter framework** for creating custom adapters if needed
+- **Cannot be extended** - adapters live only in CaptainHook gem for security consistency
 
 When installed in a Rails app, CaptainHook:
 - Discovers your provider configuration
@@ -69,7 +69,7 @@ your_gem/
 └── your_gem.gemspec                   # Gem dependencies (REQUIRED)
 ```
 
-**Note:** You only need to create an adapter if CaptainHook doesn't have a built-in one for your provider. See "Step 1A: Using a Built-in Adapter" vs "Step 1B: Creating a Custom Adapter" below.
+**If your provider is not built into CaptainHook**, you must submit a pull request to add the adapter to the CaptainHook gem itself. Host applications and other gems cannot create custom adapters.
 
 ### Why Each File?
 
@@ -81,9 +81,9 @@ your_gem/
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
-## Step 1A: Using a Built-in Adapter (Recommended)
+## Step 1: Choose Your Provider Adapter
 
-If CaptainHook has a built-in adapter for your provider, skip to Step 2. You only need to reference it in your YAML config.
+If CaptainHook has a built-in adapter for your provider, you're all set! Just reference it in your YAML config.
 
 **Example: Using the built-in Stripe adapter**
 
@@ -97,78 +97,7 @@ signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 
 **That's it!** No adapter code needed in your gem.
 
-## Step 1B: Creating a Custom Adapter (Only if Needed)
-
-Only create a custom adapter in your **host Rails application** (not in your gem) if CaptainHook doesn't have a built-in one for your provider.
-
-**Example: Custom adapter for a fictional "AcmePayments" provider**
-
-Create `app/adapters/captain_hook/adapters/acme_payments.rb` in your Rails application:
-
-```ruby
-# frozen_string_literal: true
-
-module CaptainHook
-  module Adapters
-    # AcmePayments webhook signature verification adapter
-    # Implements AcmePayments' webhook signature verification scheme
-    # https://acmepayments.example.com/docs/webhooks
-    class AcmePayments < Base
-      SIGNATURE_HEADER = "X-Acme-Signature"
-      TIMESTAMP_HEADER = "X-Acme-Timestamp"
-
-      # Verify webhook signature
-      def verify_signature(payload:, headers:)
-        signature = headers[SIGNATURE_HEADER]
-        timestamp = headers[TIMESTAMP_HEADER]
-        
-        return false if signature.blank? || timestamp.blank?
-
-        # Check timestamp tolerance if enabled
-        if provider_config.timestamp_validation_enabled?
-          tolerance = provider_config.timestamp_tolerance_seconds || 300
-          return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
-        end
-
-        # Generate expected signature (provider-specific algorithm)
-        expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
-        secure_compare(signature, expected)
-      end
-
-      # Extract timestamp from headers
-      def extract_timestamp(headers)
-        headers[TIMESTAMP_HEADER]&.to_i
-      end
-
-      # Extract event ID from payload
-      def extract_event_id(payload)
-        payload["transaction_id"] || payload["id"]
-      end
-
-      # Extract event type from payload
-      def extract_event_type(payload)
-        payload["event_type"] || payload["type"]
-      end
-
-      private
-
-      def timestamp_within_tolerance?(timestamp, tolerance)
-        current_time = Time.current.to_i
-        (current_time - timestamp).abs <= tolerance
-      end
-    end
-  end
-end
-```
-
-**Important:** Custom adapters should be created in the **host Rails application**, not in your gem. This keeps your gem lightweight and allows the application to customize verification logic if needed.
-
-**Note**: Each provider has different signature verification methods:
-- **HMAC-SHA256**: Most common (Stripe, Square, Shopify)
-- **JWT tokens**: Some modern APIs (Auth0, Firebase)
-- **Certificate-based**: Legacy systems (PayPal, some banking APIs)
-
-Refer to your provider's webhook documentation for their specific signature scheme. See `docs/ADAPTERS.md` for detailed examples.
+**If your provider is not supported**, you'll need to add the adapter to the CaptainHook gem itself. Contact the CaptainHook maintainers or submit a pull request to `lib/captain_hook/adapters/`. Adapters cannot be created in host applications or other gems.
 
 ## Step 2: Create Provider Configuration
 

@@ -39,7 +39,7 @@ CaptainHook provides a complete webhook management system with automatic discove
   - Per-provider security settings
   - Webhook URL generation for sharing with providers
   - Active/inactive status control
-  - Support for custom adapters (Stripe, OpenAI, GitHub, etc.)
+  - Built-in adapters for Stripe, Square, PayPal, WebhookSite
 
 - **Admin Interface**
   - View and manage providers
@@ -364,52 +364,18 @@ adapter_class: CaptainHook::Adapters::Stripe
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 ```
 
-The admin UI automatically detects all available adapters (both built-in and custom) in the adapter dropdown.
+### Need a New Adapter?
 
-### Creating a Custom Adapter
+**Adapters can only be added to the CaptainHook gem itself**, not in host applications or other gems. This architectural decision ensures:
+- Consistent security verification across all installations
+- Centralized testing and maintenance
+- Single source of truth for provider signature schemes
 
-Need to integrate a provider not listed above? Create a custom adapter in your Rails application:
+If you need support for a new provider:
+1. Submit a pull request to add the adapter to `lib/captain_hook/adapters/` in the CaptainHook gem
+2. Or contact the maintainers to request support for your provider
 
-```ruby
-# app/adapters/captain_hook/adapters/my_provider.rb
-module CaptainHook
-  module Adapters
-    class MyProvider < Base
-      def verify_signature(payload:, headers:)
-        # Implement provider-specific signature verification
-        signature = headers["X-My-Provider-Signature"]
-        return false if signature.blank?
-        
-        expected = generate_hmac(provider_config.signing_secret, payload)
-        secure_compare(signature, expected)
-      end
-
-      def extract_event_id(payload)
-        payload["id"]
-      end
-
-      def extract_event_type(payload)
-        payload["type"] || "unknown"
-      end
-
-      def extract_timestamp(headers)
-        time_str = headers["X-My-Provider-Timestamp"]
-        Time.parse(time_str).to_i rescue nil
-      end
-
-      private
-
-      def generate_hmac(secret, data)
-        OpenSSL::HMAC.hexdigest("SHA256", secret, data)
-      end
-    end
-  end
-end
-```
-
-Place adapters in `app/adapters/captain_hook/adapters/` - they'll be automatically discovered by the admin UI dropdown.
-
-**Full documentation**: See [docs/ADAPTERS.md](docs/ADAPTERS.md) for detailed adapter creation guide with examples for Stripe, Square, PayPal, and more.
+**Full documentation**: See [docs/ADAPTERS.md](docs/ADAPTERS.md) for details on CaptainHook's built-in adapters and how to contribute new ones.
 
 ## Security & Encryption
 

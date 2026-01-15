@@ -99,29 +99,10 @@ CaptainHook ships with these adapters:
 - **PayPal** - `CaptainHook::Adapters::Paypal`
 - **WebhookSite** - `CaptainHook::Adapters::WebhookSite` (testing only)
 
-### Creating Custom Adapters
+### Need a New Provider?
 
-If you need a provider not listed above, create a custom adapter in your application:
+If you need a provider not listed above, the adapter must be added to the CaptainHook gem itself. Contact the maintainers or submit a pull request to add support for your provider.
 
-```ruby
-# app/adapters/captain_hook/adapters/my_provider.rb
-module CaptainHook
-  module Adapters
-    class MyProvider < Base
-      def verify_signature(payload:, headers:)
-        # Implement provider-specific signature verification
-      end
+Adapters can only be created within the CaptainHook gem at `lib/captain_hook/adapters/` to ensure consistent security and verification logic across all installations.
 
-      def extract_event_id(payload)
-        payload["id"]
-      end
-
-      def extract_event_type(payload)
-        payload["type"]
-      end
-    end
-  end
-end
-```
-
-See `docs/ADAPTERS.md` for detailed adapter creation guide.
+See `docs/ADAPTERS.md` for details on CaptainHook's adapter architecture.

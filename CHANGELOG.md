@@ -37,10 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced security documentation and explanations in admin UI
 
 ### Changed
-- **Architecture**: Adapters now live in the CaptainHook gem, not in consuming gems or applications
-  - Custom adapters should be created in `app/adapters/captain_hook/adapters/` in the host application
-  - Consuming gems only need to provide handlers and provider YAML configs
-- **Documentation**: Completely rewritten to emphasize built-in adapters and multi-tenant setups
+- **Architecture**: Adapters can only be created within the CaptainHook gem itself
+  - All adapters live in `lib/captain_hook/adapters/` in the CaptainHook gem
+  - Host applications and other gems cannot create custom adapters
+  - This ensures consistent security verification across all installations
+  - To add support for new providers, submit a pull request to CaptainHook
+- **Documentation**: Completely rewritten to emphasize built-in adapters and controlled adapter development
   - README.md updated with built-in adapter information
   - docs/GEM_WEBHOOK_SETUP.md streamlined to focus on using built-in adapters
   - docs/ADAPTERS.md updated with contributing guidelines
