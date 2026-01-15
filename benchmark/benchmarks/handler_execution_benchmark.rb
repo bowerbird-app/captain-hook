@@ -5,7 +5,8 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __dir__)
 require_relative "../support/benchmark_helper"
 require_relative "../support/fixtures"
 
-# Load Rails environment
+# Load Rails environment in test mode
+ENV["RAILS_ENV"] = "test"
 require File.expand_path("../../test/dummy/config/environment", __dir__)
 require "rails/test_help"
 
