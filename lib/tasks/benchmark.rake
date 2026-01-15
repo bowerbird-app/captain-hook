@@ -3,7 +3,7 @@
 namespace :benchmark do
   desc "Run all benchmarks"
   task all: :environment do
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "CaptainHook Performance Benchmarks"
     puts("=" * 80)
     puts "Ruby: #{RUBY_VERSION}"
@@ -29,7 +29,7 @@ namespace :benchmark do
       puts e.backtrace.first(5)
     end
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Benchmarks Complete!"
     puts("=" * 80)
   end

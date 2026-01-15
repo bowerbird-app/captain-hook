@@ -308,7 +308,7 @@ module CaptainHook
 
     test "increment_attempts! updates last_attempt_at" do
       @handler.save!
-      old_time = @handler.last_attempt_at
+      @handler.last_attempt_at
 
       @handler.increment_attempts!
       @handler.reload

@@ -55,7 +55,7 @@ module CaptainHook
         # Handle signing secret with ENV variable support
         if definition["signing_secret"].present?
           signing_secret = resolve_signing_secret(definition["signing_secret"])
-          
+
           # Only update signing secret if:
           # 1. It's a new record, OR
           # 2. The resolved secret is different from current (and not nil)
@@ -95,7 +95,7 @@ module CaptainHook
         # Check if it's an ENV variable reference
         if secret_value.is_a?(String) && secret_value.match?(/\AENV\[([^\]]+)\]\z/)
           env_var = secret_value.match(/\AENV\[([^\]]+)\]\z/)[1]
-          ENV[env_var]
+          ENV.fetch(env_var, nil)
         else
           secret_value
         end

@@ -161,7 +161,7 @@ module CaptainHook
         ]
 
         sync = ProviderSync.new(definitions)
-        results = sync.call
+        sync.call
 
         provider = CaptainHook::Provider.find_by(name: "default_active_provider")
         assert provider.active?, "Provider should be active by default"

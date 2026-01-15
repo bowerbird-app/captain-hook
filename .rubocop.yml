@@ -13,6 +13,10 @@ Style/StringLiterals:
   Enabled: true
   EnforcedStyle: double_quotes
 
+# Prefer dig for safer hash access in webhook handling
+Style/SingleArgumentDig:
+  Enabled: false
+
 Layout/LineLength:
   Max: 120
 
