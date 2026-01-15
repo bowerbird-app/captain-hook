@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider admin interface at `/captain_hook/admin/providers`
   - Create, read, update, and delete webhook providers
   - View webhook URLs for sharing with providers
+- **Performance Benchmarking Suite**: Comprehensive benchmarks for monitoring performance
+  - Signature verification benchmarks across all adapters
+  - Database operation benchmarks (event creation, idempotency checks, queries)
+  - Handler execution and registry lookup benchmarks
+  - Memory profiling for leak detection
+  - End-to-end webhook processing throughput tests
+  - GitHub Actions integration for automated CI benchmarking
+  - See `benchmark/README.md` for details
   - Copy-to-clipboard functionality for webhook URLs
   - Manage security settings per provider (rate limiting, payload limits, timestamp validation)
 - Handlers admin interface at `/captain_hook/admin/providers/:id/handlers`

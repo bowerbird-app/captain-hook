@@ -67,10 +67,10 @@ module CaptainHook
 
     # Get the adapter instance
     def adapter
-      adapter_class.constantize.new(signing_secret: signing_secret)
+      adapter_class.constantize.new(self)
     rescue NameError => e
       Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
-      CaptainHook::Adapters::Base.new(signing_secret: signing_secret)
+      CaptainHook::Adapters::Base.new(self)
     end
 
     # Activate provider

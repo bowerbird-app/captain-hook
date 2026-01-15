@@ -1,0 +1,121 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'app/**'
+      - 'benchmark/**'
+      - '.github/workflows/benchmark.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: captain_hook_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/captain_hook_test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Setup database
+        run: |
+          bundle exec rails db:create db:migrate RAILS_ENV=test
+
+      - name: Run benchmarks
+        run: |
+          bundle exec rake benchmark:ci
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmark/results/*.txt
+          retention-days: 30
+
+      - name: Extract key metrics
+        id: metrics
+        run: |
+          RESULT_FILE=$(ls -t benchmark/results/*.txt | head -1)
+          echo "result_file=$RESULT_FILE" >> $GITHUB_OUTPUT
+          
+          # Extract throughput if available
+          THROUGHPUT=$(grep -oP 'Throughput: \K[\d.]+' $RESULT_FILE | head -1 || echo "N/A")
+          echo "throughput=$THROUGHPUT" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const resultFile = '${{ steps.metrics.outputs.result_file }}';
+            const throughput = '${{ steps.metrics.outputs.throughput }}';
+            
+            let results = '';
+            try {
+              results = fs.readFileSync(resultFile, 'utf8');
+              // Truncate if too long for comment
+              if (results.length > 60000) {
+                results = results.substring(0, 60000) + '\n\n... (truncated)';
+              }
+            } catch (e) {
+              results = 'Could not read benchmark results';
+            }
+            
+            const body = `## 📊 Performance Benchmark Results
+            
+            **Key Metrics:**
+            - Throughput: ${throughput} events/second
+            - Ruby: ${process.env.RUBY_VERSION || '3.2'}
+            - Rails: ${process.env.RAILS_VERSION || '7.0+'}
+            
+            <details>
+            <summary>📈 Full Benchmark Output</summary>
+            
+            \`\`\`
+            ${results}
+            \`\`\`
+            
+            </details>
+            
+            > 💡 Full results available in workflow artifacts
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
