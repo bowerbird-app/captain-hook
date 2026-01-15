@@ -67,8 +67,7 @@ BenchmarkHelper.run_benchmark("Create handler records") do
       incoming_event: event,
       handler_class: handler_config.handler_class,
       priority: handler_config.priority,
-      status: :pending,
-      max_attempts: handler_config.max_attempts
+      status: :pending
     )
   end
 end
