@@ -34,7 +34,7 @@ BenchmarkHelper.run_benchmark("Complete webhook reception flow") do
   event_type = adapter.extract_event_type(parsed)
 
   # 4. Create event (idempotency check)
-  event = CaptainHook::IncomingEvent.find_or_create_by_external!(
+  CaptainHook::IncomingEvent.find_or_create_by_external!(
     provider: provider.name,
     external_id: external_id || SecureRandom.uuid,
     event_type: event_type,
@@ -53,7 +53,7 @@ processed_count = 0
 duration = 10 # seconds
 
 while Time.now - start_time < duration
-  event = BenchmarkFixtures.create_test_event(
+  BenchmarkFixtures.create_test_event(
     provider: provider.name,
     external_id: SecureRandom.uuid
   )

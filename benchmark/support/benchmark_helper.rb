@@ -6,7 +6,7 @@ require "memory_profiler"
 module BenchmarkHelper
   # Run a performance benchmark and report iterations per second
   def self.run_benchmark(name, &block)
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Benchmark: #{name}"
     puts("=" * 80)
 
@@ -18,7 +18,7 @@ module BenchmarkHelper
 
   # Run a memory profiling benchmark
   def self.memory_benchmark(name, &)
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Memory Benchmark: #{name}"
     puts("=" * 80)
 
@@ -34,7 +34,7 @@ module BenchmarkHelper
 
   # Run comparison benchmark between multiple implementations
   def self.compare_benchmarks(name, implementations = {})
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Comparison Benchmark: #{name}"
     puts("=" * 80)
 

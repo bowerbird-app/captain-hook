@@ -18,7 +18,7 @@ provider = BenchmarkFixtures.create_test_provider
 puts "\n📊 Webhook Processing Memory Usage"
 BenchmarkHelper.memory_benchmark("Complete webhook processing") do
   100.times do
-    event = BenchmarkFixtures.create_test_event(
+    BenchmarkFixtures.create_test_event(
       provider: provider.name,
       external_id: SecureRandom.uuid
     )
