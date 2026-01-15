@@ -50,10 +50,12 @@ jobs:
         run: bundle install
 
       - name: Setup database
+        working-directory: test/dummy
         run: |
           bundle exec rails db:create db:migrate RAILS_ENV=test
 
       - name: Run benchmarks
+        working-directory: test/dummy
         run: |
           bundle exec rake benchmark:ci
 
@@ -61,7 +63,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results-${{ github.sha }}
-          path: benchmark/results/*.txt
+          path: test/dummy/../../benchmark/results/*.txt
           retention-days: 30
 
       - name: Extract key metrics
