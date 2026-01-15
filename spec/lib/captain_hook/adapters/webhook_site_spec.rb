@@ -1,10 +1,16 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "ostruct"
 
 RSpec.describe CaptainHook::Adapters::WebhookSite do
   let(:signing_secret) { "not_used_for_webhook_site" }
-  let(:adapter) { described_class.new(signing_secret: signing_secret) }
+  let(:provider_config) do
+    OpenStruct.new(
+      signing_secret: signing_secret
+    )
+  end
+  let(:adapter) { described_class.new(provider_config) }
 
   describe "#verify_signature" do
     let(:payload) do

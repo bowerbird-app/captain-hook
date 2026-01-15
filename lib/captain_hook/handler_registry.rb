@@ -73,6 +73,20 @@ module CaptainHook
       end
     end
 
+    # Get all registered handlers across all providers
+    def all_handlers
+      @mutex.synchronize do
+        @registry.values.flatten
+      end
+    end
+
+    # Get all handlers for a specific provider (all event types)
+    def handlers_for_provider(provider)
+      @mutex.synchronize do
+        @registry.select { |key, _| key.start_with?("#{provider}:") }.values.flatten
+      end
+    end
+
     # Clear all registrations
     def clear!
       @mutex.synchronize do

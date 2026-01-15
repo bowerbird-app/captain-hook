@@ -1,10 +1,18 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "ostruct"
 
 RSpec.describe CaptainHook::Adapters::Paypal do
   let(:signing_secret) { "test_paypal_secret_#{SecureRandom.hex(16)}" }
-  let(:adapter) { described_class.new(signing_secret: signing_secret) }
+  let(:provider_config) do
+    OpenStruct.new(
+      signing_secret: signing_secret,
+      timestamp_validation_enabled?: true,
+      timestamp_tolerance_seconds: 300
+    )
+  end
+  let(:adapter) { described_class.new(provider_config) }
 
   describe "#verify_signature" do
     let(:payload) do
