@@ -8,6 +8,13 @@ ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"] = "yBlRa4HF0NLzhKDXSpk1ruiDh
 require "benchmark/ips"
 require "memory_profiler"
 
+# Clean database before running benchmarks (to avoid encryption key mismatch)
+ENV["RAILS_ENV"] = "test"
+require File.expand_path("../../test/dummy/config/environment", __dir__)
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_providers")
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_events")
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_event_handlers")
+
 module BenchmarkHelper
   # Run a performance benchmark and report iterations per second
   def self.run_benchmark(name, &block)
