@@ -8,7 +8,7 @@ RSpec.describe CaptainHook::Provider, type: :model do
 
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:adapter_class) }
-    
+
     # Token has presence validation but also has auto-generation callback
     # So we test that token is set after save even if not provided
     it "ensures token is present after save" do

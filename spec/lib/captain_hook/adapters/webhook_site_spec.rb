@@ -96,7 +96,7 @@ RSpec.describe CaptainHook::Adapters::WebhookSite do
     it "returns timestamp from X-Webhook-Timestamp header if present" do
       headers = { "X-Webhook-Timestamp" => "1234567890" }
       timestamp = adapter.extract_timestamp(headers)
-      expect(timestamp).to eq(1234567890)
+      expect(timestamp).to eq(1_234_567_890)
     end
   end
 
