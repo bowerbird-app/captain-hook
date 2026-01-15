@@ -21,6 +21,9 @@ abort("The Rails environment is running in production mode!") if Rails.env.produ
 # Load support files
 Dir[CaptainHook::Engine.root.join("spec/support/**/*.rb")].each { |f| require f }
 
+# Load factories
+Dir[CaptainHook::Engine.root.join("spec/factories/**/*.rb")].each { |f| require f }
+
 # Checks for pending migrations and applies them before tests are run.
 begin
   ActiveRecord::Migration.maintain_test_schema!
