@@ -45,8 +45,10 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
+          working-directory: test/dummy
 
       - name: Install dependencies
+        working-directory: test/dummy
         run: bundle install
 
       - name: Setup database

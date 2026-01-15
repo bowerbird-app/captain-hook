@@ -546,6 +546,29 @@ This guide shows you how to create provider adapters, handler classes, and YAML 
 - **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
 - **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md) - Technical overview
 - **Visual Guide**: [docs/VISUAL_GUIDE.md](docs/VISUAL_GUIDE.md) - Screenshots and UI walkthrough
+- **Performance Benchmarks**: [benchmark/README.md](benchmark/README.md) - Benchmarking suite and CI integration
+
+## Development
+
+### Running Tests
+
+```bash
+bundle exec rake test
+```
+
+### Running Benchmarks
+
+```bash
+# From test/dummy app
+cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:all
+
+# Individual benchmarks
+cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:signatures
+cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:database
+cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:handlers
+```
+
+See [benchmark/README.md](benchmark/README.md) for complete documentation.
 
 ## License
 
