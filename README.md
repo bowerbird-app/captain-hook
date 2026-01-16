@@ -130,13 +130,14 @@ $ ruby generate_keys.rb
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
-**CaptainHook ships with built-in adapters for common providers:**
-- **Stripe** - `CaptainHook::Adapters::Stripe`
-- **Square** - `CaptainHook::Adapters::Square`  
-- **PayPal** - `CaptainHook::Adapters::Paypal`
-- **WebhookSite** - `CaptainHook::Adapters::WebhookSite` (testing)
+**Provider adapters are distributed with individual gems** (like `marikit-stripe`, `marikit-square`) or can be created in your host application. Each adapter handles provider-specific signature verification and event extraction.
 
-**You don't need to create adapters for these providers** - just reference them in your provider YAML config.
+Common providers typically have adapters available:
+- **Stripe** - Check for gems like `marikit-stripe` or create your own
+- **Square** - Check for gems like `marikit-square` or create your own
+- **PayPal** - Check for gems like `marikit-paypal` or create your own
+
+See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to create adapters.
 
 **Create the directory structure:**
 
@@ -543,10 +544,8 @@ This guide shows you how to create provider adapters, handler classes, and YAML 
 
 - **Handler Management**: [docs/HANDLER_MANAGEMENT.md](docs/HANDLER_MANAGEMENT.md) - Managing handlers via admin UI
 - **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](docs/PROVIDER_DISCOVERY.md) - File-based provider configuration
-- **Custom Adapters**: [docs/CUSTOM_ADAPTERS.md](docs/CUSTOM_ADAPTERS.md) - Creating adapters for new providers
 - **Adapters Reference**: [docs/ADAPTERS.md](docs/ADAPTERS.md) - Detailed adapter implementation guide
 - **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
-- **Implementation Summary**: [docs/IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md) - Technical overview
 - **Visual Guide**: [docs/VISUAL_GUIDE.md](docs/VISUAL_GUIDE.md) - Screenshots and UI walkthrough
 - **Performance Benchmarks**: [benchmark/README.md](benchmark/README.md) - Benchmarking suite and CI integration
 
