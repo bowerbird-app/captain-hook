@@ -5,7 +5,8 @@ CaptainHook::Engine.routes.draw do
   namespace :admin do
     resources :providers do
       collection do
-        post :scan
+        post :sync_all
+        post :discover_new
       end
       member do
         post :scan_handlers

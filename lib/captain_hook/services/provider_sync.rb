@@ -5,8 +5,9 @@ module CaptainHook
     # Service for syncing discovered providers to the database
     # Creates or updates provider records based on YAML definitions
     class ProviderSync < BaseService
-      def initialize(provider_definitions)
+      def initialize(provider_definitions, update_existing: true)
         @provider_definitions = provider_definitions
+        @update_existing = update_existing
         @results = {
           created: [],
           updated: [],
@@ -44,6 +45,13 @@ module CaptainHook
 
         # Track if this is a new record
         is_new = provider.new_record?
+
+        # Skip updating existing providers if update_existing is false
+        if !is_new && !@update_existing
+          @results[:skipped] << provider
+          Rails.logger.info("⏭️  Skipped existing provider: #{name} (update_existing=false)")
+          return
+        end
 
         # Assign attributes from YAML
         provider.display_name = definition["display_name"]
@@ -97,19 +105,20 @@ module CaptainHook
         end
 
         return unless duplicates.any?
-        
+
         # Only warn once per provider name (not once per source pair)
         return if @warned_duplicates.include?(name)
+
         @warned_duplicates.add(name)
 
         # Get all sources for this provider name
         all_sources = @provider_definitions.select { |d| d["name"] == name }.map { |d| d["source"] }
-        
+
         # Check if there are handlers registered for this provider
         existing_provider = CaptainHook::Provider.find_by(name: name)
         handler_count = existing_provider&.handlers&.count || 0
         handler_info = handler_count > 0 ? " Note: #{handler_count} handler(s) are already registered to the '#{name}' provider." : ""
-        
+
         warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
                           "If using the same webhook URL, just register handlers for the existing provider. " \
                           "If multi-tenant, rename one provider (e.g., '#{name}_primary').#{handler_info}"

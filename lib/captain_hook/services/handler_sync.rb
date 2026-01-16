@@ -6,8 +6,9 @@ module CaptainHook
     # Creates or updates handler records based on HandlerRegistry configurations
     # Skips handlers that have been soft-deleted
     class HandlerSync < BaseService
-      def initialize(handler_definitions)
+      def initialize(handler_definitions, update_existing: true)
         @handler_definitions = handler_definitions
+        @update_existing = update_existing
         @results = {
           created: [],
           updated: [],
@@ -57,6 +58,14 @@ module CaptainHook
 
         # Track if this is a new record
         is_new = handler.nil?
+
+        # Skip updating existing handlers if update_existing is false
+        if !is_new && !@update_existing
+          @results[:skipped] << handler
+          Rails.logger.info("⏭️  Skipped existing handler: #{handler_class} for #{provider}:#{event_type} (update_existing=false)")
+          return
+        end
+
         handler ||= CaptainHook::Handler.new(
           provider: provider,
           event_type: event_type,
