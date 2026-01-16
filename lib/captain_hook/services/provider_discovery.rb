@@ -50,16 +50,16 @@ module CaptainHook
         # Then, scan subdirectories for provider-specific YAML files
         Dir.glob(File.join(directory_path, "*")).select { |f| File.directory?(f) }.each do |subdir|
           provider_name = File.basename(subdir)
-          
+
           # Look for YAML file matching the provider name or any YAML file
           yaml_file = Dir.glob(File.join(subdir, "#{provider_name}.{yml,yaml}")).first ||
-                     Dir.glob(File.join(subdir, "*.{yml,yaml}")).first
-          
+                      Dir.glob(File.join(subdir, "*.{yml,yaml}")).first
+
           next unless yaml_file
-          
+
           provider_def = load_provider_file(yaml_file, source: source)
           next unless provider_def
-          
+
           # Autoload the adapter file if it exists
           adapter_file = File.join(subdir, "#{provider_name}.rb")
           if File.exist?(adapter_file)
@@ -70,7 +70,7 @@ module CaptainHook
               Rails.logger.error("Failed to load adapter #{adapter_file}: #{e.message}")
             end
           end
-          
+
           @discovered_providers << provider_def
         end
       end

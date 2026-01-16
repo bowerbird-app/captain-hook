@@ -53,7 +53,7 @@ module CaptainHook
           end
         ]
 
-        # Note: Adapters are now provider-specific and live in captain_hook/providers/<provider>/<provider>.rb
+        # NOTE: Adapters are now provider-specific and live in captain_hook/providers/<provider>/<provider>.rb
         # This method is kept for backward compatibility but returns empty
         # Providers should specify their adapter_class in their YAML config
         []

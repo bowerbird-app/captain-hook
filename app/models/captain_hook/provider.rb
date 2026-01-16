@@ -70,7 +70,8 @@ module CaptainHook
       adapter_class.constantize.new
     rescue NameError => e
       Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
-      raise CaptainHook::AdapterNotFoundError, "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory."
+      raise CaptainHook::AdapterNotFoundError,
+            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory."
     end
 
     # Activate provider
