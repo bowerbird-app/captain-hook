@@ -62,17 +62,17 @@ results = sync.call
 
 ### Provider Scan Integration
 
-When you scan for providers (via the "Scan for Providers" button), the system now also:
-1. Discovers all registered handlers
-2. Syncs them to the database
-3. Reports the results
+When you scan for providers (via "Discover New" or "Full Sync" buttons), the system automatically:
+1. Discovers all registered handlers from the HandlerRegistry
+2. Syncs them to the database (respects the update_existing flag)
+3. Reports the results (created/updated/skipped counts)
 
 ### Provider-Specific Handler Scan
 
 Each provider detail page has a "Scan Handlers" button that:
 1. Discovers handlers only for that specific provider
-2. Syncs them to the database
-3. Shows results
+2. Syncs them to the database (always updates existing)
+3. Shows results with created/updated/skipped counts
 
 ## Admin UI
 
@@ -127,8 +127,8 @@ CaptainHook.register_handler(
 ### 2. Scan for handlers
 
 Either:
-- Click "Scan for Providers" on the providers index (scans all)
-- Click "Scan Handlers" on a provider detail page (scans one provider)
+- Click "Discover New" or "Full Sync" on the providers index (scans all providers and handlers)
+- Click "Scan Handlers" on a provider detail page (scans handlers for one provider only)
 
 ### 3. Configure handlers
 
@@ -220,10 +220,10 @@ rails captain_hook:install:migrations
 rails db:migrate
 
 # Scan to sync existing handlers
-# Via UI: Click "Scan for Providers" button
+# Via UI: Click "Discover New" or "Full Sync" button
 # Or via console:
 discovery = CaptainHook::Services::HandlerDiscovery.new
-sync = CaptainHook::Services::HandlerSync.new(discovery.call)
+sync = CaptainHook::Services::HandlerSync.new(discovery.call, update_existing: true)
 sync.call
 ```
 

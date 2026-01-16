@@ -24,7 +24,7 @@ module CaptainHook
         # Deduplicate providers by name - only sync each provider once
         # Keep the first occurrence (application takes precedence over gems)
         unique_providers = @provider_definitions.uniq { |p| p["name"] }
-        
+
         unique_providers.each do |definition|
           sync_provider(definition)
         end

@@ -118,7 +118,7 @@ active: true
 
 ### 4. Scan for Providers
 
-Run "Scan for Providers" in the admin UI, and your adapter will be automatically discovered and loaded!
+Run "Discover New" or "Full Sync" in the admin UI, and your adapter will be automatically discovered and loaded!
 
 ## Available Helper Methods
 
@@ -453,7 +453,7 @@ This overrides the database value when set, useful for:
 
 1. Ensure YAML file exists in `captain_hook/providers/<provider_name>/`
 2. Ensure .rb file exists in the same directory
-3. Run "Scan for Providers" in admin UI
+3. Run "Discover New" or "Full Sync" in admin UI
 4. Check `adapter_class` matches the class name exactly
 
 ## Contributing

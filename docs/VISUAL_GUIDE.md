@@ -10,13 +10,13 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  Webhook Providers            [Scan for Providers] ←────── │
+│  Webhook Providers        [Discover New] [Full Sync] ←──── │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │ Providers are discovered from YAML files in the      │  │
 │  │ captain_hook/providers/ directory.                   │  │
-│  │ Click [Scan for Providers] to discover and sync.     │  │
+│  │ Discover New: Add new only | Full Sync: Update all  │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌─────────────────────────────────────────────────────┐   │
@@ -35,13 +35,13 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    User Action                              │
-│         Click "Scan for Providers" button                   │
+│         Click "Discover New" or "Full Sync" button                   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              ProvidersController#scan                       │
-│   POST /captain_hook/admin/providers/scan                   │
+│   POST /captain_hook/admin/providers/(discover_new or sync_all)                   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -485,13 +485,13 @@ end
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    User Action                              │
-│         Click "Scan for Providers" button                   │
+│         Click "Discover New" or "Full Sync" button                   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              ProvidersController#scan                       │
-│   POST /captain_hook/admin/providers/scan                   │
+│   POST /captain_hook/admin/providers/(discover_new or sync_all)                   │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -740,7 +740,7 @@ my_payment_gem/
 
 ```yaml
 # Stripe Webhook Provider Configuration
-# Click "Scan for Providers" in admin UI to sync
+# Click "Discover New" or "Full Sync" in admin UI to sync
 
 # Required Fields
 name: stripe                                    # Unique identifier (lowercase)
@@ -912,7 +912,7 @@ STRIPE_WEBHOOK_SECRET=whsec_codespace_secret_000
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           Scan for Providers (Admin UI)                     │
+│           Discover New or Full Sync (Admin UI)                     │
 │   Click button → Triggers discovery and sync                │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -956,7 +956,7 @@ Security Benefits:
 Navigate to: /captain_hook/admin/providers
 
 ┌────────────────────────────────────────────────────────────┐
-│  Webhook Providers            [Scan for Providers] ←────   │
+│  Webhook Providers            [Discover New] [Full Sync] ←────   │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
 │  No providers configured yet.                              │
@@ -964,7 +964,7 @@ Navigate to: /captain_hook/admin/providers
 │  Get started:                                              │
 │  1. Create YAML files in captain_hook/providers/           │
 │  2. Set environment variables for signing secrets          │
-│  3. Click "Scan for Providers" to discover them            │
+│  3. Click "Discover New" or "Full Sync" to discover them            │
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -973,7 +973,7 @@ Navigate to: /captain_hook/admin/providers
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Webhook Providers            [Scan for Providers]             │
+│  Webhook Providers            [Discover New] [Full Sync]             │
 ├────────────────────────────────────────────────────────────────┤
 │  ✓ Scan completed! Created 3 providers, 5 handlers             │
 │                                                                │
@@ -1058,7 +1058,7 @@ Click "View Handlers" →
 CaptainHook's discovery and management system provides:
 
 ### Provider Management
-- 🎯 **One-Click Discovery**: Scan for providers from YAML files
+- 🎯 **One-Click Discovery**: Discover or sync providers from YAML files
 - 📁 **File-Based Config**: Version-controlled provider definitions
 - 🔐 **Secure Secrets**: ENV variables with database encryption
 - 📦 **Gem Support**: Providers can be shipped with gems
@@ -1124,7 +1124,7 @@ CaptainHook's discovery and management system provides:
 
 6. Scan & Sync
    Visit /captain_hook/admin/providers
-   Click "Scan for Providers"
+   Click "Discover New" or "Full Sync"
    
 7. Copy Webhook URL
    View provider → Copy webhook URL
@@ -1171,7 +1171,7 @@ app/
 1. Check YAML files exist in `captain_hook/providers/`
 2. Verify YAML syntax is correct
 3. Ensure ENV variables are set
-4. Click "Scan for Providers" again
+4. Click "Discover New" or "Full Sync" again
 5. Check Rails logs for errors
 
 ### Handlers Not Working?

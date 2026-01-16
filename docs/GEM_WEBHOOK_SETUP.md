@@ -578,7 +578,7 @@ touch tmp/restart.txt
 
 ### 5. Scan for providers:
 
-Go to `/captain_hook/admin/providers` and click "Scan for Providers"
+Go to `/captain_hook/admin/providers` and click "Discover New" (for first-time setup) or "Full Sync" (to update existing)
 
 Or in console:
 
@@ -586,8 +586,8 @@ Or in console:
 discovery = CaptainHook::Services::ProviderDiscovery.new
 definitions = discovery.call
 
-sync = CaptainHook::Services::ProviderSync.new
-sync.call(definitions)
+sync = CaptainHook::Services::ProviderSync.new(definitions, update_existing: true)
+sync.call
 ```
 
 ## Step 7: Configure Your Provider's Webhook Settings
@@ -782,7 +782,7 @@ CaptainHook.register_handler(
    ```ruby
    CaptainHook::Provider.find_by(name: "stripe")
    ```
-   If nil, scan for providers in the admin UI
+   If nil, use "Discover New" or "Full Sync" in the admin UI
 
 3. **Check Sidekiq is running** (handlers are background jobs)
    ```bash

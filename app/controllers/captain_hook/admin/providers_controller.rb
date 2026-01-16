@@ -140,9 +140,11 @@ module CaptainHook
           results[:warnings].each do |warning|
             provider = CaptainHook::Provider.find_by(name: warning[:name])
             handler_count = provider&.handlers&.count || 0
-            if handler_count > 0
-              warning[:message] = warning[:message].sub(/\. If using/, ". Note: #{handler_count} handler(s) are now registered to the '#{warning[:name]}' provider. If using")
-            end
+            next unless handler_count > 0
+
+            warning[:message] =
+              warning[:message].sub(". If using",
+                                    ". Note: #{handler_count} handler(s) are now registered to the '#{warning[:name]}' provider. If using")
           end
         end
 

@@ -10,7 +10,8 @@ The Provider Discovery System transforms CaptainHook from a manual UI-based prov
 2. **Consistency**: Same provider configurations across environments (dev, staging, production)
 3. **Security**: Signing secrets are referenced via environment variables, never committed to version control
 4. **Scalability**: Works with monoliths and gems - any gem can ship its own webhook providers
-5. **Automation**: One-click "Scan for Providers" button discovers and creates all providers
+5. **Automation**: "Discover New" adds new providers, "Full Sync" updates all from YAML
+6. **Duplicate Detection**: Warns when the same provider exists in multiple sources
 
 ## Technical Implementation
 
@@ -155,7 +156,9 @@ end
 
 **Controller**: `CaptainHook::Admin::ProvidersController`
 
-**New Action**: `scan` (POST /captain_hook/admin/providers/scan)
+**New Actions**: 
+- `discover_new` (POST /captain_hook/admin/providers/discover_new) - Add new only
+- `sync_all` (POST /captain_hook/admin/providers/sync_all) - Update all
 
 **Algorithm**:
 1. Call ProviderDiscovery service
@@ -170,17 +173,28 @@ end
 <!-- Before: Add Provider button -->
 <%= link_to "Add Provider", new_admin_provider_path, class: "btn btn-primary" %>
 
-<!-- After: Scan for Providers button -->
-<%= button_to "Scan for Providers", scan_admin_providers_path, 
-    method: :post, class: "btn btn-primary",
-    data: { confirm: "This will scan for provider YAML files. Continue?" } %>
+<!-- After: Discover New and Full Sync buttons -->
+<div class="d-flex gap-2">
+  <span data-bs-toggle="tooltip" data-bs-title="Add new providers/handlers only">
+    <%= button_to "Discover New", discover_new_admin_providers_path, method: :post, 
+        class: "btn btn-outline-primary",
+        data: { confirm: "This will scan for NEW providers/handlers only. Continue?" } %>
+  </span>
+  <span data-bs-toggle="tooltip" data-bs-title="Update all from YAML files">
+    <%= button_to "Full Sync", sync_all_admin_providers_path, method: :post,
+        class: "btn btn-primary",
+        data: { confirm: "This will update ALL providers/handlers from YAML. Continue?" } %>
+  </span>
+</div>
 ```
 
 **Key Design Decisions:**
 
-- **Confirmation Dialog**: Prevents accidental scans
-- **Detailed Feedback**: Shows count of created/updated/errored providers
-- **Non-destructive**: Scan doesn't delete existing providers, only creates/updates
+- **Two Scanning Modes**: "Discover New" (safe, no updates) vs "Full Sync" (updates everything)
+- **Confirmation Dialogs**: Prevent accidental scans with clear descriptions
+- **Detailed Feedback**: Shows count of created/updated/skipped/errored providers
+- **Non-destructive Discovery**: "Discover New" doesn't modify existing providers
+- **Duplicate Warnings**: Alerts when same provider exists in multiple sources
 
 ### 6. Autoloading Configuration
 
@@ -245,14 +259,14 @@ If you have existing providers created via the UI:
 
 1. **Export to YAML**: Create YAML files for your existing providers
 2. **Set ENV Variables**: Add signing secrets to your environment
-3. **Run Scan**: Click "Scan for Providers" to sync from YAML
+3. **Run Full Sync**: Click "Full Sync" to update providers from YAML
 4. **Verify**: Existing providers will be updated with YAML values
 
 ### For New Installations
 
 1. **Create YAML Files**: Define your providers in `captain_hook/providers/`
 2. **Set ENV Variables**: Add signing secrets to your environment
-3. **Run Scan**: Click "Scan for Providers" to create providers
+3. **Run Discover New**: Click "Discover New" to create providers
 4. **Configure Handlers**: Register handlers in `config/initializers/captain_hook.rb`
 
 ## Testing
@@ -344,7 +358,8 @@ Add a "Edit as YAML" button in the UI that:
 
 **Check**: Does the YAML file exist in `captain_hook/providers/`?
 **Check**: Is the YAML valid? Test with: `ruby -ryaml -e "puts YAML.load_file('path/to/file.yml')"`
-**Check**: Are there any errors in logs when clicking "Scan for Providers"?
+**Check**: Are there any errors in logs when clicking "Discover New" or "Full Sync"?
+**Check**: For gem-provided providers, is the gem loaded in your Gemfile?
 
 ### ENV Variable Not Resolved
 

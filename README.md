@@ -6,8 +6,8 @@ A comprehensive Rails engine for receiving and processing webhooks from external
 
 CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
 
-1. **Provider Setup**: Define providers in YAML files (`captain_hook/providers/*.yml`), click "Scan for Providers" to sync to database
-2. **Handler Registration**: Register handlers in `config/initializers/captain_hook.rb`, click "Scan Handlers" to sync to database
+1. **Provider Setup**: Define providers in YAML files (`captain_hook/providers/*.yml`), use "Discover New" to add new providers or "Full Sync" to update all from YAML
+2. **Handler Registration**: Register handlers in `config/initializers/captain_hook.rb`, handlers are automatically discovered and synced during provider scanning
 3. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
 4. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
 5. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
@@ -46,7 +46,9 @@ CaptainHook provides a complete webhook management system with automatic discove
   - View incoming events with filtering
   - View registered handlers per provider
   - **Edit and configure handlers** (async/sync, retries, priority)
-  - **Scan and sync handlers** from application code
+  - **Discover New**: Add new providers/handlers without updating existing ones
+  - **Full Sync**: Update all providers/handlers from YAML files
+  - **Duplicate detection**: Warns when same provider exists in multiple sources
   - **Soft-delete handlers** to prevent re-addition
   - Monitor event processing status
   - Track handler execution
