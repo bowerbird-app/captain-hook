@@ -68,7 +68,7 @@
       <% else %>
         <div class="alert alert-info">
           <p class="mb-2"><strong>No providers configured yet.</strong></p>
-          <p class="mb-0">Providers are discovered from YAML files in the <code>captain_hook/providers/</code> directory. <%= button_to "Scan for providers", scan_admin_providers_path, method: :post, class: "btn btn-sm btn-primary d-inline-block", data: { confirm: "This will scan for provider YAML files. Continue?" } %> to discover and create them.</p>
+          <p class="mb-0">Providers are discovered from YAML files in the <code>captain_hook/providers/</code> directory. <%= button_to "Discover providers", discover_new_admin_providers_path, method: :post, class: "btn btn-sm btn-primary d-inline-block", data: { confirm: "This will scan for NEW provider YAML files. Continue?" } %> to discover and create them.</p>
         </div>
       <% end %>
     </div>
