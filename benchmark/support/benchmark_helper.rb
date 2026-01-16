@@ -57,8 +57,10 @@ module BenchmarkHelper
         x.report(impl_name.to_s, &impl_block)
       end
 
-      x.compare!
+      x.compare!(order: :baseline)
     end
+    
+    puts "\nℹ️  Note: 'same-ish' means performance differences are statistically insignificant"
   end
 
   # Format bytes into human-readable format
