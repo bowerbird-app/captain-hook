@@ -159,11 +159,11 @@ cp captain_hook/providers/stripe.yml.example captain_hook/providers/stripe.yml
 Or create from scratch:
 
 ```yaml
-# captain_hook/providers/stripe.yml
+# captain_hook/providers/stripe/stripe.yml
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_class: StripeAdapter
 active: true
 
 # Security settings
@@ -176,6 +176,53 @@ rate_limit_period: 60
 
 # Payload size limit (optional, in bytes)
 max_payload_size_bytes: 1048576
+```
+
+**Create the adapter file** (`captain_hook/providers/stripe/stripe.rb`):
+
+```ruby
+# frozen_string_literal: true
+
+class StripeAdapter
+  include CaptainHook::AdapterHelpers
+
+  SIGNATURE_HEADER = "Stripe-Signature"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature_header.blank?
+
+    parsed = parse_kv_header(signature_header)
+    timestamp = parsed["t"]
+    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+    
+    return false if timestamp.blank? || signatures.empty?
+
+    if provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds || 300
+      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+    end
+
+    signed_payload = "#{timestamp}.#{payload}"
+    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
+
+    signatures.any? { |sig| secure_compare(sig, expected_signature) }
+  end
+
+  def extract_timestamp(headers)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return nil if signature_header.blank?
+    parse_kv_header(signature_header)["t"]&.to_i
+  end
+
+  def extract_event_id(payload)
+    payload["id"]
+  end
+
+  def extract_event_type(payload)
+    payload["type"]
+  end
+end
 ```
 
 **Set environment variables:**
@@ -192,27 +239,41 @@ STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
 3. CaptainHook will automatically create provider records from your YAML files
 
 Providers are automatically discovered from:
-- Your Rails app: `Rails.root/captain_hook/providers/*.yml`
-- Loaded gems: `<gem_root>/captain_hook/providers/*.yml`
+- Your Rails app: `Rails.root/captain_hook/providers/` (both flat `*.yml` and nested `provider_name/provider_name.yml`)
+- Loaded gems: `<gem_root>/captain_hook/providers/` (both flat and nested structures)
 
 The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
 
 **Multiple Instances of Same Provider:**
 
-You can have multiple instances of the same provider type (e.g., multiple Stripe accounts):
+You can have multiple instances of the same provider type (e.g., multiple Stripe accounts). Each needs its own directory with YAML config and adapter file:
 
 ```yaml
-# captain_hook/providers/stripe_account_a.yml
+# captain_hook/providers/stripe_account_a/stripe_account_a.yml
 name: stripe_account_a
 display_name: Stripe (Account A)
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_class: StripeAccountAAdapter
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
 
-# captain_hook/providers/stripe_account_b.yml
+# captain_hook/providers/stripe_account_b/stripe_account_b.yml
 name: stripe_account_b
 display_name: Stripe (Account B)  
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_class: StripeAccountBAdapter
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
+```
+
+```ruby
+# captain_hook/providers/stripe_account_a/stripe_account_a.rb
+class StripeAccountAAdapter
+  include CaptainHook::AdapterHelpers
+  # Same Stripe verification logic
+end
+
+# captain_hook/providers/stripe_account_b/stripe_account_b.rb
+class StripeAccountBAdapter
+  include CaptainHook::AdapterHelpers
+  # Same Stripe verification logic
+end
 ```
 
 Each gets its own webhook URL and can have different handlers.
