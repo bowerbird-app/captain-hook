@@ -97,7 +97,45 @@ module CaptainHook
 
     # Get the adapter instance
     def adapter
-      @adapter ||= adapter_class.constantize.new(self)
+      # Try to find and load the adapter file if the class doesn't exist yet
+      load_adapter_file unless Object.const_defined?(adapter_class)
+
+      @adapter ||= adapter_class.constantize.new
+    rescue NameError => e
+      Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
+      raise CaptainHook::AdapterNotFoundError,
+            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory."
+    end
+
+    # Load the adapter file from the filesystem
+    def load_adapter_file
+      # Try to find the adapter file in common locations
+      possible_paths = [
+        # Application providers directory (nested structure)
+        Rails.root.join("captain_hook", "providers", name, "#{name}.rb"),
+        # Application providers directory (flat structure)
+        Rails.root.join("captain_hook", "providers", "#{name}.rb")
+      ]
+
+      # Also check in loaded gems
+      Bundler.load.specs.each do |spec|
+        gem_providers_path = File.join(spec.full_gem_path, "captain_hook", "providers")
+        next unless Dir.exist?(gem_providers_path)
+
+        possible_paths << File.join(gem_providers_path, name, "#{name}.rb")
+        possible_paths << File.join(gem_providers_path, "#{name}.rb")
+      end
+
+      adapter_file = possible_paths.find { |path| File.exist?(path) }
+
+      if adapter_file
+        load adapter_file
+        Rails.logger.debug("Loaded adapter from #{adapter_file}")
+      else
+        Rails.logger.warn("Adapter file not found for #{name}, tried: #{possible_paths.inspect}")
+      end
+    rescue StandardError => e
+      Rails.logger.error("Failed to load adapter file: #{e.message}")
     end
   end
 end

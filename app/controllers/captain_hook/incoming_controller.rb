@@ -83,7 +83,7 @@ module CaptainHook
       # Verify signature using adapter
       adapter = provider_config.adapter
 
-      unless adapter.verify_signature(payload: raw_payload, headers: headers)
+      unless adapter.verify_signature(payload: raw_payload, headers: headers, provider_config: provider_config)
         CaptainHook::Instrumentation.signature_failed(provider: provider_name, reason: "Invalid signature")
         render json: { error: "Invalid signature" }, status: :unauthorized
         return
