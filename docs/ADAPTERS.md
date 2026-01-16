@@ -1,146 +1,124 @@
-# Built-in Adapters
+# Provider Adapters
 
 Adapters are the first line of defense in the webhook processing pipeline. They handle signature verification and metadata extraction specific to each webhook provider.
 
 ## Overview
 
-Each webhook provider (Stripe, PayPal, GitHub, etc.) has its own signature verification scheme. Adapters encapsulate this provider-specific logic so the rest of CaptainHook remains provider-agnostic.
+Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Adapters encapsulate this provider-specific logic so your application can process webhooks securely.
 
-**CaptainHook ships with built-in adapters for:**
-- Stripe (`CaptainHook::Adapters::Stripe`)
-- Square (`CaptainHook::Adapters::Square`)
-- PayPal (`CaptainHook::Adapters::Paypal`)
-- WebhookSite (`CaptainHook::Adapters::WebhookSite`) - testing only
-
-**Need support for a new provider?** The CaptainHook gem must be updated to include the adapter. Host applications and other gems cannot create custom adapters - this ensures consistent security and verification logic across all installations.
+**Architecture Change:** As of the latest version, adapters are **provider-specific** and live alongside each provider's configuration, rather than being built into the CaptainHook gem. This allows:
+- Host applications to create custom adapters for any provider
+- Other gems to bundle their own adapters
+- Greater flexibility and extensibility
+- Adapters stay close to the providers they support
 
 ## Adapter Responsibilities
 
-An adapter must implement:
+An adapter must implement these methods:
 
-1. **Signature Verification**: Verify the webhook came from the provider
-2. **Timestamp Extraction**: Extract event timestamp for replay attack prevention
-3. **Event ID Extraction**: Get the unique event identifier
-4. **Event Type Extraction**: Determine what type of event this is
+1. **`verify_signature(payload:, headers:, provider_config:)`**: Verify the webhook came from the provider
+2. **`extract_timestamp(headers)`**: Extract event timestamp for replay attack prevention
+3. **`extract_event_id(payload)`**: Get the unique event identifier
+4. **`extract_event_type(payload)`**: Determine what type of event this is
 
-## Using Built-in Adapters
+## Where Adapters Live
 
-If CaptainHook already has an adapter for your provider, simply reference it in your provider YAML:
+Adapters are now stored **per-provider** in the `captain_hook/providers/` directory:
 
-```yaml
-# captain_hook/providers/stripe.yml
-name: stripe
-display_name: Stripe
-adapter_class: CaptainHook::Adapters::Stripe  # Use built-in adapter
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+```
+captain_hook/providers/
+├── stripe/
+│   ├── stripe.yml        # Provider configuration
+│   └── stripe.rb         # Adapter implementation
+├── square/
+│   ├── square.yml
+│   └── square.rb
+└── paypal/
+    ├── paypal.yml
+    └── paypal.rb
 ```
 
-No adapter code needed! CaptainHook handles all the signature verification.
+This structure makes it easy to:
+- See all provider-related code in one place
+- Share providers between applications
+- Version control provider configurations and adapters together
 
-## Adding a New Adapter to CaptainHook
+## Creating a Custom Adapter
 
-**Important**: Adapters can ONLY be added to the CaptainHook gem itself, not in host applications or other gems. This is an architectural decision to ensure:
-- Consistent security verification across all installations
-- Centralized testing and maintenance
-- Single source of truth for provider signature schemes
+### 1. Create Provider Directory
 
-If you need support for a new provider, you must:
-1. Add the adapter to `lib/captain_hook/adapters/` in the CaptainHook gem
-2. Submit a pull request or update the gem internally
-3. Release a new version of CaptainHook
+Create a folder for your provider in `captain_hook/providers/`:
 
-### Where Adapters Live
+```bash
+mkdir -p captain_hook/providers/acme_payments
+```
 
-**In CaptainHook gem only:**
-- Add to `lib/captain_hook/adapters/` in the CaptainHook repository
-- Load in `lib/captain_hook.rb` with `require "captain_hook/adapters/your_adapter"`
+### 2. Create the Adapter Class
 
-### 1. Create the Adapter Class
-
-**Example: Adding support for "AcmePayments" provider to CaptainHook**
-
-Create `lib/captain_hook/adapters/acme_payments.rb` in the CaptainHook gem:
+Create the adapter file (e.g., `acme_payments.rb`) that uses the `CaptainHook::AdapterHelpers` module:
 
 ```ruby
-# lib/captain_hook/adapters/acme_payments.rb
-module CaptainHook
-  module Adapters
-    class AcmePayments < Base
-      # Define provider-specific header names
-      SIGNATURE_HEADER = "X-Acme-Signature"
-      TIMESTAMP_HEADER = "X-Acme-Timestamp"
+# captain_hook/providers/acme_payments/acme_payments.rb
+class AcmePaymentsAdapter
+  include CaptainHook::AdapterHelpers
 
-      # Implement signature verification
-      def verify_signature(payload:, headers:)
-        signature = headers[SIGNATURE_HEADER]
-        timestamp = headers[TIMESTAMP_HEADER]
-        
-        return false if signature.blank? || timestamp.blank?
+  # Define provider-specific header names
+  SIGNATURE_HEADER = "X-Acme-Signature"
+  TIMESTAMP_HEADER = "X-Acme-Timestamp"
 
-        # Check timestamp tolerance if enabled
-        if provider_config.timestamp_validation_enabled?
-          tolerance = provider_config.timestamp_tolerance_seconds || 300
-          return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
-        end
+  # Implement signature verification
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    timestamp = extract_header(headers, TIMESTAMP_HEADER)
+    
+    return false if signature.blank? || timestamp.blank?
 
-        # Generate expected signature using provider's algorithm
-        expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
-        secure_compare(signature, expected)
-      end
-
-      # Extract timestamp from headers
-      def extract_timestamp(headers)
-        headers[TIMESTAMP_HEADER]&.to_i
-      end
-
-      # Extract event ID from payload
-      def extract_event_id(payload)
-        payload["transaction_id"] || payload["id"]
-      end
-
-      # Extract event type from payload
-      def extract_event_type(payload)
-        payload["event_type"] || payload["type"]
-      end
-
-      private
-
-      def timestamp_within_tolerance?(timestamp, tolerance)
-        current_time = Time.current.to_i
-        (current_time - timestamp).abs <= tolerance
-      end
+    # Check timestamp tolerance if enabled
+    if provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds || 300
+      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
     end
+
+    # Generate expected signature using provider's algorithm
+    expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
+    secure_compare(signature, expected)
+  end
+
+  # Extract timestamp from headers
+  def extract_timestamp(headers)
+    extract_header(headers, TIMESTAMP_HEADER)&.to_i
+  end
+
+  # Extract event ID from payload
+  def extract_event_id(payload)
+    payload["transaction_id"] || payload["id"]
+  end
+
+  # Extract event type from payload
+  def extract_event_type(payload)
+    payload["event_type"] || payload["type"]
   end
 end
 ```
 
-### 2. Load the Adapter
+### 3. Create Provider Configuration
 
-Add the require statement to `lib/captain_hook.rb`:
-
-```ruby
-# Load adapters
-require "captain_hook/adapters/base"
-require "captain_hook/adapters/stripe"
-require "captain_hook/adapters/square"
-require "captain_hook/adapters/paypal"
-require "captain_hook/adapters/webhook_site"
-require "captain_hook/adapters/acme_payments"  # Add your new adapter
-```
-
-### 3. Use the Adapter
-
-Users can now reference your adapter in their provider YAML:
+Create the YAML configuration file:
 
 ```yaml
-# captain_hook/providers/acme_payments.yml
+# captain_hook/providers/acme_payments/acme_payments.yml
 name: acme_payments
 display_name: AcmePayments
-adapter_class: CaptainHook::Adapters::AcmePayments  # Your custom adapter
+description: AcmePayments webhook provider
+adapter_class: AcmePaymentsAdapter
 signing_secret: ENV[ACME_PAYMENTS_SECRET]
+timestamp_tolerance_seconds: 300
+active: true
 ```
 
-The adapter will be automatically discovered and available in the admin UI dropdown.
+### 4. Scan for Providers
+
+Run "Scan for Providers" in the admin UI, and your adapter will be automatically discovered and loaded!
 
 ## Available Helper Methods
 
@@ -160,136 +138,271 @@ Generate HMAC-SHA256 signature:
 expected_sig = generate_hmac(provider_config.signing_secret, payload)
 ```
 
-### Provider Config Access
+## Available Helper Methods
 
-Access provider settings via `provider_config`:
+The `CaptainHook::AdapterHelpers` module provides these helper methods for all adapters:
+
+### Security Helpers
+
+#### `secure_compare(a, b)`
+Constant-time string comparison to prevent timing attacks:
 
 ```ruby
-provider_config.signing_secret          # Signing secret
-provider_config.timestamp_tolerance_seconds  # Time tolerance
-provider_config.timestamp_validation_enabled?  # Check if enabled
+secure_compare(signature, expected_signature)
+```
+
+#### `skip_verification?(secret)`
+Check if signature verification should be skipped:
+
+```ruby
+if skip_verification?(provider_config.signing_secret)
+  log_verification("provider", "Status" => "Skipping verification")
+  return true
+end
+```
+
+### HMAC Generation
+
+#### `generate_hmac(secret, data)`
+Generate hex-encoded HMAC-SHA256 signature:
+
+```ruby
+expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
+```
+
+#### `generate_hmac_base64(secret, data)`
+Generate Base64-encoded HMAC-SHA256 signature:
+
+```ruby
+expected = generate_hmac_base64(provider_config.signing_secret, payload)
+```
+
+### Header Extraction
+
+#### `extract_header(headers, *keys)`
+Extract header case-insensitively:
+
+```ruby
+signature = extract_header(headers, "X-Signature", "X-Hub-Signature")
+```
+
+#### `parse_kv_header(header_value)`
+Parse key-value header format (e.g., Stripe's `t=123,v1=abc`):
+
+```ruby
+parsed = parse_kv_header(headers["Stripe-Signature"])
+timestamp = parsed["t"]
+signature = parsed["v1"]
+```
+
+### Timestamp Validation
+
+#### `timestamp_within_tolerance?(timestamp, tolerance)`
+Check if timestamp is within acceptable range:
+
+```ruby
+return false unless timestamp_within_tolerance?(timestamp.to_i, 300)
+```
+
+#### `parse_timestamp(time_string)`
+Parse various timestamp formats:
+
+```ruby
+timestamp = parse_timestamp(headers["X-Timestamp"])
+```
+
+### Logging
+
+#### `log_verification(provider, details)`
+Log signature verification steps:
+
+```ruby
+log_verification("stripe", 
+  "Signature" => "present",
+  "Timestamp" => timestamp,
+  "Result" => "✓ Passed"
+)
+```
+
+### URL Building
+
+#### `build_webhook_url(path, provider_token: nil)`
+Build complete webhook URL:
+
+```ruby
+url = build_webhook_url("/captain_hook/stripe", provider_token: "abc123")
 ```
 
 ## Common Signature Verification Patterns
 
-### HMAC-SHA256 (Stripe-style)
+### HMAC-SHA256 with Timestamp (Stripe-style)
 
 ```ruby
-def verify_signature(payload:, headers:)
-  signature = headers["X-Signature"]
-  timestamp = headers["X-Timestamp"]
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  timestamp = extract_header(headers, "X-Timestamp")
   
+  return false if signature.blank? || timestamp.blank?
+  
+  # Validate timestamp
+  if provider_config.timestamp_validation_enabled?
+    tolerance = provider_config.timestamp_tolerance_seconds || 300
+    return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+  end
+  
+  # Verify signature
   signed_payload = "#{timestamp}.#{payload}"
   expected = generate_hmac(provider_config.signing_secret, signed_payload)
-  
   secure_compare(signature, expected)
 end
 ```
 
-### Header Token (Simple)
+### Simple Token Header
 
 ```ruby
-def verify_signature(payload:, headers:)
-  token = headers["X-Webhook-Token"]
+def verify_signature(payload:, headers:, provider_config:)
+  token = extract_header(headers, "X-Webhook-Token")
+  
+  if skip_verification?(provider_config.signing_secret)
+    return true
+  end
+  
   secure_compare(token, provider_config.signing_secret)
 end
 ```
 
-### JSON Web Token (JWT)
+### Base64 HMAC (Square-style)
 
 ```ruby
-require 'jwt'
-
-def verify_signature(payload:, headers:)
-  token = headers["Authorization"]&.gsub(/^Bearer /, '')
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Square-Signature")
   
-  JWT.decode(token, provider_config.signing_secret, true, algorithm: 'HS256')
-  true
-rescue JWT::VerificationError, JWT::DecodeError
-  false
+  return false if signature.blank?
+  
+  expected = generate_hmac_base64(provider_config.signing_secret, payload)
+  secure_compare(signature, expected)
 end
 ```
 
-### Certificate-based (GitHub-style)
+### Complex Header Parsing (Stripe-style)
 
 ```ruby
-def verify_signature(payload:, headers:)
-  signature = headers["X-Hub-Signature-256"]
-  expected = "sha256=" + generate_hmac(provider_config.signing_secret, payload)
+def verify_signature(payload:, headers:, provider_config:)
+  signature_header = extract_header(headers, "Stripe-Signature")
+  return false if signature_header.blank?
+
+  # Parse: t=timestamp,v1=signature
+  parsed = parse_kv_header(signature_header)
+  timestamp = parsed["t"]
+  signature = parsed["v1"]
   
+  return false if timestamp.blank? || signature.blank?
+  
+  signed_payload = "#{timestamp}.#{payload}"
+  expected = generate_hmac(provider_config.signing_secret, signed_payload)
   secure_compare(signature, expected)
 end
 ```
 
 ## Testing Your Adapter
 
-### Unit Test
+### Unit Test Example
 
 ```ruby
-# test/adapters/paypal_test.rb
+# test/adapters/acme_payments_adapter_test.rb
 require 'test_helper'
 
-class PaypalAdapterTest < ActiveSupport::TestCase
+class AcmePaymentsAdapterTest < ActiveSupport::TestCase
   def setup
-    @config = CaptainHook::ProviderConfig.new(
+    @config = OpenStruct.new(
       signing_secret: "test-secret",
-      timestamp_tolerance_seconds: 300
+      timestamp_tolerance_seconds: 300,
+      timestamp_validation_enabled?: true
     )
-    @adapter = CaptainHook::Adapters::Paypal.new(@config)
+    @adapter = AcmePaymentsAdapter.new
   end
 
   test "verifies valid signature" do
-    payload = '{"id":"evt_123","event_type":"PAYMENT.CAPTURE.COMPLETED"}'
+    payload = '{"id":"evt_123","event_type":"payment.completed"}'
+    timestamp = Time.current.to_i.to_s
+    
+    # Generate expected signature
+    expected_sig = OpenSSL::HMAC.hexdigest('SHA256', @config.signing_secret, "#{timestamp}.#{payload}")
+    
     headers = {
-      "Paypal-Transmission-Sig" => "valid-signature",
-      "Paypal-Transmission-Id" => "unique-id",
-      "Paypal-Transmission-Time" => Time.current.iso8601
+      "X-Acme-Signature" => expected_sig,
+      "X-Acme-Timestamp" => timestamp
     }
     
-    assert @adapter.verify_signature(payload: payload, headers: headers)
+    assert @adapter.verify_signature(payload: payload, headers: headers, provider_config: @config)
+  end
+
+  test "rejects invalid signature" do
+    payload = '{"id":"evt_123"}'
+    headers = {
+      "X-Acme-Signature" => "invalid",
+      "X-Acme-Timestamp" => Time.current.to_i.to_s
+    }
+    
+    refute @adapter.verify_signature(payload: payload, headers: headers, provider_config: @config)
   end
 end
 ```
 
-### Integration Test
+### Integration Testing
 
-Use the sandbox to test with real payloads:
+Use the admin sandbox to test with real payloads:
 
 1. Go to `/captain_hook/admin/sandbox`
-2. Select your PayPal provider
-3. Paste a real PayPal webhook payload
-4. Click "Test Webhook" (dry-run mode)
+2. Select your provider
+3. Paste a real webhook payload
+4. Add required headers
+5. Click "Test Webhook" (dry-run mode)
 
-## Example Built-in Adapters
-
-CaptainHook includes these adapters:
+## Example Provider Adapters
 
 ### Stripe
-- **Location**: `lib/captain_hook/adapters/stripe.rb`
+- **File**: `captain_hook/providers/stripe/stripe.rb`
 - **Signature**: HMAC-SHA256 with timestamp validation
-- **Headers**: `Stripe-Signature`
-- **Format**: `t=timestamp,v1=signature,v0=fallback_signature`
+- **Headers**: `Stripe-Signature` (format: `t=timestamp,v1=signature`)
 - **Documentation**: https://stripe.com/docs/webhooks/signatures
 
 ### Square
-- **Location**: `lib/captain_hook/adapters/square.rb`
-- **Signature**: HMAC-SHA256 with Base64 encoding
-- **Headers**: `X-Square-Hmacsha256-Signature`
-- **Signed Data**: notification_url + request_body
-- **Documentation**: https://developer.squareup.com/docs/webhooks/step3validate
+- **File**: `captain_hook/providers/square/square.rb`
+- **Signature**: Base64-encoded HMAC-SHA256 of notification URL + payload
+- **Headers**: `X-Square-Hmacsha256-Signature` or `X-Square-Signature`
+- **Documentation**: https://developer.squareup.com/docs/webhooks
 
 ### PayPal
-- **Location**: `lib/captain_hook/adapters/paypal.rb`
-- **Signature**: HMAC-SHA256 with transmission headers (simplified)
-- **Headers**: `Paypal-Transmission-Sig`, `Paypal-Transmission-Id`, `Paypal-Transmission-Time`
-- **Note**: Simplified implementation; full verification requires certificate chain
+- **File**: `captain_hook/providers/paypal/paypal.rb`
+- **Signature**: Complex certificate-based verification (simplified for testing)
+- **Headers**: Multiple headers including `Paypal-Transmission-Sig`, `Paypal-Transmission-Id`
 - **Documentation**: https://developer.paypal.com/api/rest/webhooks/
 
-### WebhookSite
-- **Location**: `lib/captain_hook/adapters/webhook_site.rb`
-- **Signature**: No verification (always returns true)
-- **Headers**: None required
-- **Use Case**: Testing and development only - **DO NOT USE IN PRODUCTION**
+### WebhookSite (Testing Only)
+- **File**: `captain_hook/providers/webhook_site/webhook_site.rb`
+- **Signature**: No-op verification (always returns true)
+- **Use**: For development and testing only - **DO NOT USE IN PRODUCTION**
+- **Documentation**: https://webhook.site
+
+## Using AdapterHelpers in Your Host App
+
+The `CaptainHook::AdapterHelpers` module is available for use in your host application or other gems. Simply include it in any class:
+
+```ruby
+# app/services/custom_webhook_verifier.rb
+class CustomWebhookVerifier
+  include CaptainHook::AdapterHelpers
+  
+  def verify_custom_webhook(payload, headers, secret)
+    signature = extract_header(headers, "X-Custom-Signature")
+    expected = generate_hmac(secret, payload)
+    secure_compare(signature, expected)
+  end
+end
+```
+
+This gives you access to all the security-hardened helper methods for your custom webhook handling needs.
 
 ## Security Best Practices
 
@@ -319,40 +432,40 @@ This overrides the database value when set, useful for:
 - CI/CD pipelines
 - Multi-environment deployments
 
-## Contributing Built-in Adapters
+## Troubleshooting
 
-Want to contribute an adapter for a popular provider? We'd love to include it!
+### Signature verification fails
 
-### Requirements
+1. Check signing secret is correctly configured
+2. Verify you're using the raw request body (not parsed JSON)
+3. Check header name casing (use `extract_header()`)
+4. Enable debug logging with `log_verification()`
+5. Compare expected vs received signatures character-by-character
 
-1. **Provider must be widely used** - Focus on popular payment processors, SaaS platforms, etc.
-2. **Proper signature verification** - Implement the provider's official verification scheme
-3. **Complete implementation** - All 4 required methods (verify_signature, extract_timestamp, extract_event_id, extract_event_type)
-4. **Tests** - Include unit tests demonstrating signature verification
-5. **Documentation** - Link to provider's webhook documentation
+### Timestamp validation fails
+
+1. Check server time is synchronized (NTP)
+2. Verify timestamp format matches provider's spec
+3. Adjust `timestamp_tolerance_seconds` if needed
+4. Check timezone handling
+
+### Provider not found
+
+1. Ensure YAML file exists in `captain_hook/providers/<provider_name>/`
+2. Ensure .rb file exists in the same directory
+3. Run "Scan for Providers" in admin UI
+4. Check `adapter_class` matches the class name exactly
+
+## Contributing
+
+Want to contribute an adapter for a popular provider? Great!
 
 ### Steps to Contribute
 
-1. **Create adapter** in `lib/captain_hook/adapters/your_provider.rb`
-2. **Add require statement** to `lib/captain_hook.rb`
-3. **Create example provider YAML** in `captain_hook/providers/your_provider.yml.example`
-4. **Write tests** in `test/adapters/your_provider_test.rb`
-5. **Update this document** with your adapter details
-6. **Submit pull request** with a clear description
-
-**Example PR structure:**
-```
-- lib/captain_hook/adapters/shopify.rb (adapter code)
-- lib/captain_hook.rb (add require)
-- captain_hook/providers/shopify.yml.example (template)
-- test/adapters/shopify_test.rb (tests)
-- docs/ADAPTERS.md (documentation update)
-```
-
-## Need Help?
-
-- Check existing adapters in `lib/captain_hook/adapters/` for examples
-- Review provider documentation for their signature verification scheme
-- Test in sandbox mode first (`/captain_hook/admin/sandbox`)
-- Open a GitHub issue if you need guidance
-- Join our community discussions for support
+1. **Create provider folder** in `captain_hook/providers/<provider>/`
+2. **Create adapter** file `<provider>.rb` using `CaptainHook::AdapterHelpers`
+3. **Create configuration** file `<provider>.yml` with provider details
+4. **Create example** in `captain_hook/providers/<provider>.yml.example`
+5. **Write tests** to demonstrate signature verification
+6. **Update documentation** with your adapter details
+7. **Submit pull request** with clear description

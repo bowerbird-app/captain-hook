@@ -53,22 +53,10 @@ module CaptainHook
           end
         ]
 
-        scan_paths.each do |adapter_dir|
-          next unless File.directory?(adapter_dir)
-
-          Dir.glob(File.join(adapter_dir, "*.rb")).each do |file|
-            adapter_name = File.basename(file, ".rb")
-            next if adapter_name == "base" # Skip the base class
-            next if adapter_name.start_with?("_") # Skip partials
-
-            class_name = "CaptainHook::Adapters::#{adapter_name.camelize}"
-            display_name = adapter_name.titleize
-            adapters << [display_name, class_name]
-          end
-        end
-
-        # Remove duplicates and sort alphabetically, then add Base at the end
-        adapters.uniq.sort_by(&:first) + [["Base (No Verification)", "CaptainHook::Adapters::Base"]]
+        # Note: Adapters are now provider-specific and live in captain_hook/providers/<provider>/<provider>.rb
+        # This method is kept for backward compatibility but returns empty
+        # Providers should specify their adapter_class in their YAML config
+        []
       end
     end
   end

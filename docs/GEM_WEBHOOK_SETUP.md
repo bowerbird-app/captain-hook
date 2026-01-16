@@ -20,32 +20,29 @@ Instead of implementing webhook handling from scratch in every gem, CaptainHook 
 
 ### How It Works
 
-Your gem provides two key components:
+Your gem provides three key components:
 
 1. **Provider Config** - YAML file with webhook endpoint settings (configuration)
-2. **Handlers** - Job classes that process specific event types (business logic)
-
-CaptainHook provides:
-- **Built-in adapters** for common providers (Stripe, Square, PayPal, etc.)
-- **Cannot be extended** - adapters live only in CaptainHook gem for security consistency
+2. **Adapter** - Ruby class that verifies webhook signatures (security)
+3. **Handlers** - Job classes that process specific event types (business logic)
 
 When installed in a Rails app, CaptainHook:
-- Discovers your provider configuration
+- Discovers your provider configuration and adapter
 - Registers your handlers
 - Routes incoming webhooks to your code
 - Manages the entire webhook lifecycle
 
 This keeps your gem focused on **what to do** with webhook data, while CaptainHook handles **how to receive it safely**.
 
-## Built-in Adapters
+## Example Provider Adapters
 
-**CaptainHook ships with adapters for these providers:**
-- Stripe - `CaptainHook::Adapters::Stripe`
-- Square - `CaptainHook::Adapters::Square`
-- PayPal - `CaptainHook::Adapters::Paypal`
-- WebhookSite - `CaptainHook::Adapters::WebhookSite` (testing only)
+**CaptainHook includes example adapters you can reference or copy:**
+- Stripe - See test/dummy examples
+- Square - See test/dummy examples
+- PayPal - See test/dummy examples
+- WebhookSite - See test/dummy examples (testing only)
 
-**If your provider is in this list, you don't need to create an adapter!** Just reference it in your provider YAML config.
+**You can create custom adapters for any provider!** Adapters are now provider-specific and ship with your gem.
 
 ## Directory Structure
 
@@ -62,18 +59,20 @@ your_gem/
 │               └── event_three_handler.rb      # e.g., subscription_updated_handler.rb
 ├── captain_hook/                      # Provider configuration (REQUIRED)
 │   └── providers/
-│       └── your_provider.yml          # e.g., stripe.yml, paypal.yml, square.yml
+│       └── your_provider/             # Provider-specific directory
+│           ├── your_provider.yml      # Configuration (e.g., stripe.yml)
+│           └── your_provider.rb       # Adapter implementation (e.g., stripe.rb)
 ├── lib/
 │   └── your_gem/
 │       └── engine.rb                  # Handler registration (REQUIRED)
 └── your_gem.gemspec                   # Gem dependencies (REQUIRED)
 ```
 
-**If your provider is not built into CaptainHook**, you must submit a pull request to add the adapter to the CaptainHook gem itself. Host applications and other gems cannot create custom adapters.
-
 ### Why Each File?
 
 - **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which adapter to use, where to get secrets from environment variables, and security settings.
+
+- **Adapter (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::AdapterHelpers` for security methods like HMAC generation and constant-time comparison.
 
 - **Handlers (`*_handler.rb`)**: Your business logic. Each handler processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
 
@@ -81,41 +80,103 @@ your_gem/
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
-## Step 1: Choose Your Provider Adapter
+## Step 1: Create Your Provider Adapter
 
-If CaptainHook has a built-in adapter for your provider, you're all set! Just reference it in your YAML config.
+Create an adapter class that handles webhook signature verification for your provider. CaptainHook provides the `AdapterHelpers` module with all the security utilities you need.
 
-**Example: Using the built-in Stripe adapter**
+**Example: Stripe Adapter**
 
-```yaml
-# captain_hook/providers/stripe.yml
-name: stripe
-display_name: Stripe
-adapter_class: CaptainHook::Adapters::Stripe  # Built-in adapter
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+Create `captain_hook/providers/stripe/stripe.rb` in your gem:
+
+```ruby
+# frozen_string_literal: true
+
+# Stripe webhook adapter
+# Implements Stripe's webhook signature verification scheme
+# https://stripe.com/docs/webhooks/signatures
+class StripeAdapter
+  include CaptainHook::AdapterHelpers
+
+  SIGNATURE_HEADER = "Stripe-Signature"
+  TIMESTAMP_TOLERANCE = 300 # 5 minutes
+
+  # Verify Stripe webhook signature
+  # Stripe sends signature as: t=timestamp,v1=signature
+  def verify_signature(payload:, headers:, provider_config:)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature_header.blank?
+
+    # Parse signature header: t=timestamp,v1=signature,v0=old_signature
+    parsed = parse_kv_header(signature_header)
+    timestamp = parsed["t"]
+    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+    
+    return false if timestamp.blank? || signatures.empty?
+
+    # Check timestamp tolerance
+    if provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds || TIMESTAMP_TOLERANCE
+      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+    end
+
+    # Generate expected signature
+    signed_payload = "#{timestamp}.#{payload}"
+    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
+
+    # Check if any of the signatures match
+    signatures.any? { |sig| secure_compare(sig, expected_signature) }
+  end
+
+  # Extract timestamp from Stripe signature header
+  def extract_timestamp(headers)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return nil if signature_header.blank?
+
+    parsed = parse_kv_header(signature_header)
+    parsed["t"]&.to_i
+  end
+
+  # Extract event ID from Stripe payload
+  def extract_event_id(payload)
+    payload["id"]
+  end
+
+  # Extract event type from Stripe payload
+  def extract_event_type(payload)
+    payload["type"]
+  end
+end
 ```
 
-**That's it!** No adapter code needed in your gem.
+**Available Helper Methods from `CaptainHook::AdapterHelpers`:**
+- `secure_compare(a, b)` - Constant-time string comparison
+- `generate_hmac(secret, data)` - Hex-encoded HMAC-SHA256
+- `generate_hmac_base64(secret, data)` - Base64-encoded HMAC-SHA256
+- `extract_header(headers, *keys)` - Case-insensitive header extraction
+- `parse_kv_header(value)` - Parse "k1=v1,k2=v2" format
+- `timestamp_within_tolerance?(timestamp, tolerance)` - Timestamp validation
+- `skip_verification?(secret)` - Check if verification should be skipped
+- `log_verification(provider, details)` - Debug logging
 
-**If your provider is not supported**, you'll need to add the adapter to the CaptainHook gem itself. Contact the CaptainHook maintainers or submit a pull request to `lib/captain_hook/adapters/`. Adapters cannot be created in host applications or other gems.
+See [docs/ADAPTER_HELPERS.md](ADAPTER_HELPERS.md) for complete helper documentation.
 
 ## Step 2: Create Provider Configuration
 
 Create a YAML file that defines your provider's webhook settings. The `name` field should be lowercase and URL-friendly (it becomes part of the webhook endpoint).
 
-### Example: Using Built-in Stripe Adapter
+### Example: Stripe Configuration
 
-Create `captain_hook/providers/stripe.yml` in your gem:
+Create `captain_hook/providers/stripe/stripe.yml` in your gem:
 
 ```yaml
 # Provider configuration for Stripe
-# File name should match the provider name (e.g., stripe.yml, paypal.yml)
+# Place this file in: captain_hook/providers/stripe/stripe.yml
 name: stripe                                    # URL-friendly identifier (lowercase, no spaces)
 display_name: Stripe                            # Human-readable name
 description: Stripe payment processing webhooks # Brief description
 
-# Use CaptainHook's built-in Stripe adapter
-adapter_class: CaptainHook::Adapters::Stripe    # Built-in adapter from CaptainHook
+# Reference your adapter class (in same directory)
+adapter_class: StripeAdapter                    # Your adapter from stripe.rb
 
 # Signing secret from environment variable
 # Set this in your .env file or environment:
@@ -136,18 +197,19 @@ active: true
 
 ### Multi-Tenant Support
 
-If you need multiple instances of the same provider (e.g., supporting multiple Stripe accounts), use unique names:
+If you need multiple instances of the same provider (e.g., supporting multiple Stripe accounts), create separate provider directories:
 
 ```yaml
-# captain_hook/providers/stripe_primary.yml
+# captain_hook/providers/stripe_primary/stripe_primary.yml
 name: stripe_primary
 display_name: Stripe (Primary Account)
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_class: StripePrimaryAdapter
 signing_secret: ENV[STRIPE_PRIMARY_SECRET]
 
-# captain_hook/providers/stripe_secondary.yml
+# captain_hook/providers/stripe_secondary/stripe_secondary.yml
 name: stripe_secondary
 display_name: Stripe (Secondary Account)
+adapter_class: StripeSecondaryAdapter
 adapter_class: CaptainHook::Adapters::Stripe
 signing_secret: ENV[STRIPE_SECONDARY_SECRET]
 ```

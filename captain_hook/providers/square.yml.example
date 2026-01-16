@@ -1,10 +1,12 @@
 # Square webhook provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
+# Place this file in: captain_hook/providers/square/square.yml
+# Create adapter in: captain_hook/providers/square/square.rb
 
 name: square
 display_name: Square
 description: Square payment and order webhooks
-adapter_class: CaptainHook::Adapters::Square
+adapter_class: SquareAdapter
 active: true
 
 # Security settings

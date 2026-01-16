@@ -77,14 +77,6 @@
       </div>
       <div class="card-body">
         <div class="mb-3">
-          <%= f.label :adapter_class, class: "form-label" %>
-          <%= f.select :adapter_class, 
-              options_for_select(available_adapter_classes, @provider.adapter_class),
-              {},
-              class: "form-control" %>
-        </div>
-
-        <div class="mb-3">
           <%= f.label :timestamp_tolerance_seconds, class: "form-label" %>
           <%= f.number_field :timestamp_tolerance_seconds, class: "form-control" %>
           <small class="form-text text-muted">Timestamp tolerance in seconds</small>

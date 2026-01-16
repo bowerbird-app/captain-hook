@@ -1,14 +1,14 @@
-# Square webhook provider configuration
+# Stripe webhook provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
 
-name: square
-display_name: Square
-description: Square payment and order webhooks
-adapter_class: SquareAdapter
+name: stripe
+display_name: Stripe
+description: Stripe payment webhooks
+adapter_class: StripeAdapter
 active: true
 
 # Security settings
-signing_secret: ENV[SQUARE_WEBHOOK_SECRET]
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 timestamp_tolerance_seconds: 300
 
 # Rate limiting (optional)

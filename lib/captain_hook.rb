@@ -10,12 +10,8 @@ require "captain_hook/time_window_validator"
 require "captain_hook/signature_generator"
 require "captain_hook/instrumentation"
 
-# Load adapters
-require "captain_hook/adapters/base"
-require "captain_hook/adapters/stripe"
-require "captain_hook/adapters/square"
-require "captain_hook/adapters/paypal"
-require "captain_hook/adapters/webhook_site"
+# Load adapter helpers (available to host app and external adapters)
+require "captain_hook/adapter_helpers"
 
 # Load services
 require "captain_hook/services/base_service"

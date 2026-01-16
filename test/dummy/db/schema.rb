@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_18_005031) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_17_120454) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -101,24 +101,6 @@ ActiveRecord::Schema[8.1].define(version: 2025_12_18_005031) do
     t.index ["active"], name: "index_captain_hook_providers_on_active"
     t.index ["name"], name: "index_captain_hook_providers_on_name", unique: true
     t.index ["token"], name: "index_captain_hook_providers_on_token", unique: true
-  end
-
-  create_table "marikit_country_list_countries", force: :cascade do |t|
-    t.string "alpha2", limit: 2, null: false
-    t.string "alpha3", limit: 3, null: false
-    t.string "capital"
-    t.datetime "created_at", null: false
-    t.string "currency_code"
-    t.string "name", null: false
-    t.string "numeric_code", limit: 3
-    t.string "phone_code"
-    t.string "region"
-    t.string "subregion"
-    t.datetime "updated_at", null: false
-    t.index ["alpha2"], name: "index_marikit_country_list_countries_on_alpha2", unique: true
-    t.index ["alpha3"], name: "index_marikit_country_list_countries_on_alpha3", unique: true
-    t.index ["name"], name: "index_marikit_country_list_countries_on_name", unique: true
-    t.index ["region"], name: "index_marikit_country_list_countries_on_region"
   end
 
   create_table "webhook_logs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|

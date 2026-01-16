@@ -1,10 +1,12 @@
 # Webhook.site testing provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
+# Place this file in: captain_hook/providers/webhook_site/webhook_site.yml
+# Create adapter in: captain_hook/providers/webhook_site/webhook_site.rb
 
 name: webhook_site
 display_name: Webhook.site
 description: Testing provider for webhook.site (no signature verification)
-adapter_class: CaptainHook::Adapters::WebhookSite
+adapter_class: WebhookSiteAdapter
 active: true
 
 # No signing secret needed for webhook.site

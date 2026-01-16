@@ -4,29 +4,56 @@ This directory contains example provider configuration files that ship with Capt
 
 ## How It Works
 
-### For CaptainHook Gem
+### Architecture Change (Latest Version)
 
-These `.yml.example` files serve as **templates** and **documentation** for common webhook providers. They are **NOT automatically loaded** by CaptainHook - they're here for reference only.
+Providers are now **self-contained** with their adapter logic bundled alongside configuration:
+
+```
+captain_hook/providers/
+├── stripe/
+│   ├── stripe.yml       # Configuration
+│   └── stripe.rb        # Adapter logic
+├── square/
+│   ├── square.yml
+│   └── square.rb
+└── paypal/
+    ├── paypal.yml
+    └── paypal.rb
+```
+
+These `.yml.example` files serve as templates for creating your own provider folders.
 
 ### For Host Applications
 
 To use a provider in your Rails application:
 
-1. **Copy the template** to your application's `captain_hook/providers/` directory:
+1. **Create a provider folder** in your application's `captain_hook/providers/` directory:
    ```bash
-   mkdir -p captain_hook/providers
-   cp captain_hook/providers/stripe.yml.example captain_hook/providers/stripe.yml
+   mkdir -p captain_hook/providers/stripe
    ```
 
-2. **Edit the configuration** to match your setup (especially environment variable names)
+2. **Copy the template** to the folder as `stripe.yml`:
+   ```bash
+   cp gem_path/captain_hook/providers/stripe.yml.example captain_hook/providers/stripe/stripe.yml
+   ```
 
-3. **Set environment variables** with your actual secrets:
+3. **Create the adapter** file `stripe.rb` in the same folder (see examples in test/dummy)
+
+4. **Edit the configuration** to match your setup:
+   ```yaml
+   name: stripe
+   display_name: Stripe
+   adapter_class: StripeAdapter  # Your adapter class name
+   signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+   ```
+
+5. **Set environment variables** with your actual secrets:
    ```bash
    # .env
    STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
    ```
 
-4. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
+6. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
 
 ### For Other Gems
 

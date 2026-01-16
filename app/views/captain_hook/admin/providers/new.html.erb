@@ -78,11 +78,10 @@
       <div class="card-body">
         <div class="mb-3">
           <%= f.label :adapter_class, class: "form-label" %>
-          <%= f.select :adapter_class, 
-              options_for_select(available_adapter_classes, "CaptainHook::Adapters::Base"),
-              {},
-              class: "form-control" %>
-          <small class="form-text text-muted">Adapter for signature verification specific to this provider</small>
+          <%= f.text_field :adapter_class, 
+              class: "form-control",
+              placeholder: "e.g., StripeAdapter" %>
+          <small class="form-text text-muted">Adapter class name (must exist in your provider directory)</small>
         </div>
 
         <div class="mb-3">

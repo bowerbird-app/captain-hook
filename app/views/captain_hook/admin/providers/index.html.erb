@@ -13,7 +13,6 @@
               <tr>
                 <th>Name</th>
                 <th>Display Name</th>
-                <th>Adapter</th>
                 <th>Status</th>
                 <th>Security</th>
                 <th>Events</th>
@@ -28,7 +27,6 @@
                     <code><%= provider.name %></code>
                   </td>
                   <td><%= provider.display_name || provider.name.titleize %></td>
-                  <td><small><%= provider.adapter_class.split("::").last %></small></td>
                   <td>
                     <% if provider.active? %>
                       <span class="badge bg-success">Active</span>

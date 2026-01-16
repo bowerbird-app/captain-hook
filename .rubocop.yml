@@ -121,7 +121,6 @@ Naming/MethodParameterName:
 # Naming for compare methods
 Naming/PredicateMethod:
   Exclude:
-    - 'lib/captain_hook/adapters/base.rb'
     - 'lib/captain_hook/signature_generator.rb'
     - 'spec/**/*'
     - 'test/**/*'
