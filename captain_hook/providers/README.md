@@ -23,6 +23,19 @@ captain_hook/providers/
 
 These `.yml.example` files serve as templates for creating your own provider folders.
 
+## ⚠️ Important: Check Before Creating
+
+**Before creating a new provider, check if one already exists!**
+
+If your app or a gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Just register your handlers for the existing provider.
+
+**One Provider = One Webhook Endpoint**
+- A provider represents a single webhook URL with signature verification
+- Multiple handlers can share the same provider to process different event types
+- Only create separate providers for multi-tenant scenarios (different accounts/secrets)
+
+See `docs/GEM_WEBHOOK_SETUP.md` for detailed guidance on when to share vs. create providers.
+
 ### For Host Applications
 
 To use a provider in your Rails application:

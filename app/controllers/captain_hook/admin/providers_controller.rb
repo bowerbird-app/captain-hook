@@ -88,6 +88,12 @@ module CaptainHook
         messages << "Skipped #{handler_results[:skipped].size} deleted handler(s)" if handler_results[:skipped].any?
 
         all_errors = results[:errors] + handler_results[:errors].map { |e| { name: e[:handler], error: e[:error] } }
+        
+        # Add warnings as alert if any exist
+        if results[:warnings].any?
+          warning_messages = results[:warnings].map { |w| "⚠️ #{w[:message]}" }.join("<br>")
+          flash[:warning] = warning_messages.html_safe
+        end
 
         if all_errors.any?
           error_details = all_errors.map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")

@@ -44,6 +44,63 @@ This keeps your gem focused on **what to do** with webhook data, while CaptainHo
 
 **You can create custom adapters for any provider!** Adapters are now provider-specific and ship with your gem.
 
+## Important: One Provider, Many Handlers
+
+**Before creating a new provider, check if one already exists!**
+
+If your Rails app or another gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Instead, just register your handlers for the existing provider.
+
+### When to Share a Provider
+
+**Share the same provider when:**
+- You're using the same webhook URL and signing secret
+- Multiple gems/parts of your app need to process different event types from the same account
+- Example: One gem handles `invoice.paid`, another handles `subscription.updated`
+
+**Your app:**
+```ruby
+# captain_hook/providers/stripe/stripe.yml already exists
+CaptainHook.register_handler(
+  provider: "stripe",
+  event_type: "payment_intent.created",
+  handler_class: "MyApp::PaymentHandler"
+)
+```
+
+**Your gem:**
+```ruby
+# DON'T create a new stripe provider - use the existing one!
+CaptainHook.register_handler(
+  provider: "stripe",  # Same provider name
+  event_type: "invoice.paid",
+  handler_class: "MyGem::InvoiceHandler"
+)
+```
+
+Both handlers use the **same webhook endpoint** and **same signature verification**.
+
+### When to Create a New Provider
+
+**Create a separate provider only when:**
+- You need different webhook URLs (multi-tenant: different Stripe accounts)
+- You need different signing secrets
+- You're using different API credentials
+
+**Multi-tenant example:**
+```ruby
+# Provider for Account A
+# captain_hook/providers/stripe_primary/stripe_primary.yml
+name: stripe_primary
+signing_secret: ENV[STRIPE_PRIMARY_SECRET]
+
+# Provider for Account B
+# captain_hook/providers/stripe_secondary/stripe_secondary.yml
+name: stripe_secondary
+signing_secret: ENV[STRIPE_SECONDARY_SECRET]
+```
+
+**CaptainHook will warn you** if it detects duplicate provider names during scanning and provide guidance on whether to merge or rename.
+
 ## Directory Structure
 
 Create this structure in your gem:

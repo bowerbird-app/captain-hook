@@ -11,7 +11,8 @@ module CaptainHook
           created: [],
           updated: [],
           skipped: [],
-          errors: []
+          errors: [],
+          warnings: []
         }
       end
 
@@ -34,6 +35,9 @@ module CaptainHook
           @results[:errors] << { name: name, error: "Invalid provider definition" }
           return
         end
+
+        # Check for duplicate provider definitions from different sources
+        check_for_duplicate_provider(definition)
 
         provider = CaptainHook::Provider.find_or_initialize_by(name: name)
 
@@ -79,6 +83,38 @@ module CaptainHook
       rescue StandardError => e
         @results[:errors] << { name: name, error: e.message }
         Rails.logger.error("❌ Error syncing provider #{name}: #{e.message}")
+      end
+
+      # Check for duplicate provider definitions from different sources
+      def check_for_duplicate_provider(definition)
+        name = definition["name"]
+        source = definition["source"]
+        
+        # Find other definitions with the same name from different sources
+        duplicates = @provider_definitions.select do |d|
+          d["name"] == name && d["source"] != source
+        end
+
+        if duplicates.any?
+          duplicate_sources = duplicates.map { |d| d["source"] }.join(", ")
+          warning_message = "Duplicate provider '#{name}' found in #{source} (already exists in: #{duplicate_sources}). " \
+                           "If using the same webhook URL, just register handlers for the existing provider. " \
+                           "If multi-tenant, rename one provider (e.g., '#{name}_primary')."
+          
+          @results[:warnings] << { name: name, message: warning_message }
+          
+          Rails.logger.warn("⚠️  DUPLICATE PROVIDER DETECTED: '#{name}'")
+          Rails.logger.warn("   Found in: #{source}")
+          Rails.logger.warn("   Already exists in: #{duplicate_sources}")
+          Rails.logger.warn("   ")
+          Rails.logger.warn("   If you're using the SAME webhook URL:")
+          Rails.logger.warn("   → Just register your handlers for the existing '#{name}' provider")
+          Rails.logger.warn("   → Remove the duplicate provider configuration")
+          Rails.logger.warn("   ")
+          Rails.logger.warn("   If you need DIFFERENT webhook URLs (multi-tenant):")
+          Rails.logger.warn("   → Rename one provider (e.g., '#{name}_primary' and '#{name}_secondary')")
+          Rails.logger.warn("   → Each provider gets its own webhook endpoint and secret")
+        end
       end
 
       # Validate provider definition has required fields
