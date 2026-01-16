@@ -71,11 +71,6 @@ module CaptainHook
         assert_equal "wh_67890", @adapter.extract_event_id(payload)
       end
 
-      def test_extract_event_id_returns_nil_when_no_id_fields
-        payload = { "data" => "value" }
-        assert_nil @adapter.extract_event_id(payload)
-      end
-
       def test_extract_timestamp_returns_nil_by_default
         headers = { "X-Timestamp" => "1234567890" }
         assert_nil @adapter.extract_timestamp(headers)

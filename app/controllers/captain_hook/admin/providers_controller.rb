@@ -22,8 +22,7 @@ module CaptainHook
       end
 
       # GET /captain_hook/admin/providers/:id/edit
-      def edit
-      end
+      def edit; end
 
       # POST /captain_hook/admin/providers
       def create
@@ -62,8 +61,9 @@ module CaptainHook
         provider_definitions = discovery.call
 
         if provider_definitions.empty?
-          redirect_to admin_providers_url, 
-                      alert: "No provider configuration files found. Add YAML files to captain_hook/providers/ directory."
+          redirect_to admin_providers_url,
+                      alert: "No provider configuration files found. " \
+                             "Add YAML files to captain_hook/providers/ directory."
           return
         end
 
@@ -74,7 +74,7 @@ module CaptainHook
         # Also scan and sync handlers
         handler_discovery = CaptainHook::Services::HandlerDiscovery.new
         handler_definitions = handler_discovery.call
-        
+
         handler_sync = CaptainHook::Services::HandlerSync.new(handler_definitions)
         handler_results = handler_sync.call
 
@@ -88,7 +88,7 @@ module CaptainHook
         messages << "Skipped #{handler_results[:skipped].size} deleted handler(s)" if handler_results[:skipped].any?
 
         all_errors = results[:errors] + handler_results[:errors].map { |e| { name: e[:handler], error: e[:error] } }
-        
+
         if all_errors.any?
           error_details = all_errors.map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
           redirect_to admin_providers_url, alert: "Scan completed with errors: #{error_details}"
@@ -105,7 +105,7 @@ module CaptainHook
         handler_definitions = CaptainHook::Services::HandlerDiscovery.for_provider(@provider.name)
 
         if handler_definitions.empty?
-          redirect_to [:admin, @provider], 
+          redirect_to [:admin, @provider],
                       alert: "No handlers registered for this provider. Register handlers in your application code."
           return
         end

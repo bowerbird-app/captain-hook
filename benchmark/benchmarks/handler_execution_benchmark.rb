@@ -5,8 +5,7 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __dir__)
 require_relative "../support/benchmark_helper"
 require_relative "../support/fixtures"
 
-# Load Rails environment
-require File.expand_path("../../test/dummy/config/environment", __dir__)
+# Rails environment already loaded by benchmark_helper
 require "rails/test_help"
 
 puts "\n⚡ Handler Execution Benchmark"
@@ -66,8 +65,7 @@ BenchmarkHelper.run_benchmark("Create handler records") do
       incoming_event: event,
       handler_class: handler_config.handler_class,
       priority: handler_config.priority,
-      status: :pending,
-      max_attempts: handler_config.max_attempts
+      status: :pending
     )
   end
 end

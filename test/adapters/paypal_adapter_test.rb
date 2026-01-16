@@ -7,11 +7,13 @@ module CaptainHook
   module Adapters
     class PaypalTest < ActiveSupport::TestCase
       setup do
-        @provider_config = Struct.new(:signing_secret, :timestamp_validation_enabled?, :timestamp_tolerance_seconds).new(
-          "test_secret",
-          true,
-          300
-        )
+        @provider_config = Struct.new(:signing_secret,
+                                      :timestamp_validation_enabled?,
+                                      :timestamp_tolerance_seconds).new(
+                                        "test_secret",
+                                        true,
+                                        300
+                                      )
         @adapter = Paypal.new(@provider_config)
       end
 

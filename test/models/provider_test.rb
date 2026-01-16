@@ -142,8 +142,8 @@ module CaptainHook
     end
 
     test "by_name scope orders by name" do
-      z_provider = CaptainHook::Provider.create!(name: "z_provider", adapter_class: "Test")
-      a_provider = CaptainHook::Provider.create!(name: "a_provider", adapter_class: "Test")
+      CaptainHook::Provider.create!(name: "z_provider", adapter_class: "Test")
+      CaptainHook::Provider.create!(name: "a_provider", adapter_class: "Test")
 
       ordered = CaptainHook::Provider.by_name
       assert_equal "a_provider", ordered.first.name
@@ -295,7 +295,7 @@ module CaptainHook
     end
 
     test "deleting provider deletes associated handlers" do
-      handler = CaptainHook::Handler.create!(
+      CaptainHook::Handler.create!(
         provider: @provider.name,
         event_type: "test.event",
         handler_class: "TestHandler"

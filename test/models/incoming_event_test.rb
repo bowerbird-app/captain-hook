@@ -222,31 +222,31 @@ module CaptainHook
     end
 
     test "recalculate_status! marks as processed when all handlers processed" do
-      handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
-      handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :processed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :processed)
 
       @event.recalculate_status!
       assert @event.status_processed?
     end
 
     test "recalculate_status! marks as failed when all handlers failed" do
-      handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :failed)
-      handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :failed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_failed?
     end
 
     test "recalculate_status! marks as partially_processed when some handlers failed" do
-      handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
-      handler2 = @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
+      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_partially_processed?
     end
 
     test "recalculate_status! marks as processing when none processed or failed" do
-      handler1 = @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :pending)
+      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :pending)
 
       @event.recalculate_status!
       assert @event.status_processing?
@@ -267,7 +267,7 @@ module CaptainHook
     end
 
     test "destroys associated handlers when destroyed" do
-      handler = @event.incoming_event_handlers.create!(handler_class: "TestHandler")
+      @event.incoming_event_handlers.create!(handler_class: "TestHandler")
 
       assert_difference "CaptainHook::IncomingEventHandler.count", -1 do
         @event.destroy

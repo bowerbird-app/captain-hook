@@ -298,7 +298,7 @@ class HooksTest < Minitest::Test
   def test_run_around_with_single_hook
     executed = []
 
-    @hooks.around_service do |context, block|
+    @hooks.around_service do |_context, block|
       executed << :before
       result = block.call
       executed << :after

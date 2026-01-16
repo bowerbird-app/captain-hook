@@ -34,9 +34,9 @@ module CaptainHook
         handler_class = definition["handler_class"]
 
         unless valid_handler_definition?(definition)
-          @results[:errors] << { 
-            handler: handler_class, 
-            error: "Invalid handler definition" 
+          @results[:errors] << {
+            handler: handler_class,
+            error: "Invalid handler definition"
           }
           return
         end
@@ -78,9 +78,9 @@ module CaptainHook
             Rails.logger.info("🔄 Updated handler: #{handler_class} for #{provider}:#{event_type}")
           end
         else
-          @results[:errors] << { 
-            handler: handler_class, 
-            error: handler.errors.full_messages.join(", ") 
+          @results[:errors] << {
+            handler: handler_class,
+            error: handler.errors.full_messages.join(", ")
           }
           Rails.logger.error("❌ Failed to sync handler #{handler_class}: #{handler.errors.full_messages.join(', ')}")
         end

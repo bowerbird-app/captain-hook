@@ -1,12 +1,24 @@
 # frozen_string_literal: true
 
+# Set up encryption keys for benchmark environment
+ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"] = "m9zZmUjUUXMdeQnp5HeIAFQ3DdPImKAd"
+ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"] = "zMGZzfBbHG8t38g1M2RKD5AsnSzva90q"
+ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"] = "yBlRa4HF0NLzhKDXSpk1ruiDhccvRkM2"
+
 require "benchmark/ips"
 require "memory_profiler"
+
+# Clean database before running benchmarks (to avoid encryption key mismatch)
+ENV["RAILS_ENV"] = "test"
+require File.expand_path("../../test/dummy/config/environment", __dir__)
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_providers")
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_events")
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_event_handlers")
 
 module BenchmarkHelper
   # Run a performance benchmark and report iterations per second
   def self.run_benchmark(name, &block)
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Benchmark: #{name}"
     puts("=" * 80)
 
@@ -18,7 +30,7 @@ module BenchmarkHelper
 
   # Run a memory profiling benchmark
   def self.memory_benchmark(name, &)
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Memory Benchmark: #{name}"
     puts("=" * 80)
 
@@ -34,7 +46,7 @@ module BenchmarkHelper
 
   # Run comparison benchmark between multiple implementations
   def self.compare_benchmarks(name, implementations = {})
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Comparison Benchmark: #{name}"
     puts("=" * 80)
 
@@ -45,8 +57,10 @@ module BenchmarkHelper
         x.report(impl_name.to_s, &impl_block)
       end
 
-      x.compare!
+      x.compare!(order: :baseline)
     end
+    
+    puts "\nℹ️  Note: 'same-ish' means performance differences are statistically insignificant"
   end
 
   # Format bytes into human-readable format

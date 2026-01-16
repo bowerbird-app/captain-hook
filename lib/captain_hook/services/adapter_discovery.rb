@@ -15,7 +15,7 @@ module CaptainHook
         # Get all adapters from the CaptainHook::Adapters namespace
         discover_gem_adapters
         discover_application_adapters
-        
+
         @discovered_adapters.uniq.sort
       end
 
@@ -46,7 +46,7 @@ module CaptainHook
         Dir.glob(File.join(app_adapters_path, "*.rb")).each do |file_path|
           adapter_name = File.basename(file_path, ".rb").camelize
           adapter_class = "CaptainHook::Adapters::#{adapter_name}"
-          
+
           @discovered_adapters << adapter_class if adapter_exists?(adapter_class)
         end
       end

@@ -16,9 +16,9 @@ module CaptainHook
       end
 
       def show_provider_instructions
-        say "\n" + ("=" * 80), :green
+        say "\n#{'=' * 80}", :green
         say "✓ CaptainHook installed successfully!", :green
-        say ("=" * 80) + "\n", :green
+        say "#{'=' * 80}\n", :green
         say "Next steps:", :cyan
         say "  1. Run migrations: rails captain_hook:install:migrations && rails db:migrate", :yellow
         say "  2. Create providers via admin UI: /captain_hook/admin/providers", :yellow

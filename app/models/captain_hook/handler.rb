@@ -52,9 +52,9 @@ module CaptainHook
     private
 
     def retry_delays_must_be_array_of_integers
-      unless retry_delays.is_a?(Array) && retry_delays.all? { |d| d.is_a?(Integer) && d > 0 }
-        errors.add(:retry_delays, "must be an array of positive integers")
-      end
+      return if retry_delays.is_a?(Array) && retry_delays.all? { |d| d.is_a?(Integer) && d.positive? }
+
+      errors.add(:retry_delays, "must be an array of positive integers")
     end
   end
 end

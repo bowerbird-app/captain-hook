@@ -44,16 +44,21 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-cache: true
+          bundler-cache: false
 
       - name: Install dependencies
-        run: bundle install
+        working-directory: test/dummy
+        run: |
+          bundle config set --local path 'vendor/bundle'
+          bundle install --jobs 4 --retry 3
 
       - name: Setup database
+        working-directory: test/dummy
         run: |
           bundle exec rails db:create db:migrate RAILS_ENV=test
 
       - name: Run benchmarks
+        working-directory: test/dummy
         run: |
           bundle exec rake benchmark:ci
 

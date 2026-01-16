@@ -1,9 +1,14 @@
 # frozen_string_literal: true
 
+# Set up encryption keys before Rails loads
+ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"] ||= "m9zZmUjUUXMdeQnp5HeIAFQ3DdPImKAd"
+ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"] ||= "zMGZzfBbHG8t38g1M2RKD5AsnSzva90q"
+ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"] ||= "yBlRa4HF0NLzhKDXSpk1ruiDhccvRkM2"
+
 namespace :benchmark do
   desc "Run all benchmarks"
   task all: :environment do
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "CaptainHook Performance Benchmarks"
     puts("=" * 80)
     puts "Ruby: #{RUBY_VERSION}"
@@ -29,7 +34,7 @@ namespace :benchmark do
       puts e.backtrace.first(5)
     end
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "Benchmarks Complete!"
     puts("=" * 80)
   end

@@ -176,7 +176,7 @@ module CaptainHook
 
     def test_service_runs_around_hooks
       order = []
-      CaptainHook.configuration.hooks.around_service do |service, block|
+      CaptainHook.configuration.hooks.around_service do |_service, block|
         order << :before
         result = block.call
         order << :after

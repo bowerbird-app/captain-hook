@@ -117,7 +117,6 @@ module CaptainHook
 
       test "stats returns correct information" do
         oldest_time = nil
-        newest_time = nil
 
         travel_to 30.seconds.ago do
           @limiter.record!(provider: @provider, limit: 5, period: 60)

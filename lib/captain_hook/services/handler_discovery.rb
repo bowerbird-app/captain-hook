@@ -13,11 +13,11 @@ module CaptainHook
       # Returns array of handler definitions (hashes)
       def call
         registry = CaptainHook.handler_registry
-        
+
         # Access the internal registry to get all handlers
         registry.instance_variable_get(:@registry).each do |key, configs|
           provider, event_type = key.split(":", 2)
-          
+
           configs.each do |config|
             @discovered_handlers << {
               "provider" => provider,

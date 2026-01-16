@@ -1,10 +1,17 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "ostruct"
 
 RSpec.describe CaptainHook::Adapters::Square do
   let(:signing_secret) { "test_secret_#{SecureRandom.hex(16)}" }
-  let(:adapter) { described_class.new(signing_secret: signing_secret) }
+  let(:provider_config) do
+    OpenStruct.new(
+      signing_secret: signing_secret,
+      token: "test_token_123"
+    )
+  end
+  let(:adapter) { described_class.new(provider_config) }
 
   describe "#verify_signature" do
     let(:payload) do
@@ -30,8 +37,8 @@ RSpec.describe CaptainHook::Adapters::Square do
           "X-Square-Hmacsha256-Signature" => signature
         }
 
-        # Mock the request to return the notification URL
-        allow(adapter).to receive(:extract_notification_url).and_return(notification_url)
+        # Mock the notification URL building
+        allow(adapter).to receive(:build_notification_url).and_return(notification_url)
 
         expect(adapter.verify_signature(payload: payload, headers: headers)).to be true
       end
@@ -46,7 +53,7 @@ RSpec.describe CaptainHook::Adapters::Square do
           "X-Square-Hmacsha256-Signature" => signature
         }
 
-        allow(adapter).to receive(:extract_notification_url).and_return(notification_url)
+        allow(adapter).to receive(:build_notification_url).and_return(notification_url)
 
         expect(adapter.verify_signature(payload: payload, headers: headers)).to be false
       end
@@ -60,7 +67,7 @@ RSpec.describe CaptainHook::Adapters::Square do
           "X-Square-Hmacsha256-Signature" => signature
         }
 
-        allow(adapter).to receive(:extract_notification_url).and_return(notification_url)
+        allow(adapter).to receive(:build_notification_url).and_return(notification_url)
 
         expect(adapter.verify_signature(payload: tampered_payload, headers: headers)).to be false
       end

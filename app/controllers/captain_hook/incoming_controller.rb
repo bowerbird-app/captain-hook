@@ -16,7 +16,7 @@ module CaptainHook
       Rails.logger.info "🔍 WEBHOOK RECEIVED"
       Rails.logger.info "🔍 Provider: #{provider_name}"
       Rails.logger.info "🔍 Token: #{token}"
-      Rails.logger.info "🔍 Headers: #{request.headers.to_h.select do |k, v|
+      Rails.logger.info "🔍 Headers: #{request.headers.to_h.select do |k, _v|
         k.start_with?('HTTP_', 'CONTENT_')
       end.inspect}"
       Rails.logger.info "🔍 Body (first 500 chars): #{request.body.read[0..500]}"
@@ -25,19 +25,14 @@ module CaptainHook
 
       # Get provider from database first, then fall back to configuration
       provider = CaptainHook::Provider.find_by(name: provider_name)
-      provider_config = if provider
-                          # Check if provider is active
-                          unless provider.active?
-                            render json: { error: "Provider is inactive" }, status: :forbidden
-                            return
-                          end
+      # Check if provider is active
+      if provider && !provider.active?
+        render json: { error: "Provider is inactive" }, status: :forbidden
+        return
+      end
 
-                          # Convert Provider model to ProviderConfig
-                          CaptainHook.configuration.provider(provider_name)
-                        else
-                          # Fall back to in-memory configuration
-                          CaptainHook.configuration.provider(provider_name)
-                        end
+      # Convert Provider model to ProviderConfig
+      provider_config = CaptainHook.configuration.provider(provider_name)
 
       unless provider_config
         render json: { error: "Unknown provider" }, status: :not_found

@@ -5,8 +5,7 @@ $LOAD_PATH.unshift File.expand_path("../../lib", __dir__)
 require_relative "../support/benchmark_helper"
 require_relative "../support/fixtures"
 
-# Load Rails environment
-require File.expand_path("../../test/dummy/config/environment", __dir__)
+# Rails environment already loaded by benchmark_helper
 require "rails/test_help"
 
 puts "\n🧠 Memory Profiling Benchmark"
@@ -18,7 +17,7 @@ provider = BenchmarkFixtures.create_test_provider
 puts "\n📊 Webhook Processing Memory Usage"
 BenchmarkHelper.memory_benchmark("Complete webhook processing") do
   100.times do
-    event = BenchmarkFixtures.create_test_event(
+    BenchmarkFixtures.create_test_event(
       provider: provider.name,
       external_id: SecureRandom.uuid
     )

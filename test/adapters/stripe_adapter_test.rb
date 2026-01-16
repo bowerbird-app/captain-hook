@@ -8,11 +8,13 @@ module CaptainHook
     class StripeTest < ActiveSupport::TestCase
       setup do
         @signing_secret = "whsec_test_secret"
-        @provider_config = Struct.new(:signing_secret, :timestamp_validation_enabled?, :timestamp_tolerance_seconds).new(
-          @signing_secret,
-          true,
-          300
-        )
+        @provider_config = Struct.new(:signing_secret,
+                                      :timestamp_validation_enabled?,
+                                      :timestamp_tolerance_seconds).new(
+                                        @signing_secret,
+                                        true,
+                                        300
+                                      )
         @adapter = Stripe.new(@provider_config)
       end
 

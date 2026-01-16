@@ -83,7 +83,7 @@ module CaptainHook
 
         # Access the instance variable to check it was populated
         adapters = discovery.instance_variable_get(:@discovered_adapters)
-        assert adapters.size > 0, "Should discover at least one gem adapter"
+        assert adapters.size.positive?, "Should discover at least one gem adapter"
       end
 
       def test_call_returns_unique_adapters

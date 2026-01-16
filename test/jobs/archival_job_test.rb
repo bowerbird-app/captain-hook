@@ -82,7 +82,7 @@ module CaptainHook
       end
 
       # Should process in smaller batches
-      result = ArchivalJob.new.perform(retention_days: 90, batch_size: 2)
+      ArchivalJob.new.perform(retention_days: 90, batch_size: 2)
 
       # All old events should be archived
       old_count = IncomingEvent.where("created_at < ?", 90.days.ago).archived.count
