@@ -14,6 +14,7 @@ module CaptainHook
           errors: [],
           warnings: []
         }
+        @warned_duplicates = Set.new # Track which duplicate pairs we've already warned about
       end
 
       # Sync providers to database
@@ -96,17 +97,27 @@ module CaptainHook
         end
 
         return unless duplicates.any?
+        
+        # Only warn once per provider name (not once per source pair)
+        return if @warned_duplicates.include?(name)
+        @warned_duplicates.add(name)
 
-        duplicate_sources = duplicates.map { |d| d["source"] }.join(", ")
-        warning_message = "Duplicate provider '#{name}' found in #{source} (already exists in: #{duplicate_sources}). " \
+        # Get all sources for this provider name
+        all_sources = @provider_definitions.select { |d| d["name"] == name }.map { |d| d["source"] }
+        
+        # Check if there are handlers registered for this provider
+        existing_provider = CaptainHook::Provider.find_by(name: name)
+        handler_count = existing_provider&.handlers&.count || 0
+        handler_info = handler_count > 0 ? " Note: #{handler_count} handler(s) are already registered to the '#{name}' provider." : ""
+        
+        warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
                           "If using the same webhook URL, just register handlers for the existing provider. " \
-                          "If multi-tenant, rename one provider (e.g., '#{name}_primary')."
+                          "If multi-tenant, rename one provider (e.g., '#{name}_primary').#{handler_info}"
 
-        @results[:warnings] << { name: name, message: warning_message }
+        @results[:warnings] << { name: name, message: warning_message, sources: all_sources }
 
         Rails.logger.warn("⚠️  DUPLICATE PROVIDER DETECTED: '#{name}'")
-        Rails.logger.warn("   Found in: #{source}")
-        Rails.logger.warn("   Already exists in: #{duplicate_sources}")
+        Rails.logger.warn("   Found in multiple sources: #{all_sources.join(', ')}")
         Rails.logger.warn("   ")
         Rails.logger.warn("   If you're using the SAME webhook URL:")
         Rails.logger.warn("   → Just register your handlers for the existing '#{name}' provider")

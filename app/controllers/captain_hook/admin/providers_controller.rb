@@ -60,6 +60,11 @@ module CaptainHook
         discovery = CaptainHook::Services::ProviderDiscovery.new
         provider_definitions = discovery.call
 
+        Rails.logger.info "🔍 SCAN DEBUG: Found #{provider_definitions.length} providers"
+        provider_definitions.each do |p|
+          Rails.logger.info "   - #{p['name']} (source: #{p['source']})"
+        end
+
         if provider_definitions.empty?
           redirect_to admin_providers_url,
                       alert: "No provider configuration files found. " \
@@ -70,6 +75,13 @@ module CaptainHook
         # Sync discovered providers to database
         sync = CaptainHook::Services::ProviderSync.new(provider_definitions)
         results = sync.call
+
+        Rails.logger.info "🔍 SYNC DEBUG: Results - Created: #{results[:created].length}, Updated: #{results[:updated].length}, Warnings: #{results[:warnings]&.length || 0}"
+        if results[:warnings]&.any?
+          results[:warnings].each do |w|
+            Rails.logger.info "   ⚠️  #{w[:name]}: #{w[:message][0..100]}"
+          end
+        end
 
         # Also scan and sync handlers
         handler_discovery = CaptainHook::Services::HandlerDiscovery.new
@@ -89,18 +101,22 @@ module CaptainHook
 
         all_errors = results[:errors] + handler_results[:errors].map { |e| { name: e[:handler], error: e[:error] } }
 
-        # Add warnings as alert if any exist
-        if results[:warnings].any?
-          warning_messages = results[:warnings].map { |w| "⚠️ #{w[:message]}" }.join("<br>")
-          flash[:warning] = warning_messages.html_safe
-        end
-
         if all_errors.any?
           error_details = all_errors.map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
           redirect_to admin_providers_url, alert: "Scan completed with errors: #{error_details}"
         elsif messages.any?
+          # Add warnings as alert if any exist
+          if results[:warnings]&.any?
+            warning_messages = results[:warnings].map { |w| "⚠️ #{w[:message]}" }.join("\n\n")
+            flash[:warning] = warning_messages
+          end
           redirect_to admin_providers_url, notice: "Scan completed! #{messages.join(', ')}"
         else
+          # Add warnings as alert if any exist
+          if results[:warnings]&.any?
+            warning_messages = results[:warnings].map { |w| "⚠️ #{w[:message]}" }.join("\n\n")
+            flash[:warning] = warning_messages
+          end
           redirect_to admin_providers_url, notice: "Scan completed. All providers and handlers are up to date."
         end
       end

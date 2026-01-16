@@ -30,11 +30,22 @@ module CaptainHook
 
       # Scan loaded gems for provider configs
       def scan_gem_providers
-        Gem.loaded_specs.each_value do |spec|
-          gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
-          next unless File.directory?(gem_providers_path)
+        # Use Bundler to get all gems from Gemfile, not just loaded ones
+        if defined?(Bundler)
+          Bundler.load.specs.each do |spec|
+            gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
+            next unless File.directory?(gem_providers_path)
 
-          scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+            scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+          end
+        else
+          # Fallback to Gem.loaded_specs if Bundler isn't available
+          Gem.loaded_specs.each_value do |spec|
+            gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
+            next unless File.directory?(gem_providers_path)
+
+            scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+          end
         end
       end
 
