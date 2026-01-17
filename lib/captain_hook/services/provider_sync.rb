@@ -60,8 +60,14 @@ module CaptainHook
         # Assign attributes from YAML
         provider.display_name = definition["display_name"]
         provider.description = definition["description"]
-        provider.adapter_class = definition["adapter_class"]
+        provider.adapter_file = definition["adapter_file"]
         provider.active = definition.fetch("active", true)
+        
+        # Extract adapter_class from file if adapter_file is provided
+        if definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
+          adapter_class = extract_adapter_class(definition)
+          provider.adapter_class = adapter_class if adapter_class.present?
+        end
 
         # Optional attributes
         provider.timestamp_tolerance_seconds = definition["timestamp_tolerance_seconds"]
@@ -143,8 +149,39 @@ module CaptainHook
 
       # Validate provider definition has required fields
       def valid_provider_definition?(definition)
-        definition["name"].present? &&
-          definition["adapter_class"].present?
+        definition["name"].present?
+      end
+      
+      # Extract adapter class name from the adapter file
+      def extract_adapter_class(definition)
+        name = definition["name"]
+        adapter_file = definition["adapter_file"]
+        
+        return nil if adapter_file.blank?
+        
+        # Find the file in possible locations
+        possible_paths = [
+          Rails.root.join("captain_hook", "providers", name, adapter_file),
+          Rails.root.join("captain_hook", "providers", adapter_file)
+        ]
+        
+        # Also check in gems
+        Bundler.load.specs.each do |spec|
+          gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
+          next unless File.directory?(gem_providers_path)
+          
+          possible_paths << File.join(gem_providers_path, name, adapter_file)
+          possible_paths << File.join(gem_providers_path, adapter_file)
+        end
+        
+        file_path = possible_paths.find { |path| File.exist?(path) }
+        
+        if file_path
+          CaptainHook::Provider.extract_adapter_class_from_file(file_path)
+        else
+          Rails.logger.warn("⚠️  Adapter file '#{adapter_file}' not found for provider '#{name}'")
+          nil
+        end
       end
 
       # Resolve signing secret from ENV variable reference or direct value

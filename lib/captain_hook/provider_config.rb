@@ -15,6 +15,7 @@ module CaptainHook
     :rate_limit_requests,
     :rate_limit_period,
     :adapter_class,
+    :adapter_file,
     :active,
     :source,
     :source_file,
