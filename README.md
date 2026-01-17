@@ -392,30 +392,7 @@ Handlers can be configured with:
 
 ## Adapters
 
-CaptainHook ships with built-in adapters for popular webhook providers. Adapters handle provider-specific signature verification and event extraction.
-
-### Built-in Adapters
-
-CaptainHook includes these adapters out of the box:
-
-- **Stripe** (`CaptainHook::Adapters::Stripe`)
-  - HMAC-SHA256 signature verification with hex encoding
-  - Timestamp validation for replay attack prevention
-  - Supports Stripe's signature format: `t=timestamp,v1=signature`
-
-- **Square** (`CaptainHook::Adapters::Square`)
-  - HMAC-SHA256 signature verification with Base64 encoding
-  - Notification URL validation
-  - Supports X-Square-Hmacsha256-Signature header
-
-- **PayPal** (`CaptainHook::Adapters::Paypal`)
-  - Certificate-based verification (simplified)
-  - Transmission ID and timestamp validation
-  - Supports PayPal's transmission headers
-
-- **WebhookSite** (`CaptainHook::Adapters::WebhookSite`)
-  - No signature verification (testing only)
-  - Use for local development and testing
+Adapters handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `marikit-stripe`, `marikit-square`) or can be created in your host application.
 
 ### Using an Adapter
 
@@ -424,22 +401,33 @@ Adapters are specified in your provider YAML configuration:
 ```yaml
 # captain_hook/providers/stripe.yml
 name: stripe
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_class: StripeAdapter
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 ```
 
-### Need a New Adapter?
+### Providers Without Signature Verification
 
-**Adapters can only be added to the CaptainHook gem itself**, not in host applications or other gems. This architectural decision ensures:
-- Consistent security verification across all installations
-- Centralized testing and maintenance
-- Single source of truth for provider signature schemes
+For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `adapter_class` field entirely:
 
-If you need support for a new provider:
-1. Submit a pull request to add the adapter to `lib/captain_hook/adapters/` in the CaptainHook gem
-2. Or contact the maintainers to request support for your provider
+```yaml
+# captain_hook/providers/internal_service.yml
+name: internal_service
+display_name: Internal Service
+description: Internal webhooks without verification
+# adapter_class: (not specified - no signature verification)
+active: true
+```
 
-**Full documentation**: See [docs/ADAPTERS.md](docs/ADAPTERS.md) for details on CaptainHook's built-in adapters and how to contribute new ones.
+**Security Warning**: Providers without signature verification rely solely on token-based URL authentication. Only use this for:
+- Trusted internal services within your infrastructure
+- Development/testing environments
+- Services that don't provide signature verification mechanisms
+
+For production external webhooks, always use an adapter with proper signature verification.
+
+### Creating a Custom Adapter
+
+Adapters can be created in your host application or distributed as separate gems. See [docs/ADAPTERS.md](docs/ADAPTERS.md) for detailed implementation guide, or check out [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for building adapters in gems.
 
 ## Security & Encryption
 
