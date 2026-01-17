@@ -122,12 +122,12 @@ module CaptainHook
     # Looks for classes that include AdapterHelpers or end with "Adapter"
     def self.extract_adapter_class_from_file(file_path)
       return nil unless File.exist?(file_path)
-      
+
       # First try to guess the class name from the file name
       # e.g., stripe.rb -> StripeAdapter
       file_name = File.basename(file_path, ".rb")
       guessed_class_name = "#{file_name.camelize}Adapter"
-      
+
       # Check if this class already exists (file was already loaded)
       if Object.const_defined?(guessed_class_name)
         klass = Object.const_get(guessed_class_name)
@@ -138,26 +138,26 @@ module CaptainHook
           return guessed_class_name
         end
       end
-      
+
       # Track constants before loading (for new files)
       constants_before = Object.constants
-      
+
       # Load the file
       load file_path
-      
+
       # Find new constants (classes defined in the file)
       new_constants = Object.constants - constants_before
-      
+
       # Look for adapter classes (contain "Adapter" or include AdapterHelpers)
       adapter_class = new_constants.find do |const_name|
         klass = Object.const_get(const_name)
         next unless klass.is_a?(Class)
-        
+
         # Check if it's an adapter (includes AdapterHelpers or ends with Adapter)
         klass.included_modules.any? { |m| m.name == "CaptainHook::AdapterHelpers" } ||
           const_name.to_s.end_with?("Adapter")
       end
-      
+
       adapter_class&.to_s
     rescue StandardError => e
       Rails.logger.error("Failed to extract adapter class from #{file_path}: #{e.message}")
