@@ -56,7 +56,7 @@ To use a provider in your Rails application:
    ```yaml
    name: stripe
    display_name: Stripe
-   adapter_class: StripeAdapter  # Your adapter class name
+   adapter_file: stripe.rb  # Your adapter file (class will be auto-detected)
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    ```
 
@@ -94,7 +94,7 @@ CaptainHook supports multiple instances of the same provider with different cred
 name: stripe_gem_a
 display_name: Stripe (Gem A)
 description: Stripe webhooks for Gem A
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_file: stripe_gem_a.rb
 signing_secret: ENV[GEM_A_STRIPE_SECRET]
 ```
 
@@ -104,7 +104,7 @@ signing_secret: ENV[GEM_A_STRIPE_SECRET]
 name: stripe_gem_b
 display_name: Stripe (Gem B)
 description: Stripe webhooks for Gem B
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_file: stripe_gem_b.rb
 signing_secret: ENV[GEM_B_STRIPE_SECRET]
 ```
 

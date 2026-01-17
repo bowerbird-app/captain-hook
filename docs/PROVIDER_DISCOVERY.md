@@ -24,7 +24,7 @@ Provider configurations are defined in YAML files with the following structure:
 name: stripe                                    # Required: unique identifier
 display_name: Stripe                            # Optional: human-readable name
 description: Stripe payment webhooks            # Optional: description
-adapter_class: CaptainHook::Adapters::Stripe   # Required: signature verification adapter
+adapter_file: stripe.rb                         # Optional: file with signature verification adapter
 active: true                                    # Optional: default true
 
 # Security settings
@@ -249,6 +249,8 @@ validates :name, presence: true, uniqueness: true,
 validates :adapter_class, presence: true
 ```
 
+Note: `adapter_class` is auto-extracted from the `adapter_file` during sync.
+
 This prevents invalid or malicious provider configurations.
 
 ## Migration Path
@@ -291,7 +293,7 @@ If you have existing providers created via the UI:
 ```ruby
 # In test/dummy/captain_hook/providers/test.yml
 name: test_provider
-adapter_class: CaptainHook::Adapters::Base
+adapter_file: test.rb
 signing_secret: ENV[TEST_SECRET]
 
 # In test
@@ -325,11 +327,11 @@ The sync service could automatically register handlers from YAML.
 
 ### 2. Adapter Discovery
 
-Custom adapters could be automatically discovered and registered:
+Custom adapters are automatically discovered from the specified file:
 
 ```yaml
 # captain_hook/providers/custom.yml
-adapter_class: MyCustomAdapter  # Auto-discovered from captain_hook/adapters/
+adapter_file: my_custom_adapter.rb  # Auto-detected from captain_hook/providers/custom/
 ```
 
 ### 3. Validation Rules
@@ -371,7 +373,7 @@ Add a "Edit as YAML" button in the UI that:
 
 **Check**: Are there validation errors? Check the flash message after scan
 **Check**: Does a provider with that name already exist?
-**Check**: Is the adapter_class valid and loadable?
+**Check**: Is the adapter_file valid and does the adapter class exist in the file?
 
 ### Handlers Not Loading
 

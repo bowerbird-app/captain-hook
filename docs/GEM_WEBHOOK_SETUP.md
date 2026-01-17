@@ -232,8 +232,8 @@ name: stripe                                    # URL-friendly identifier (lower
 display_name: Stripe                            # Human-readable name
 description: Stripe payment processing webhooks # Brief description
 
-# Reference your adapter class (in same directory)
-adapter_class: StripeAdapter                    # Your adapter from stripe.rb
+# Reference your adapter file (in same directory)
+adapter_file: stripe.rb                         # Your adapter file (class will be auto-detected)
 
 # Signing secret from environment variable
 # Set this in your .env file or environment:
@@ -260,14 +260,13 @@ If you need multiple instances of the same provider (e.g., supporting multiple S
 # captain_hook/providers/stripe_primary/stripe_primary.yml
 name: stripe_primary
 display_name: Stripe (Primary Account)
-adapter_class: StripePrimaryAdapter
+adapter_file: stripe_primary.rb
 signing_secret: ENV[STRIPE_PRIMARY_SECRET]
 
 # captain_hook/providers/stripe_secondary/stripe_secondary.yml
 name: stripe_secondary
 display_name: Stripe (Secondary Account)
-adapter_class: StripeSecondaryAdapter
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_file: stripe_secondary.rb
 signing_secret: ENV[STRIPE_SECONDARY_SECRET]
 ```
 

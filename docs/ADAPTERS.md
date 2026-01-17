@@ -110,7 +110,7 @@ Create the YAML configuration file:
 name: acme_payments
 display_name: AcmePayments
 description: AcmePayments webhook provider
-adapter_class: AcmePaymentsAdapter
+adapter_file: acme_payments.rb
 signing_secret: ENV[ACME_PAYMENTS_SECRET]
 timestamp_tolerance_seconds: 300
 active: true
@@ -454,7 +454,7 @@ This overrides the database value when set, useful for:
 1. Ensure YAML file exists in `captain_hook/providers/<provider_name>/`
 2. Ensure .rb file exists in the same directory
 3. Run "Discover New" or "Full Sync" in admin UI
-4. Check `adapter_class` matches the class name exactly
+4. Check `adapter_file` in YAML references the correct .rb file
 
 ## Contributing
 

@@ -69,7 +69,7 @@ Each provider needs a YAML file with these fields:
 name: stripe                                  # Required: Unique identifier (lowercase, underscores only)
 display_name: Stripe                          # Optional: Human-readable name
 description: Stripe payment webhooks          # Optional: Description
-adapter_class: StripeAdapter                  # Optional: Class name for signature verification
+adapter_file: stripe.rb                       # Optional: Ruby file with adapter class for signature verification
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]    # Optional: HMAC secret (supports ENV[] syntax)
 active: true                                  # Optional: Enable/disable (default: true)
 
@@ -244,7 +244,8 @@ CREATE TABLE captain_hook_providers (
   
   -- Security configuration
   signing_secret VARCHAR,                    -- Encrypted HMAC secret
-  adapter_class VARCHAR DEFAULT NULL,        -- Adapter class name (NULL = no verification)
+  adapter_class VARCHAR DEFAULT NULL,        -- Adapter class name (NULL = no verification, auto-extracted)
+  adapter_file VARCHAR,                      -- Ruby file containing adapter (added in 20260117000002)
   timestamp_tolerance_seconds INTEGER DEFAULT 300,  -- Replay attack protection
   
   -- Resource limits
@@ -310,10 +311,11 @@ CREATE INDEX ON captain_hook_providers(active);
 
 **`adapter_class`** (VARCHAR, NULLABLE)
 - **Changed from NOT NULL to NULLABLE in migration 20260117000001**
+- **Auto-extracted from adapter_file during provider sync (migration 20260117000002)**
 - Class name of adapter (e.g., `"StripeAdapter"`)
 - `NULL` means no signature verification (token-only authentication)
 - Class must exist and be loadable when webhook arrives
-- Auto-loaded from provider directory during scan
+- Auto-detected from adapter_file specified in YAML during provider scan
 - Used to instantiate adapter: `adapter_class.constantize.new`
 
 **`timestamp_tolerance_seconds`** (INTEGER, DEFAULT 300)
@@ -956,13 +958,13 @@ For multiple instances of the same provider type:
 ```
 captain_hook/providers/
 ├── stripe_prod/
-│   ├── stripe_prod.yml         # adapter_class: StripeProdAdapter
+│   ├── stripe_prod.yml         # adapter_file: stripe_prod.rb
 │   └── stripe_prod.rb
 ├── stripe_test/
-│   ├── stripe_test.yml         # adapter_class: StripeTestAdapter
+│   ├── stripe_test.yml         # adapter_file: stripe_test.rb
 │   └── stripe_test.rb
 └── stripe_dev/
-    ├── stripe_dev.yml          # adapter_class: StripeDevAdapter
+    ├── stripe_dev.yml          # adapter_file: stripe_dev.rb
     └── stripe_dev.rb
 ```
 
@@ -981,7 +983,7 @@ Each gets:
 # captain_hook/providers/internal_service/internal_service.yml
 name: internal_service
 display_name: Internal Service
-# No adapter_class - relies on token-only auth
+# No adapter_file - relies on token-only auth
 signing_secret: null  # No HMAC verification
 ```
 
@@ -1032,10 +1034,10 @@ marikit-stripe/
 ```
 captain_hook/providers/
 ├── stripe_account_a/
-│   ├── stripe_account_a.yml    # adapter_class: StripeAccountAAdapter
+│   ├── stripe_account_a.yml    # adapter_file: stripe_account_a.rb
 │   └── stripe_account_a.rb
 └── stripe_account_b/
-    ├── stripe_account_b.yml    # adapter_class: StripeAccountBAdapter
+    ├── stripe_account_b.yml    # adapter_file: stripe_account_b.rb
     └── stripe_account_b.rb
 ```
 
@@ -1046,10 +1048,10 @@ captain_hook/providers/
 ```
 captain_hook/providers/
 ├── stripe_prod/
-│   ├── stripe_prod.yml         # adapter_class: StripeAdapter
+│   ├── stripe_prod.yml         # adapter_file: stripe_adapter.rb
 │   └── stripe_adapter.rb       # Shared implementation
 └── stripe_test/
-    └── stripe_test.yml         # adapter_class: StripeAdapter (reuses above)
+    └── stripe_test.yml         # adapter_file: ../stripe_prod/stripe_adapter.rb (reuses)
 ```
 
 **Works:** Multiple providers can reference the same adapter class
@@ -1059,7 +1061,7 @@ captain_hook/providers/
 ```yaml
 # captain_hook/providers/internal/internal.yml
 name: internal
-adapter_class: null  # No verification
+# adapter_file: (not specified - no verification)
 ```
 
 **Works:** Token-only authentication, no signature verification
@@ -1096,7 +1098,7 @@ Gem 2 (marikit-square):
 # Cannot create provider without YAML file
 Provider.create!(
   name: "custom",
-  adapter_class: "CustomAdapter"
+  adapter_file: "custom.rb"
 )
 # Discovery won't find this on next scan
 ```

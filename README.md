@@ -163,7 +163,7 @@ Or create from scratch:
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_class: StripeAdapter
+adapter_file: stripe.rb
 active: true
 
 # Security settings
@@ -252,13 +252,13 @@ You can have multiple instances of the same provider type (e.g., multiple Stripe
 # captain_hook/providers/stripe_account_a/stripe_account_a.yml
 name: stripe_account_a
 display_name: Stripe (Account A)
-adapter_class: StripeAccountAAdapter
+adapter_file: stripe_account_a.rb
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
 
 # captain_hook/providers/stripe_account_b/stripe_account_b.yml
 name: stripe_account_b
 display_name: Stripe (Account B)  
-adapter_class: StripeAccountBAdapter
+adapter_file: stripe_account_b.rb
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
 ```
 
@@ -371,7 +371,7 @@ Each provider can be configured with:
 - **name**: Unique identifier (lowercase, underscores only)
 - **display_name**: Human-readable name
 - **signing_secret**: Secret for HMAC signature verification
-- **adapter_class**: Class for provider-specific signature verification
+- **adapter_file**: Ruby file containing the adapter class for provider-specific signature verification
 - **timestamp_tolerance_seconds**: Tolerance window for timestamp validation (prevents replay attacks)
 - **max_payload_size_bytes**: Maximum payload size (DoS protection)
 - **rate_limit_requests**: Maximum requests per period
@@ -401,20 +401,20 @@ Adapters are specified in your provider YAML configuration:
 ```yaml
 # captain_hook/providers/stripe.yml
 name: stripe
-adapter_class: StripeAdapter
+adapter_file: stripe.rb
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 ```
 
 ### Providers Without Signature Verification
 
-For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `adapter_class` field entirely:
+For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `adapter_file` field entirely:
 
 ```yaml
 # captain_hook/providers/internal_service.yml
 name: internal_service
 display_name: Internal Service
 description: Internal webhooks without verification
-# adapter_class: (not specified - no signature verification)
+# adapter_file: (not specified - no signature verification)
 active: true
 ```
 

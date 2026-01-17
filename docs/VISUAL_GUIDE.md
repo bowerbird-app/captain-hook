@@ -752,7 +752,7 @@ my_payment_gem/
 
 # Required Fields
 name: stripe                                    # Unique identifier (lowercase)
-adapter_class: StripeAdapter                    # Signature verifier class (in stripe.rb)
+adapter_file: stripe.rb                         # Adapter file (class auto-detected)
 
 # Display Fields
 display_name: Stripe                            # Human-readable name
@@ -1107,7 +1107,7 @@ CaptainHook's discovery and management system provides:
 2. Add Provider Config & Adapter
    # captain_hook/providers/stripe/stripe.yml
    name: stripe
-   adapter_class: StripeAdapter
+   adapter_file: stripe.rb
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    
    # captain_hook/providers/stripe/stripe.rb

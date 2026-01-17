@@ -6,7 +6,7 @@
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_class: StripeAdapter
+adapter_file: stripe.rb
 active: true
 
 # Security settings

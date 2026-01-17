@@ -28,7 +28,7 @@ Provider configuration files are YAML files that define webhook providers. Capta
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_class: CaptainHook::Adapters::Stripe
+adapter_file: stripe.rb
 active: true
 
 # Security settings
@@ -48,7 +48,7 @@ max_payload_size_bytes: 1048576
 - **name** (required): Unique identifier for the provider (lowercase, underscores only)
 - **display_name** (optional): Human-readable name shown in the UI
 - **description** (optional): Description of the provider
-- **adapter_class** (required): Full class name of the signature verification adapter
+- **adapter_file** (optional): Ruby file containing the signature verification adapter class
 - **active** (optional, default: true): Whether the provider is active
 - **signing_secret** (optional): Webhook signing secret. Use `ENV[VARIABLE_NAME]` to reference environment variables
 - **timestamp_tolerance_seconds** (optional): Maximum allowed time difference for timestamp validation
@@ -139,7 +139,7 @@ end
 Then reference it in your provider YAML:
 
 ```yaml
-adapter_class: CaptainHook::Adapters::MyCustomAdapter
+adapter_file: my_custom_adapter.rb
 ```
 
 ## Using in Gems
