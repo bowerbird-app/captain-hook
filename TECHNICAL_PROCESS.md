@@ -590,7 +590,7 @@ else
 end
 ```
 
-**Note:** Handler creation and execution is briefly mentioned here but not detailed, as per your request to focus on providers/adapters.
+**Note:** For complete details on handler creation, registration, and execution flow, see [Handlers: Business Logic Execution](#handlers-business-logic-execution) below.
 
 ---
 
@@ -929,15 +929,17 @@ When a gem like `marikit-stripe` provides webhooks:
 marikit-stripe/
 ├── lib/
 │   └── marikit/
-│       └── stripe.rb
-└── captain_hook/
+│       └── stripe.rb               # Main gem code (NOT webhook-related)
+└── captain_hook/                   # CaptainHook-specific files (scanned)
     └── providers/
         └── stripe/
-            ├── stripe.yml          # Bundled config
-            └── stripe.rb           # Adapter class
+            ├── stripe.yml          # Webhook config (scanned)
+            └── stripe.rb           # Webhook adapter (loaded by CaptainHook)
 ```
 
-**Why gems need both files:**
+**Important:** The `lib/marikit/stripe.rb` file is the gem's main business logic (API client, payment processing, etc.) and is NOT scanned by CaptainHook. Only files in the `captain_hook/providers/` directory are discovered during provider scanning.
+
+**Why gems need both locations:**
 
 1. **YAML provides defaults**: Gem can ship sensible defaults
 2. **Host can override**: Application can create its own `stripe.yml` with environment-specific settings
