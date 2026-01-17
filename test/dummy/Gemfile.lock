@@ -1,3 +1,10 @@
+GIT
+  remote: https://github.com/bowerbird-app/marikit-country-list.git
+  revision: bb8d3b63f4313289ea15df9aa3b107b97ec1d7fd
+  specs:
+    marikit_country_list (0.1.0)
+      rails (>= 6.0)
+
 PATH
   remote: ../..
   specs:
@@ -416,6 +423,7 @@ DEPENDENCIES
   importmap-rails
   jbuilder
   kamal
+  marikit_country_list!
   memory_profiler
   pg (~> 1.1)
   propshaft
@@ -499,6 +507,7 @@ CHECKSUMS
   loofah (2.25.0) sha256=df5ed7ac3bac6a4ec802df3877ee5cc86d027299f8952e6243b3dac446b060e6
   mail (2.9.0) sha256=6fa6673ecd71c60c2d996260f9ee3dd387d4673b8169b502134659ece6d34941
   marcel (1.1.0) sha256=fdcfcfa33cc52e93c4308d40e4090a5d4ea279e160a7f6af988260fa970e0bee
+  marikit_country_list (0.1.0)
   memory_profiler (1.1.0) sha256=79a17df7980a140c83c469785905409d3027ca614c42c086089d128b805aa8f8
   method_source (1.1.0) sha256=181301c9c45b731b4769bc81e8860e72f9161ad7d66dd99103c9ab84f560f5c5
   mini_magick (5.3.1) sha256=29395dfd76badcabb6403ee5aff6f681e867074f8f28ce08d78661e9e4a351c4
