@@ -580,7 +580,7 @@ If the same `(provider, external_id)` arrives twice:
 ```ruby
 if event.previously_new_record?
   # New event - create action records
-  create_handlers_for_event(event)
+  create_actions_for_event(event)
   
   render json: { id: event.id, status: "received" }, status: :created
 else
@@ -1289,8 +1289,8 @@ Actions are **Ruby classes that contain your business logic** for processing web
 A action is a simple Ruby class with a single required method: `handle`
 
 ```ruby
-# captain_hook/stripe/actions/payment_succeeded_handler.rb
-class StripePaymentSucceededHandler
+# captain_hook/stripe/actions/payment_succeeded_action.rb
+class StripePaymentSucceededAction
   # Required method signature
   # @param event [CaptainHook::IncomingEvent] Database record of the webhook
   # @param payload [Hash] Parsed JSON payload from provider
@@ -1367,7 +1367,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentSucceededHandler",
+    action_class: "StripePaymentSucceededAction",
     priority: 100,
     async: true,
     max_attempts: 3,
@@ -1389,7 +1389,7 @@ CaptainHook.register_action(
   # REQUIRED FIELDS
   provider: "stripe",                          # Provider name (must match provider)
   event_type: "payment_intent.succeeded",     # Exact event type or wildcard
-  action_class: "StripePaymentSucceededHandler",  # Class name as string
+  action_class: "StripePaymentSucceededAction",  # Class name as string
   
   # OPTIONAL FIELDS (with defaults)
   priority: 100,                               # Execution order (lower = higher priority)
@@ -1415,8 +1415,8 @@ CaptainHook.register_action(
 **`action_class`** (String, required)
 - Class name as a string (not the actual class)
 - Must be loadable via `constantize`
-- Example: `"StripePaymentSucceededHandler"`
-- Can include namespaces: `"Webhooks::Stripe::PaymentHandler"`
+- Example: `"StripePaymentSucceededAction"`
+- Can include namespaces: `"Webhooks::Stripe::PaymentAction"`
 
 **`priority`** (Integer, default: 100)
 - Determines execution order when multiple actions exist
@@ -1454,7 +1454,7 @@ You can register multiple actions for the same event:
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "UpdatePaymentHandler",
+  action_class: "UpdatePaymentAction",
   priority: 10
 )
 
@@ -1462,7 +1462,7 @@ CaptainHook.register_action(
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "PaymentNotificationHandler",
+  action_class: "PaymentNotificationAction",
   priority: 50
 )
 
@@ -1470,15 +1470,15 @@ CaptainHook.register_action(
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "PaymentAnalyticsHandler",
+  action_class: "PaymentAnalyticsAction",
   priority: 100
 )
 ```
 
 **Execution Order:**
-1. `UpdatePaymentHandler` (priority 10)
-2. `PaymentNotificationHandler` (priority 50)
-3. `PaymentAnalyticsHandler` (priority 100)
+1. `UpdatePaymentAction` (priority 10)
+2. `PaymentNotificationAction` (priority 50)
+3. `PaymentAnalyticsAction` (priority 100)
 
 **Independence:**
 - Each action runs independently
@@ -1495,21 +1495,21 @@ Register a single action for multiple event types:
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",
-  action_class: "StripePaymentIntentHandler"
+  action_class: "StripePaymentIntentAction"
 )
 
 # Handle all Square bank account events
 CaptainHook.register_action(
   provider: "square",
   event_type: "bank_account.*",
-  action_class: "SquareBankAccountHandler"
+  action_class: "SquareBankAccountAction"
 )
 ```
 
 **Action Implementation:**
 
 ```ruby
-class StripePaymentIntentHandler
+class StripePaymentIntentAction
   def handle(event:, payload:, metadata:)
     # Check actual event type
     case event.event_type
@@ -1583,7 +1583,7 @@ registry.instance_variable_get(:@registry).each do |key, configs|
   provider, event_type = key.split(":", 2)
   
   configs.each do |config|
-    discovered_handlers << {
+    discovered_actions << {
       "provider" => provider,
       "event_type" => event_type,
       "action_class" => config.action_class.to_s,
@@ -1644,14 +1644,14 @@ Gem 1:        captain_hook/providers/stripe/stripe.yml
 CaptainHook.register_action(
   provider: "stripe",          # Matches provider name
   event_type: "payment_intent.succeeded",
-  action_class: "AppPaymentHandler"
+  action_class: "AppPaymentAction"
 )
 
 # In gem initializer (e.g., example-stripe)
 CaptainHook.register_action(
   provider: "stripe",          # Same provider name
   event_type: "charge.succeeded",
-  action_class: "Example::ChargeHandler"
+  action_class: "Example::ChargeAction"
 )
 ```
 
@@ -1671,7 +1671,7 @@ CaptainHook.register_action(
 ```ruby
 # lib/captain_hook/services/action_sync.rb
 
-handler_definitions.each do |definition|
+action_definitions.each do |definition|
   provider = definition["provider"]
   event_type = definition["event_type"]
   action_class = definition["action_class"]
@@ -1732,9 +1732,9 @@ Actions can exist in two locations:
 your-rails-app/
 ├── captain_hook/
 │   └── actions/
-│       ├── stripe_payment_succeeded_handler.rb
-│       ├── square_order_created_handler.rb
-│       └── paypal_payment_captured_handler.rb
+│       ├── stripe_payment_succeeded_action.rb
+│       ├── square_order_created_action.rb
+│       └── paypal_payment_captured_action.rb
 └── config/
     └── initializers/
         └── captain_hook.rb    # Register actions here
@@ -1753,8 +1753,8 @@ example-stripe/
 │       ├── stripe.yml
 │       ├── stripe.rb        # (Optional) Custom verifier if not built-in
 │       └── actions/         # Actions auto-loaded from here
-│           ├── charge_handler.rb
-│           └── payment_intent_handler.rb
+│           ├── charge_action.rb
+│           └── payment_intent_action.rb
 └── lib/
     └── example/
         └── stripe/
@@ -1769,12 +1769,12 @@ example-stripe/
 module Example
   module Stripe
     class Engine < ::Rails::Engine
-      initializer "example.stripe.register_handlers" do
+      initializer "example.stripe.register_actions" do
         Rails.application.config.after_initialize do
           CaptainHook.register_action(
             provider: "stripe",
             event_type: "charge.succeeded",
-            action_class: "Example::Stripe::ChargeHandler"
+            action_class: "Example::Stripe::ChargeAction"
           )
         end
       end
@@ -1792,7 +1792,7 @@ Action classes must be autoloadable:
 # example-stripe/app/actions/example/stripe/charge_handler.rb
 module Example
   module Stripe
-    class ChargeHandler
+    class ChargeAction
       def handle(event:, payload:, metadata:)
         # ...
       end
@@ -1802,7 +1802,7 @@ end
 
 # Option 2: Manual require in gem
 # example-stripe/lib/example/stripe.rb
-require "example/stripe/actions/charge_handler"
+require "example/stripe/actions/charge_action"
 ```
 
 ### Action Discovery from Gems
@@ -1826,13 +1826,13 @@ module Example
     class Engine < ::Rails::Engine
       isolate_namespace Example::Stripe
       
-      initializer "example.stripe.register_handlers", after: :load_config_initializers do
+      initializer "example.stripe.register_actions", after: :load_config_initializers do
         Rails.application.config.after_initialize do
           # Register multiple actions
           [
-            { event: "charge.succeeded", action: "Example::Stripe::ChargeSucceededHandler" },
-            { event: "charge.failed", action: "Example::Stripe::ChargeFailedHandler" },
-            { event: "payment_intent.*", action: "Example::Stripe::PaymentIntentHandler" }
+            { event: "charge.succeeded", action: "Example::Stripe::ChargeSucceededAction" },
+            { event: "charge.failed", action: "Example::Stripe::ChargeFailedAction" },
+            { event: "payment_intent.*", action: "Example::Stripe::PaymentIntentAction" }
           ].each do |config|
             CaptainHook.register_action(
               provider: "stripe",
@@ -1861,7 +1861,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "charge.succeeded",
-    action_class: "CustomChargeHandler",  # Your custom action
+    action_class: "CustomChargeAction",  # Your custom action
     priority: 10  # Higher priority than gem's action
   )
 end
@@ -1900,13 +1900,13 @@ CREATE TABLE captain_hook_actions (
   updated_at TIMESTAMP NOT NULL,
   
   -- Unique constraint
-  CONSTRAINT idx_captain_hook_handlers_unique 
+  CONSTRAINT idx_captain_hook_actions_unique 
     UNIQUE (provider, event_type, action_class)
 );
 
 -- Indexes
-CREATE INDEX idx_captain_hook_handlers_provider ON captain_hook_actions(provider);
-CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_actions(deleted_at);
+CREATE INDEX idx_captain_hook_actions_provider ON captain_hook_actions(provider);
+CREATE INDEX idx_captain_hook_actions_deleted_at ON captain_hook_actions(deleted_at);
 ```
 
 ### Column Explanations
@@ -1930,8 +1930,8 @@ CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_actions(delete
 **`action_class`** (VARCHAR, NOT NULL)
 - Fully-qualified class name as string
 - Must be loadable via `"ClassName".constantize`
-- Example: `"StripePaymentSucceededHandler"`
-- Can include modules: `"Webhooks::StripePaymentHandler"`
+- Example: `"StripePaymentSucceededAction"`
+- Can include modules: `"Webhooks::StripePaymentAction"`
 - Part of unique constraint
 
 **Unique Constraint**: `(provider, event_type, action_class)`
@@ -2027,18 +2027,18 @@ After event is saved to database:
 
 if event.previously_new_record?
   # New event - create action execution records
-  create_handlers_for_event(event)
+  create_actions_for_event(event)
 end
 
-def create_handlers_for_event(event)
+def create_actions_for_event(event)
   # Lookup actions from in-memory registry
-  handler_configs = CaptainHook.action_registry.actions_for(
+  action_configs = CaptainHook.action_registry.actions_for(
     provider: event.provider,
     event_type: event.event_type
   )
   
   # Create execution record for each action
-  handler_configs.each do |config|
+  action_configs.each do |config|
     action = event.incoming_event_actions.create!(
       action_class: config.action_class.to_s,
       status: :pending,
@@ -2088,8 +2088,8 @@ Job attempts to acquire lock on action record:
 ```ruby
 # app/jobs/captain_hook/incoming_handler_job.rb
 
-def perform(handler_id, worker_id: SecureRandom.uuid)
-  action = IncomingEventAction.find(handler_id)
+def perform(action_id, worker_id: SecureRandom.uuid)
+  action = IncomingEventAction.find(action_id)
   
   # Try to acquire lock
   return unless action.acquire_lock!(worker_id)
@@ -2128,7 +2128,7 @@ end
 Retrieve action configuration from registry:
 
 ```ruby
-handler_config = CaptainHook.action_registry.find_action_config(
+action_config = CaptainHook.action_registry.find_action_config(
   provider: event.provider,
   event_type: event.event_type,
   action_class: action.action_class
@@ -2149,10 +2149,10 @@ begin
   
   # Load and instantiate action class
   action_class = action.action_class.constantize
-  handler_instance = action_class.new
+  action_instance = action_class.new
   
   # Execute handle method
-  handler_instance.handle(
+  action_instance.handle(
     event: event,
     payload: event.payload,
     metadata: event.metadata
@@ -2170,9 +2170,9 @@ end
 ```
 
 **Instrumentation:**
-- Start event: `handler_started`
-- Success event: `handler_completed` (with duration)
-- Failure event: `handler_failed` (with error)
+- Start event: `action_started`
+- Success event: `action_completed` (with duration)
+- Failure event: `action_failed` (with error)
 
 ### 6. Failure Handling
 
@@ -2182,17 +2182,17 @@ rescue StandardError => e
   action.mark_failed!(e)
   
   # Check if retries exhausted
-  if action.max_attempts_reached?(handler_config.max_attempts)
+  if action.max_attempts_reached?(action_config.max_attempts)
     # No more retries
     event.recalculate_status!
   else
     # Schedule retry
-    delay = handler_config.delay_for_attempt(action.attempt_count)
+    delay = action_config.delay_for_attempt(action.attempt_count)
     action.reset_for_retry!
     
     # Enqueue retry job
     self.class.set(wait: delay.seconds).perform_later(
-      handler_id, 
+      action_id, 
       worker_id: SecureRandom.uuid
     )
   end
@@ -2312,21 +2312,21 @@ Lock         Retries   Lock        Retries
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "PaymentUpdateHandler",
+  action_class: "PaymentUpdateAction",
   priority: 10
 )
 
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "NotificationHandler",
+  action_class: "NotificationAction",
   priority: 50
 )
 
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "AnalyticsHandler",
+  action_class: "AnalyticsAction",
   priority: 100
 )
 ```
@@ -2339,7 +2339,7 @@ CaptainHook.register_action(
 app/
 └── captain_hook/
     └── actions/
-        └── my_handler.rb
+        └── my_action.rb
 
 config/initializers/captain_hook.rb:
   CaptainHook.register_action(...)
@@ -2355,7 +2355,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "charge.succeeded",
-    action_class: "GemNamespace::ChargeHandler"
+    action_class: "GemNamespace::ChargeAction"
   )
 end
 ```
@@ -2369,7 +2369,7 @@ end
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "CacheUpdateHandler",
+  action_class: "CacheUpdateAction",
   async: false  # Synchronous
 )
 
@@ -2377,7 +2377,7 @@ CaptainHook.register_action(
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "EmailHandler",
+  action_class: "EmailAction",
   async: true  # Asynchronous
 )
 ```
@@ -2409,7 +2409,7 @@ CaptainHook.register_action(provider: "stripe", ...)
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",  # Wildcard
-  action_class: "PaymentIntentHandler"
+  action_class: "PaymentIntentAction"
 )
 ```
 
@@ -2422,7 +2422,7 @@ CaptainHook.register_action(
 #### ✅ Idempotent Actions
 
 ```ruby
-class IdempotentPaymentHandler
+class IdempotentPaymentAction
   def handle(event:, payload:, metadata:)
     payment_id = payload.dig("data", "object", "id")
     
@@ -2439,7 +2439,7 @@ end
 
 ```ruby
 # Via admin UI or directly
-action = CaptainHook::Action.find_by(action_class: "UnwantedHandler")
+action = CaptainHook::Action.find_by(action_class: "UnwantedAction")
 action.soft_delete!
 
 # Later: Scan actions
@@ -2473,7 +2473,7 @@ end
 CaptainHook.register_action(
   provider: "nonexistent",  # Provider doesn't exist
   event_type: "some.event",
-  action_class: "MyHandler"
+  action_class: "MyAction"
 )
 ```
 
@@ -2486,7 +2486,7 @@ CaptainHook.register_action(
 #### ❌ Actions Modifying Request/Response
 
 ```ruby
-class BadHandler
+class BadAction
   def handle(event:, payload:, metadata:)
     # Can't access HTTP request
     # Can't modify HTTP response
@@ -2504,7 +2504,7 @@ end
 #### ❌ Action Return Values
 
 ```ruby
-class BadHandler
+class BadAction
   def handle(event:, payload:, metadata:)
     return { status: "success", data: { ... } }  # Ignored
   end
@@ -2523,7 +2523,7 @@ end
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "Handler1",
+  action_class: "Action1",
   priority: 10,
   async: true  # Background job
 )
@@ -2531,13 +2531,13 @@ CaptainHook.register_action(
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  action_class: "Handler2",
+  action_class: "Action2",
   priority: 20,
   async: true  # Background job
 )
 ```
 
-**Limitation:** Handler2 might execute before Handler1 completes
+**Limitation:** Action2 might execute before Action1 completes
 
 **Reason:** Both enqueued immediately, job workers process in parallel
 
@@ -2549,15 +2549,15 @@ CaptainHook.register_action(
 #### ❌ Sharing State Between Actions
 
 ```ruby
-class Handler1
+class Action1
   def handle(event:, payload:, metadata:)
     @shared_data = "value"  # Instance variable
   end
 end
 
-class Handler2
+class Action2
   def handle(event:, payload:, metadata:)
-    puts @shared_data  # Won't see Handler1's value
+    puts @shared_data  # Won't see Action1's value
   end
 end
 ```
@@ -2575,7 +2575,7 @@ end
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",
-  action_class: "WildcardHandler"
+  action_class: "WildcardAction"
 )
 
 # Incoming webhook
@@ -2597,7 +2597,7 @@ event_type = "payment_intent.succeeded"
 CaptainHook::Action.create!(
   provider: "stripe",
   event_type: "charge.succeeded",
-  action_class: "ChargeHandler"
+  action_class: "ChargeAction"
 )
 
 # But not registered in initializer
@@ -2613,7 +2613,7 @@ CaptainHook::Action.create!(
 #### ❌ Conditional Action Execution
 
 ```ruby
-class ConditionalHandler
+class ConditionalAction
   def handle(event:, payload:, metadata:)
     # Want: Only execute if certain condition
     return if some_condition?  # Action still marked as "processed"
@@ -2637,7 +2637,7 @@ end
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment.succeeded",
-  action_class: "NonExistentHandler"  # Class doesn't exist
+  action_class: "NonExistentAction"  # Class doesn't exist
 )
 ```
 
@@ -2645,7 +2645,7 @@ CaptainHook.register_action(
 - Registration succeeds (string stored)
 - Action record created in database
 - Job fails when attempting to constantize
-- Error: `NameError: uninitialized constant NonExistentHandler`
+- Error: `NameError: uninitialized constant NonExistentAction`
 - Job retries according to retry config
 
 **Solution:** Ensure action class exists and is loadable
@@ -2653,7 +2653,7 @@ CaptainHook.register_action(
 #### Action Raises Exception
 
 ```ruby
-class FailingHandler
+class FailingAction
   def handle(event:, payload:, metadata:)
     raise StandardError, "Something went wrong"
   end
@@ -2672,7 +2672,7 @@ end
 #### Very Long Action Execution
 
 ```ruby
-class SlowHandler
+class SlowAction
   def handle(event:, payload:, metadata:)
     sleep(600)  # 10 minutes
   end
@@ -2690,7 +2690,7 @@ end
 
 ```ruby
 # Two actions updating same record
-class Handler1
+class Action1
   def handle(event:, payload:, metadata:)
     order = Order.find(123)
     order.lock!  # Acquire row lock
@@ -2698,17 +2698,17 @@ class Handler1
   end
 end
 
-class Handler2
+class Action2
   def handle(event:, payload:, metadata:)
     order = Order.find(123)
-    order.lock!  # Blocks waiting for Handler1
+    order.lock!  # Blocks waiting for Action1
     order.update(notes: "Updated")
   end
 end
 ```
 
 **Behavior:**
-- Handler2 blocks waiting for Handler1's lock
+- Action2 blocks waiting for Action1's lock
 - Might timeout
 - Could cause deadlocks
 
@@ -2730,7 +2730,7 @@ CaptainHook.register_action(..., action_class: "Z", priority: 100)
 #### Memory Leaks in Actions
 
 ```ruby
-class LeakyHandler
+class LeakyAction
   @@data = []  # Class variable
   
   def handle(event:, payload:, metadata:)

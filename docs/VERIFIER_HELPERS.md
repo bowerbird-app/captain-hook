@@ -71,7 +71,7 @@ Other gems can include and use the helpers:
 require 'captain_hook'
 
 module MyGem
-  class WebhookHandler
+  class WebhookAction
     include CaptainHook::VerifierHelpers
     
     def process_webhook(payload, headers)

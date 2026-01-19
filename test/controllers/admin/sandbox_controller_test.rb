@@ -25,7 +25,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler"
+          action_class: "TestAction"
         )
 
         payload = {
@@ -76,7 +76,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler"
+          action_class: "TestAction"
         )
 
         payload = {
@@ -101,7 +101,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler",
+          action_class: "TestAction",
           async: true,
           priority: 100
         )
@@ -120,7 +120,7 @@ module CaptainHook
         assert json["handlers"].is_a?(Array)
         assert json["handlers"].any?
         handler = json["handlers"].first
-        assert_equal "TestHandler", handler["class"]
+        assert_equal "TestAction", handler["class"]
         assert_equal 100, handler["priority"]
         assert handler["async"]
       end

@@ -32,7 +32,7 @@ module CaptainHook
       CaptainHook.register_action(
         provider: "stripe",
         event_type: "charge.succeeded",
-        action_class: "TestChargeHandler"
+        action_class: "TestChargeAction"
       )
 
       @valid_payload = {
@@ -215,7 +215,7 @@ module CaptainHook
       signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
-        assert_difference "CaptainHook::IncomingEventHandler.count", 1 do
+        assert_difference "CaptainHook::IncomingEventAction.count", 1 do
           post "/captain_hook/stripe/test_token",
                params: @valid_payload,
                headers: {
@@ -258,7 +258,7 @@ module CaptainHook
       signature = generate_stripe_signature(payload_no_handler, @timestamp, @provider.signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
-        assert_no_difference "CaptainHook::IncomingEventHandler.count" do
+        assert_no_difference "CaptainHook::IncomingEventAction.count" do
           post "/captain_hook/stripe/test_token",
                params: payload_no_handler,
                headers: {

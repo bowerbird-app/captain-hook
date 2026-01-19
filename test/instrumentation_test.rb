@@ -80,7 +80,7 @@ module CaptainHook
       event = OpenStruct.new(id: 202, provider: "webhook_site")
       handler = OpenStruct.new(
         id: 303,
-        action_class: "TestHandler",
+        action_class: ".*Action",
         attempt_count: 2
       )
 
@@ -89,7 +89,7 @@ module CaptainHook
       notification = @events.first
       assert_equal Instrumentation::HANDLER_STARTED, notification.name
       assert_equal 303, notification.payload[:handler_id]
-      assert_equal "TestHandler", notification.payload[:action_class]
+      assert_equal ".*Action", notification.payload[:action_class]
       assert_equal 202, notification.payload[:event_id]
       assert_equal "webhook_site", notification.payload[:provider]
       assert_equal 3, notification.payload[:attempt] # attempt_count + 1
@@ -98,7 +98,7 @@ module CaptainHook
     test "handler_completed instruments with duration" do
       handler = OpenStruct.new(
         id: 404,
-        action_class: "CompleteHandler"
+        action_class: ".*Action"
       )
 
       Instrumentation.handler_completed(handler, duration: 25.3)
@@ -106,14 +106,14 @@ module CaptainHook
       notification = @events.first
       assert_equal Instrumentation::HANDLER_COMPLETED, notification.name
       assert_equal 404, notification.payload[:handler_id]
-      assert_equal "CompleteHandler", notification.payload[:action_class]
+      assert_equal ".*Action", notification.payload[:action_class]
       assert_equal 25.3, notification.payload[:duration]
     end
 
     test "handler_failed instruments with error information" do
       handler = OpenStruct.new(
         id: 505,
-        action_class: "FailingHandler",
+        action_class: ".*Action",
         attempt_count: 1
       )
       error = ArgumentError.new("Invalid argument")
@@ -123,7 +123,7 @@ module CaptainHook
       notification = @events.first
       assert_equal Instrumentation::HANDLER_FAILED, notification.name
       assert_equal 505, notification.payload[:handler_id]
-      assert_equal "FailingHandler", notification.payload[:action_class]
+      assert_equal ".*Action", notification.payload[:action_class]
       assert_equal "ArgumentError", notification.payload[:error]
       assert_equal "Invalid argument", notification.payload[:error_message]
       assert_equal 1, notification.payload[:attempt]

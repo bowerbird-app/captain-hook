@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class CreateCaptainHookIncomingEventHandlers < ActiveRecord::Migration[7.0]
+class CreateCaptainHookIncomingEventActions < ActiveRecord::Migration[7.0]
   def change
     create_table :captain_hook_incoming_event_handlers, id: :uuid do |t|
       t.uuid :incoming_event_id, null: false

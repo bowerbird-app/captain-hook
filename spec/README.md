@@ -250,8 +250,8 @@ CaptainHook.register_action(...)
 post "/captain_hook/..."
 
 # Verify outcomes
-expect(event.metadata["gem_handler_executed"]).to be true
-expect(event.metadata["app_handler_executed"]).to be true
+expect(event.metadata["gem_action_executed"]).to be true
+expect(event.metadata["app_action_executed"]).to be true
 ```
 
 ## Troubleshooting

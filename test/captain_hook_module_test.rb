@@ -53,7 +53,7 @@ class CaptainHookModuleTest < Minitest::Test
     CaptainHook.register_action(
       provider: "test_provider",
       event_type: "test_event",
-      action_class: "TestHandler"
+      action_class: ".*Action"
     )
 
     assert CaptainHook.handler_registry.actions_registered?(
@@ -66,7 +66,7 @@ class CaptainHookModuleTest < Minitest::Test
     CaptainHook.register_action(
       provider: "stripe",
       event_type: "payment.succeeded",
-      action_class: "PaymentHandler",
+      action_class: "PaymentAction",
       async: true,
       priority: 50,
       max_attempts: 3,
@@ -79,7 +79,7 @@ class CaptainHookModuleTest < Minitest::Test
     )
 
     assert_equal 1, handlers.size
-    assert_equal "PaymentHandler", handlers.first[:action_class]
+    assert_equal "PaymentAction", handlers.first[:action_class]
     assert_equal 50, handlers.first[:priority]
   end
 

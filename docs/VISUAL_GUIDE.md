@@ -133,7 +133,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededAction",
     priority: 100,
     async: true
   )
@@ -150,7 +150,7 @@ module MyGem
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          action_class: "MyGem::Webhooks::PaymentIntentSucceededHandler",
+          action_class: "MyGem::Webhooks::PaymentIntentSucceededAction",
           priority: 100,
           async: true
         )
@@ -189,7 +189,7 @@ end
 ┌─────────────────────────────────────────────────────────────┐
 │   4. Actions Stored in ActionRegistry                     │
 │      In-memory thread-safe hash:                            │
-│      {"stripe:payment_intent.succeeded" => [HandlerConfig]} │
+│      {"stripe:payment_intent.succeeded" => [ActionConfig]} │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -369,13 +369,13 @@ end
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Edit Action: PaymentIntentSucceededHandler                   │
+│  Edit Action: PaymentIntentSucceededAction                   │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
 │  Action Details                                               │
 │  • Provider: Stripe                                            │
 │  • Event Type: payment_intent.succeeded                        │
-│  • Action Class: PaymentIntentSucceededHandler                │
+│  • Action Class: PaymentIntentSucceededAction                │
 │                                                                │
 │  Configuration                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -790,7 +790,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededAction",
     priority: 100,        # Lower = runs first
     async: true,          # Run in background job
     max_attempts: 3,      # Number of retries
@@ -813,7 +813,7 @@ end
 **File**: `captain_hook/stripe/actions/payment_intent_succeeded_handler.rb`
 
 ```ruby
-class StripePaymentIntentSucceededHandler
+class StripePaymentIntentSucceededAction
   # Required method signature
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
@@ -1045,7 +1045,7 @@ Click "View Actions" →
 │  Event Type: payment_intent.succeeded                          │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Priority: 100                                            │  │
-│  │ Action: PaymentIntentSucceededHandler                   │  │
+│  │ Action: PaymentIntentSucceededAction                   │  │
 │  │ Execution: Async (Background Job)                        │  │
 │  │ Max Attempts: 3 | Retries: 30s, 60s, 300s                │  │
 │  │                                    [Edit] [Delete]       │  │

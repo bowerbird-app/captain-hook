@@ -56,9 +56,9 @@ module CaptainHook
       end
 
       test "should include event handlers in show" do
-        CaptainHook::IncomingEventHandler.create!(
+        CaptainHook::IncomingEventAction.create!(
           incoming_event: @event1,
-          action_class: "TestHandler",
+          action_class: ".*Action",
           status: "processed"
         )
         get "/captain_hook/admin/incoming_events/#{@event1.id}"

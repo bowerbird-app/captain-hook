@@ -44,7 +44,7 @@ class CaptainHookTest < Minitest::Test
     CaptainHook.register_action(
       provider: "test",
       event_type: "test.event",
-      action_class: "TestHandler"
+      action_class: "TestAction"
     )
 
     handlers = CaptainHook.handler_registry.actions_for(
@@ -53,7 +53,7 @@ class CaptainHookTest < Minitest::Test
     )
 
     assert_equal 1, handlers.size
-    assert_equal "TestHandler", handlers.first.action_class
+    assert_equal "TestAction", handlers.first.action_class
   ensure
     CaptainHook.handler_registry.clear!
   end

@@ -10,7 +10,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "action_class" => "PaymentHandler",
+            "action_class" => "PaymentAction",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -35,7 +35,7 @@ module CaptainHook
         action = results[:created].first
         assert_equal "stripe", action.provider
         assert_equal "payment.succeeded", action.event_type
-        assert_equal "PaymentHandler", action.action_class
+        assert_equal "PaymentAction", action.action_class
         assert_equal true, action.async
         assert_equal 5, action.max_attempts
         assert_equal 100, action.priority
@@ -47,7 +47,7 @@ module CaptainHook
         action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "payment.succeeded",
-          action_class: "PaymentHandler",
+          action_class: "PaymentAction",
           async: false,
           max_attempts: 3,
           priority: 200,
@@ -74,7 +74,7 @@ module CaptainHook
         action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "payment.succeeded",
-          action_class: "PaymentHandler",
+          action_class: "PaymentAction",
           async: true,
           max_attempts: 5,
           priority: 100,
@@ -100,7 +100,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "action_class" => "PaymentHandler",
+            "action_class" => "PaymentAction",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -109,7 +109,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.failed",
-            "action_class" => "FailureHandler",
+            ".*Action",
             "async" => true,
             "max_attempts" => 3,
             "priority" => 50,
@@ -149,7 +149,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "action_class" => "PaymentHandler",
+            "action_class" => "PaymentAction",
             "async" => true,
             "max_attempts" => 0, # Invalid - must be > 0
             "priority" => 100,

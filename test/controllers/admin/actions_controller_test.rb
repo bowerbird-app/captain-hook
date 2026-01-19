@@ -17,7 +17,7 @@ module CaptainHook
         @action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler",
+          action_class: ".*Action",
           priority: 100,
           async: true,
           max_attempts: 3,
@@ -77,7 +77,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "test.event",
-          action_class: "TestHandler"
+          action_class: ".*Action"
         )
 
         get "/captain_hook/admin/providers/#{@provider.id}/actions"

@@ -267,7 +267,7 @@ module CaptainHook
     end
 
     test "destroys associated handlers when destroyed" do
-      @event.incoming_event_actions.create!(action_class: "TestHandler")
+      @event.incoming_event_actions.create!(action_class: "TestAction")
 
       assert_difference "CaptainHook::IncomingEventHandler.count", -1 do
         @event.destroy

@@ -1,12 +1,12 @@
-# Handler for Square bank_account.* events
-class SquareBankAccountHandler
+# Action for Square bank_account.* events
+class SquareBankAccountAction
   # Called by the job system
   # @param event [CaptainHook::IncomingEvent] The incoming event
   # @param payload [Hash] The parsed JSON payload
   # @param metadata [Hash] Additional metadata
   def handle(event:, payload:, metadata: {})
     Rails.logger.info "🟦 ========================================"
-    Rails.logger.info "🟦 SQUARE BANK ACCOUNT HANDLER EXECUTED"
+    Rails.logger.info "🟦 SQUARE BANK ACCOUNT ACTION EXECUTED"
     Rails.logger.info "🟦 ========================================"
     Rails.logger.info "🟦 Provider: #{event.provider}"
     Rails.logger.info "🟦 Event Type: #{event.event_type}"
@@ -47,7 +47,7 @@ class SquareBankAccountHandler
     end
     
     Rails.logger.info "🟦 ========================================"
-    Rails.logger.info "🟦 Handler completed successfully!"
+    Rails.logger.info "🟦 Action completed successfully!"
     Rails.logger.info "🟦 ========================================"
     
     # Return success (no DB writes)

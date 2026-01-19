@@ -17,7 +17,7 @@ module CaptainHook
       )
 
       @action = @event.incoming_event_actions.create!(
-        action_class: "TestHandler",
+        action_class: ".*Action",
         priority: 100
       )
     end
@@ -75,7 +75,7 @@ module CaptainHook
 
     test "pending scope returns only pending handlers" do
       processing = @event.incoming_event_actions.create!(
-        action_class: "ProcessingHandler",
+        action_class: ".*Action",
         priority: 200,
         status: :processing
       )
@@ -87,7 +87,7 @@ module CaptainHook
 
     test "failed scope returns only failed handlers" do
       failed = @event.incoming_event_actions.create!(
-        action_class: "FailedHandler",
+        action_class: "FailedAction",
         priority: 200,
         status: :failed
       )
@@ -99,11 +99,11 @@ module CaptainHook
 
     test "by_priority scope orders by priority then action_class" do
       high_priority = @event.incoming_event_actions.create!(
-        action_class: "HighPriorityHandler",
+        action_class: ".*Action",
         priority: 50
       )
       same_priority = @event.incoming_event_actions.create!(
-        action_class: "AnotherHandler",
+        action_class: "AnotherAction",
         priority: 100
       )
 
@@ -116,7 +116,7 @@ module CaptainHook
     test "locked scope returns only locked handlers" do
       @action.update!(locked_at: Time.current, locked_by: "worker1")
       unlocked = @event.incoming_event_actions.create!(
-        action_class: "UnlockedHandler",
+        action_class: "UnlockedAction",
         priority: 200
       )
 
@@ -128,7 +128,7 @@ module CaptainHook
     test "unlocked scope returns only unlocked handlers" do
       @action.update!(locked_at: Time.current, locked_by: "worker1")
       unlocked = @event.incoming_event_actions.create!(
-        action_class: "UnlockedHandler",
+        action_class: "UnlockedAction",
         priority: 200
       )
 
@@ -269,7 +269,7 @@ module CaptainHook
 
     test "defaults to pending status" do
       handler = @event.incoming_event_actions.create!(
-        action_class: "NewHandler",
+        action_class: ".*Action",
         priority: 100
       )
 
@@ -278,7 +278,7 @@ module CaptainHook
 
     test "defaults to 0 attempt_count" do
       handler = @event.incoming_event_actions.create!(
-        action_class: "NewHandler",
+        action_class: ".*Action",
         priority: 100
       )
 
@@ -287,7 +287,7 @@ module CaptainHook
 
     test "defaults to 0 lock_version for optimistic locking" do
       handler = @event.incoming_event_actions.create!(
-        action_class: "NewHandler",
+        action_class: ".*Action",
         priority: 100
       )
 
@@ -319,7 +319,7 @@ module CaptainHook
     test "locked scope returns locked handlers" do
       @action.save!
       locked_handler = @event.incoming_event_actions.create!(
-        action_class: "LockedHandler",
+        action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
         locked_by: "worker_1"
@@ -332,7 +332,7 @@ module CaptainHook
     test "unlocked scope returns unlocked handlers" do
       @action.save!
       locked_handler = @event.incoming_event_actions.create!(
-        action_class: "LockedHandler",
+        action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
         locked_by: "worker_1"
