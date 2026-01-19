@@ -1,12 +1,12 @@
-# Handler for Stripe payment_intent.* events
-class StripePaymentIntentHandler
+# Action for Stripe payment_intent.* events
+class StripePaymentIntentAction
   # Called by the job system
   # @param event [CaptainHook::IncomingEvent] The incoming event
   # @param payload [Hash] The parsed JSON payload
   # @param metadata [Hash] Additional metadata
   def handle(event:, payload:, metadata: {})
     Rails.logger.info "💳 ========================================"
-    Rails.logger.info "💳 STRIPE PAYMENT INTENT HANDLER EXECUTED"
+    Rails.logger.info "💳 STRIPE PAYMENT INTENT ACTION EXECUTED"
     Rails.logger.info "💳 ========================================"
     Rails.logger.info "💳 Provider: #{event.provider}"
     Rails.logger.info "💳 Event Type: #{event.event_type}"
@@ -41,7 +41,7 @@ class StripePaymentIntentHandler
     end
     
     Rails.logger.info "💳 ========================================"
-    Rails.logger.info "💳 Handler completed successfully!"
+    Rails.logger.info "💳 Action completed successfully!"
     Rails.logger.info "💳 ========================================"
     
     # Return success (no DB writes)

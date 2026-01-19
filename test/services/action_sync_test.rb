@@ -4,13 +4,13 @@ require "test_helper"
 
 module CaptainHook
   module Services
-    class HandlerSyncTest < ActiveSupport::TestCase
+    class ActionSyncTest < ActiveSupport::TestCase
       setup do
-        @handler_definitions = [
+        @action_definitions = [
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "handler_class" => "PaymentHandler",
+            "action_class" => "PaymentHandler",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -20,11 +20,11 @@ module CaptainHook
       end
 
       teardown do
-        CaptainHook::Handler.destroy_all
+        CaptainHook::Action.destroy_all
       end
 
-      test "creates new handler from definition" do
-        sync = HandlerSync.new(@handler_definitions)
+      test "creates new action from definition" do
+        sync = ActionSync.new(@action_definitions)
         results = sync.call
 
         assert_equal 1, results[:created].size
@@ -32,29 +32,29 @@ module CaptainHook
         assert_equal 0, results[:skipped].size
         assert_equal 0, results[:errors].size
 
-        handler = results[:created].first
-        assert_equal "stripe", handler.provider
-        assert_equal "payment.succeeded", handler.event_type
-        assert_equal "PaymentHandler", handler.handler_class
-        assert_equal true, handler.async
-        assert_equal 5, handler.max_attempts
-        assert_equal 100, handler.priority
-        assert_equal [30, 60, 300], handler.retry_delays
+        action = results[:created].first
+        assert_equal "stripe", action.provider
+        assert_equal "payment.succeeded", action.event_type
+        assert_equal "PaymentHandler", action.action_class
+        assert_equal true, action.async
+        assert_equal 5, action.max_attempts
+        assert_equal 100, action.priority
+        assert_equal [30, 60, 300], action.retry_delays
       end
 
-      test "updates existing handler" do
-        # Create initial handler
-        handler = CaptainHook::Handler.create!(
+      test "updates existing action" do
+        # Create initial action
+        action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "payment.succeeded",
-          handler_class: "PaymentHandler",
+          action_class: "PaymentHandler",
           async: false,
           max_attempts: 3,
           priority: 200,
           retry_delays: [60, 120]
         )
 
-        sync = HandlerSync.new(@handler_definitions)
+        sync = ActionSync.new(@action_definitions)
         results = sync.call
 
         assert_equal 0, results[:created].size
@@ -62,27 +62,27 @@ module CaptainHook
         assert_equal 0, results[:skipped].size
         assert_equal 0, results[:errors].size
 
-        handler.reload
-        assert_equal true, handler.async
-        assert_equal 5, handler.max_attempts
-        assert_equal 100, handler.priority
-        assert_equal [30, 60, 300], handler.retry_delays
+        action.reload
+        assert_equal true, action.async
+        assert_equal 5, action.max_attempts
+        assert_equal 100, action.priority
+        assert_equal [30, 60, 300], action.retry_delays
       end
 
-      test "skips deleted handlers" do
+      test "skips deleted actions" do
         # Create and soft-delete a handler
-        handler = CaptainHook::Handler.create!(
+        action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "payment.succeeded",
-          handler_class: "PaymentHandler",
+          action_class: "PaymentHandler",
           async: true,
           max_attempts: 5,
           priority: 100,
           retry_delays: [30, 60]
         )
-        handler.soft_delete!
+        action.soft_delete!
 
-        sync = HandlerSync.new(@handler_definitions)
+        sync = ActionSync.new(@action_definitions)
         results = sync.call
 
         assert_equal 0, results[:created].size
@@ -91,16 +91,16 @@ module CaptainHook
         assert_equal 0, results[:errors].size
 
         # Verify handler is still deleted
-        handler.reload
-        assert handler.deleted?
+        action.reload
+        assert action.deleted?
       end
 
-      test "handles multiple handlers" do
+      test "handles multiple actions" do
         definitions = [
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "handler_class" => "PaymentHandler",
+            "action_class" => "PaymentHandler",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -109,7 +109,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.failed",
-            "handler_class" => "FailureHandler",
+            "action_class" => "FailureHandler",
             "async" => true,
             "max_attempts" => 3,
             "priority" => 50,
@@ -117,7 +117,7 @@ module CaptainHook
           }
         ]
 
-        sync = HandlerSync.new(definitions)
+        sync = ActionSync.new(definitions)
         results = sync.call
 
         assert_equal 2, results[:created].size
@@ -126,16 +126,16 @@ module CaptainHook
         assert_equal 0, results[:errors].size
       end
 
-      test "handles invalid handler definition" do
+      test "handles invalid action definition" do
         invalid_definitions = [
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded"
-            # Missing handler_class
+            # Missing action_class
           }
         ]
 
-        sync = HandlerSync.new(invalid_definitions)
+        sync = ActionSync.new(invalid_definitions)
         results = sync.call
 
         assert_equal 0, results[:created].size
@@ -149,7 +149,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.succeeded",
-            "handler_class" => "PaymentHandler",
+            "action_class" => "PaymentHandler",
             "async" => true,
             "max_attempts" => 0, # Invalid - must be > 0
             "priority" => 100,
@@ -157,7 +157,7 @@ module CaptainHook
           }
         ]
 
-        sync = HandlerSync.new(invalid_definitions)
+        sync = ActionSync.new(invalid_definitions)
         results = sync.call
 
         assert_equal 0, results[:created].size

@@ -3,7 +3,7 @@
 require "test_helper"
 
 module CaptainHook
-  class IncomingHandlerJobTest < ActiveSupport::TestCase
+  class IncomingActionJobTest < ActiveSupport::TestCase
     setup do
       @provider = CaptainHook::Provider.create!(
         name: "test_provider",
@@ -18,14 +18,14 @@ module CaptainHook
         metadata: {}
       )
 
-      @handler_record = @event.incoming_event_handlers.create!(
-        handler_class: "MockHandler",
+      @action_record = @event.incoming_event_actions.create!(
+        action_class: "MockAction",
         priority: 100
       )
 
       # Mock handler class
-      unless defined?(MockHandler)
-        Object.const_set(:MockHandler, Class.new do
+      unless defined?(MockAction)
+        Object.const_set(:MockAction, Class.new do
           def handle(event:, payload:, metadata:)
             # Successfully handled
           end
@@ -33,53 +33,53 @@ module CaptainHook
       end
 
       # Register handler
-      CaptainHook.handler_registry.register(
+      CaptainHook.action_registry.register(
         provider: @provider.name,
         event_type: "test.event",
-        handler_class: "MockHandler",
+        action_class: "MockAction",
         priority: 100
       )
     end
 
     teardown do
-      Object.send(:remove_const, :MockHandler) if defined?(MockHandler)
-      CaptainHook.handler_registry.clear!
+      Object.send(:remove_const, :MockAction) if defined?(MockAction)
+      CaptainHook.action_registry.clear!
     end
 
     test "job processes handler successfully" do
-      assert @handler_record.status_pending?
+      assert @action_record.status_pending?
 
-      IncomingHandlerJob.perform_now(@handler_record.id)
+      IncomingActionJob.perform_now(@action_record.id)
 
-      @handler_record.reload
-      assert @handler_record.status_processed?
-      assert_nil @handler_record.error_message
+      @action_record.reload
+      assert @action_record.status_processed?
+      assert_nil @action_record.error_message
     end
 
     test "job acquires lock before processing" do
       worker_id = "test_worker"
 
-      IncomingHandlerJob.perform_now(@handler_record.id, worker_id: worker_id)
+      IncomingActionJob.perform_now(@action_record.id, worker_id: worker_id)
 
-      @handler_record.reload
+      @action_record.reload
       # Lock should be released after processing
-      refute @handler_record.locked?
+      refute @action_record.locked?
     end
 
     test "job increments attempt count" do
-      initial_count = @handler_record.attempt_count
+      initial_count = @action_record.attempt_count
 
-      IncomingHandlerJob.perform_now(@handler_record.id)
+      IncomingActionJob.perform_now(@action_record.id)
 
-      @handler_record.reload
-      assert_equal initial_count + 1, @handler_record.attempt_count
+      @action_record.reload
+      assert_equal initial_count + 1, @action_record.attempt_count
     end
 
     test "job updates event status after processing" do
       @event.status = :processing
       @event.save!
 
-      IncomingHandlerJob.perform_now(@handler_record.id)
+      IncomingActionJob.perform_now(@action_record.id)
 
       @event.reload
       assert @event.status_processed?
@@ -87,68 +87,68 @@ module CaptainHook
 
     test "job handles handler errors gracefully" do
       # Create failing handler
-      Object.const_set(:FailingHandler, Class.new do
+      Object.const_set(:FailingAction, Class.new do
         def handle(event:, payload:, metadata:)
           raise StandardError, "Handler failed"
         end
       end)
 
-      @handler_record.handler_class = "FailingHandler"
-      @handler_record.save!
+      @action_record.action_class = "FailingAction"
+      @action_record.save!
 
-      CaptainHook.handler_registry.register(
+      CaptainHook.action_registry.register(
         provider: @provider.name,
         event_type: "test.event",
-        handler_class: "FailingHandler",
+        action_class: "FailingAction",
         priority: 100
       )
 
       # Job may swallow the exception due to retry_on or schedules a retry
       begin
-        IncomingHandlerJob.perform_now(@handler_record.id)
+        IncomingActionJob.perform_now(@action_record.id)
       rescue StandardError
         # Exception may or may not be raised
       end
 
-      @handler_record.reload
+      @action_record.reload
       # Handler should be marked as failed or retry scheduled
-      assert(@handler_record.status_failed? || @handler_record.status_pending?)
-      assert_includes @handler_record.error_message, "Handler failed" if @handler_record.error_message
+      assert(@action_record.status_failed? || @action_record.status_pending?)
+      assert_includes @action_record.error_message, "Handler failed" if @action_record.error_message
 
-      Object.send(:remove_const, :FailingHandler)
+      Object.send(:remove_const, :FailingAction)
     end
 
     test "job does not process when handler config not found" do
-      CaptainHook.handler_registry.clear!
+      CaptainHook.action_registry.clear!
 
-      IncomingHandlerJob.perform_now(@handler_record.id)
+      IncomingActionJob.perform_now(@action_record.id)
 
-      @handler_record.reload
+      @action_record.reload
       # Handler remains locked but won't be processed without config
       # The job returns early so status may remain unchanged
-      assert @handler_record.locked?
+      assert @action_record.locked?
     end
 
     test "job does not process if lock cannot be acquired" do
       # Lock handler by setting an old lock_version to simulate concurrent update
-      @handler_record.update!(locked_at: Time.current, locked_by: "other_worker", status: :processing)
+      @action_record.update!(locked_at: Time.current, locked_by: "other_worker", status: :processing)
 
       # This job will try to acquire lock but should fail due to optimistic locking
       # The acquire_lock! will catch StaleObjectError and return false, causing early return
       assert_nothing_raised do
-        IncomingHandlerJob.perform_now(@handler_record.id, worker_id: "this_worker")
+        IncomingActionJob.perform_now(@action_record.id, worker_id: "this_worker")
       end
     end
 
     test "job is configured with queue" do
       # Job should have a queue configured
-      assert_not_nil IncomingHandlerJob.new.queue_name
+      assert_not_nil IncomingActionJob.new.queue_name
     end
 
     test "job passes event and payload to handler" do
       received_args = {}
 
-      Object.const_set(:TrackingHandler, Class.new do
+      Object.const_set(:TrackingAction, Class.new do
         define_method(:handle) do |event:, payload:, metadata:|
           received_args[:event] = event
           received_args[:payload] = payload
@@ -156,22 +156,22 @@ module CaptainHook
         end
       end.tap { |klass| klass.define_singleton_method(:instance) { @instance ||= new } })
 
-      @handler_record.handler_class = "TrackingHandler"
-      @handler_record.save!
+      @action_record.action_class = "TrackingAction"
+      @action_record.save!
 
-      CaptainHook.handler_registry.register(
+      CaptainHook.action_registry.register(
         provider: @provider.name,
         event_type: "test.event",
-        handler_class: "TrackingHandler",
+        action_class: "TrackingAction",
         priority: 100
       )
 
-      IncomingHandlerJob.perform_now(@handler_record.id)
+      IncomingActionJob.perform_now(@action_record.id)
 
       assert_equal @event.id, received_args[:event].id
       assert_equal({ "data" => "test" }, received_args[:payload])
 
-      Object.send(:remove_const, :TrackingHandler)
+      Object.send(:remove_const, :TrackingAction)
     end
   end
 

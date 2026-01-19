@@ -3,9 +3,9 @@
 require "test_helper"
 
 module CaptainHook
-  class HandlerRegistryTest < Minitest::Test
+  class ActionRegistryTest < Minitest::Test
     def setup
-      @registry = HandlerRegistry.new
+      @registry = ActionRegistry.new
     end
 
     def teardown
@@ -18,72 +18,72 @@ module CaptainHook
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      assert_equal 1, handlers.size
-      assert_equal "PaymentHandler", handlers.first.handler_class
+      actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      assert_equal 1, actions.size
+      assert_equal "Payment Action", actions.first.action_class
     end
 
-    def test_register_multiple_handlers_for_same_event
+    def test_register_multiple_actions_for_same_event
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler1"
+        action_class: "Payment Action1"
       )
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler2"
+        action_class: "Payment Action2"
       )
 
-      handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      assert_equal 2, handlers.size
+      actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      assert_equal 2, actions.size
     end
 
-    def test_register_handlers_for_different_events
+    def test_register_actions_for_different_events
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
       @registry.register(
         provider: "stripe",
         event_type: "payment.failed",
-        handler_class: "FailureHandler"
+        action_class: "Failure Action"
       )
 
-      succeeded_handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      failed_handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.failed")
+      succeeded_actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      failed_actions = @registry.actions_for(provider: "stripe", event_type: "payment.failed")
 
-      assert_equal 1, succeeded_handlers.size
-      assert_equal 1, failed_handlers.size
-      assert_equal "PaymentHandler", succeeded_handlers.first.handler_class
-      assert_equal "FailureHandler", failed_handlers.first.handler_class
+      assert_equal 1, succeeded_actions.size
+      assert_equal 1, failed_actions.size
+      assert_equal "Payment Action", succeeded_actions.first.action_class
+      assert_equal "Failure Action", failed_actions.first.action_class
     end
 
     def test_register_handler_with_custom_async_option
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         async: false
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal false, handler.async
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal false, action.async
     end
 
     def test_register_handler_with_default_async_true
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal true, handler.async
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal true, action.async
     end
 
     def test_register_handler_with_custom_retry_delays
@@ -91,143 +91,143 @@ module CaptainHook
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         retry_delays: custom_delays
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal custom_delays, handler.retry_delays
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal custom_delays, action.retry_delays
     end
 
     def test_register_handler_with_default_retry_delays
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal [30, 60, 300, 900, 3600], handler.retry_delays
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal [30, 60, 300, 900, 3600], action.retry_delays
     end
 
     def test_register_handler_with_custom_max_attempts
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         max_attempts: 10
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal 10, handler.max_attempts
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal 10, action.max_attempts
     end
 
     def test_register_handler_with_default_max_attempts
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal 5, handler.max_attempts
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal 5, action.max_attempts
     end
 
     def test_register_handler_with_custom_priority
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         priority: 50
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal 50, handler.priority
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal 50, action.priority
     end
 
     def test_register_handler_with_default_priority
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      handler = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
-      assert_equal 100, handler.priority
+      action = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
+      assert_equal 100, action.priority
     end
 
     # === Priority Sorting Tests ===
 
-    def test_handlers_sorted_by_priority
+    def test_actions_sorted_by_priority
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "HighPriorityHandler",
+        action_class: "HighPriority Action",
         priority: 10
       )
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "LowPriorityHandler",
+        action_class: "LowPriority Action",
         priority: 100
       )
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "MediumPriorityHandler",
+        action_class: "MediumPriority Action",
         priority: 50
       )
 
-      handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      assert_equal "HighPriorityHandler", handlers[0].handler_class
-      assert_equal "MediumPriorityHandler", handlers[1].handler_class
-      assert_equal "LowPriorityHandler", handlers[2].handler_class
+      actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      assert_equal "HighPriority Action", actions[0].action_class
+      assert_equal "MediumPriority Action", actions[1].action_class
+      assert_equal "LowPriority Action", actions[2].action_class
     end
 
-    def test_handlers_with_same_priority_sorted_by_class_name
+    def test_actions_with_same_priority_sorted_by_class_name
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "ZebraHandler",
+        action_class: "Zebra Action",
         priority: 100
       )
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "AlphaHandler",
+        action_class: "Alpha Action",
         priority: 100
       )
 
-      handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      assert_equal "AlphaHandler", handlers[0].handler_class
-      assert_equal "ZebraHandler", handlers[1].handler_class
+      actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      assert_equal "Alpha Action", actions[0].action_class
+      assert_equal "Zebra Action", actions[1].action_class
     end
 
     # === Query Tests ===
 
-    def test_handlers_registered_returns_true_when_handlers_exist
+    def test_actions_registered_returns_true_when_actions_exist
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
-      assert @registry.handlers_registered?(provider: "stripe", event_type: "payment.succeeded")
+      assert @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
     end
 
-    def test_handlers_registered_returns_false_when_no_handlers_exist
-      refute @registry.handlers_registered?(provider: "stripe", event_type: "payment.succeeded")
+    def test_actions_registered_returns_false_when_no_actions_exist
+      refute @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
     end
 
-    def test_handlers_for_returns_empty_array_when_no_handlers
-      handlers = @registry.handlers_for(provider: "unknown", event_type: "unknown.event")
-      assert_equal [], handlers
+    def test_actions_for_returns_empty_array_when_no_actions
+      actions = @registry.actions_for(provider: "unknown", event_type: "unknown.event")
+      assert_equal [], actions
     end
 
     def test_providers_returns_registered_provider_names
-      @registry.register(provider: "stripe", event_type: "payment.succeeded", handler_class: "Handler1")
-      @registry.register(provider: "square", event_type: "payment.succeeded", handler_class: "Handler2")
-      @registry.register(provider: "stripe", event_type: "payment.failed", handler_class: "Handler3")
+      @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
+      @registry.register(provider: "square", event_type: "payment.succeeded", action_class: " Action2")
+      @registry.register(provider: "stripe", event_type: "payment.failed", action_class: " Action3")
 
       providers = @registry.providers
       assert_equal 2, providers.size
@@ -235,7 +235,7 @@ module CaptainHook
       assert_includes providers, "square"
     end
 
-    def test_providers_returns_empty_array_when_no_handlers
+    def test_providers_returns_empty_array_when_no_actions
       assert_equal [], @registry.providers
     end
 
@@ -243,24 +243,24 @@ module CaptainHook
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
       config = @registry.find_handler_config(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
       refute_nil config
-      assert_equal "PaymentHandler", config.handler_class
+      assert_equal "Payment Action", config.action_class
     end
 
     def test_find_handler_config_returns_nil_when_not_found
       config = @registry.find_handler_config(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "NonexistentHandler"
+        action_class: "Nonexistent Action"
       )
 
       assert_nil config
@@ -268,28 +268,28 @@ module CaptainHook
 
     # === Clear Tests ===
 
-    def test_clear_removes_all_handlers
-      @registry.register(provider: "stripe", event_type: "payment.succeeded", handler_class: "Handler1")
-      @registry.register(provider: "square", event_type: "payment.succeeded", handler_class: "Handler2")
+    def test_clear_removes_all_actions
+      @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
+      @registry.register(provider: "square", event_type: "payment.succeeded", action_class: " Action2")
 
       @registry.clear!
 
       assert_equal [], @registry.providers
-      refute @registry.handlers_registered?(provider: "stripe", event_type: "payment.succeeded")
-      refute @registry.handlers_registered?(provider: "square", event_type: "payment.succeeded")
+      refute @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
+      refute @registry.actions_registered?(provider: "square", event_type: "payment.succeeded")
     end
 
-    # === HandlerConfig Tests ===
+    # ===  ActionConfig Tests ===
 
     def test_handler_config_delay_for_attempt
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         retry_delays: [10, 20, 30]
       )
 
-      config = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
+      config = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
 
       assert_equal 10, config.delay_for_attempt(0)
       assert_equal 20, config.delay_for_attempt(1)
@@ -303,11 +303,11 @@ module CaptainHook
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler",
+        action_class: "Payment Action",
         retry_delays: []
       )
 
-      config = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded").first
+      config = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded").first
 
       # Should return default 3600 when delays array is empty
       assert_equal 3600, config.delay_for_attempt(0)
@@ -323,29 +323,29 @@ module CaptainHook
           @registry.register(
             provider: "stripe",
             event_type: "payment.succeeded",
-            handler_class: "Handler#{i}"
+            action_class: " Action#{i}"
           )
         end
       end
 
       threads.each(&:join)
 
-      handlers = @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
-      assert_equal 100, handlers.size
+      actions = @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
+      assert_equal 100, actions.size
     end
 
-    def test_handlers_for_is_thread_safe
+    def test_actions_for_is_thread_safe
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
-        handler_class: "PaymentHandler"
+        action_class: "Payment Action"
       )
 
       results = []
       threads = []
       100.times do
         threads << Thread.new do
-          results << @registry.handlers_for(provider: "stripe", event_type: "payment.succeeded")
+          results << @registry.actions_for(provider: "stripe", event_type: "payment.succeeded")
         end
       end
 
@@ -356,10 +356,10 @@ module CaptainHook
     end
 
     def test_handler_config_delay_for_attempt_returns_correct_delay
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler",
+        action_class: "Test Action",
         retry_delays: [10, 20, 30]
       )
 
@@ -369,10 +369,10 @@ module CaptainHook
     end
 
     def test_handler_config_delay_for_attempt_returns_last_delay_when_out_of_bounds
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler",
+        action_class: "Test Action",
         retry_delays: [10, 20]
       )
 
@@ -381,10 +381,10 @@ module CaptainHook
     end
 
     def test_handler_config_delay_for_attempt_returns_default_when_empty_delays
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler",
+        action_class: "Test Action",
         retry_delays: []
       )
 
@@ -393,10 +393,10 @@ module CaptainHook
     end
 
     def test_handler_config_async_defaults_to_true_when_nil
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler",
+        action_class: "Test Action",
         async: nil
       )
 
@@ -404,40 +404,40 @@ module CaptainHook
     end
 
     def test_handler_config_retry_delays_has_default
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler"
+        action_class: "Test Action"
       )
 
       assert_equal [30, 60, 300, 900, 3600], config.retry_delays
     end
 
     def test_handler_config_max_attempts_has_default
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler"
+        action_class: "Test Action"
       )
 
       assert_equal 5, config.max_attempts
     end
 
     def test_handler_config_priority_has_default
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler"
+        action_class: "Test Action"
       )
 
       assert_equal 100, config.priority
     end
 
     def test_handler_config_returns_nil_when_no_retry_delays
-      config = CaptainHook::HandlerRegistry::HandlerConfig.new(
+      config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
-        handler_class: "TestHandler",
+        action_class: "Test Action",
         retry_delays: nil
       )
 
@@ -446,9 +446,9 @@ module CaptainHook
     end
 
     def test_providers_returns_unique_provider_names
-      @registry.register(provider: "stripe", event_type: "payment.succeeded", handler_class: "Handler1")
-      @registry.register(provider: "stripe", event_type: "payment.failed", handler_class: "Handler2")
-      @registry.register(provider: "paypal", event_type: "sale.completed", handler_class: "Handler3")
+      @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
+      @registry.register(provider: "stripe", event_type: "payment.failed", action_class: " Action2")
+      @registry.register(provider: "paypal", event_type: "sale.completed", action_class: " Action3")
 
       providers = @registry.providers
       assert_equal 2, providers.size
