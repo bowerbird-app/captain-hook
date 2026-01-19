@@ -124,14 +124,14 @@ module CaptainHook
         # Get all sources for this provider name
         all_sources = @provider_definitions.select { |d| d["name"] == name }.map { |d| d["source"] }
 
-        # Check if there are handlers registered for this provider
+        # Check if there are actions registered for this provider
         existing_provider = CaptainHook::Provider.find_by(name: name)
-        handler_count = existing_provider&.handlers&.count || 0
-        handler_info = handler_count > 0 ? " Note: #{handler_count} handler(s) are already registered to the '#{name}' provider." : ""
+        action_count = existing_provider&.actions&.count || 0
+        action_info = action_count > 0 ? " Note: #{action_count} action(s) are already registered to the '#{name}' provider." : ""
 
         warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
-                          "If using the same webhook URL, just register handlers for the existing provider. " \
-                          "If multi-tenant, rename one provider (e.g., '#{name}_primary').#{handler_info}"
+                          "If using the same webhook URL, just register actions for the existing provider. " \
+                          "If multi-tenant, rename one provider (e.g., '#{name}_primary').#{action_info}"
 
         @results[:warnings] << { name: name, message: warning_message, sources: all_sources }
 
@@ -139,7 +139,7 @@ module CaptainHook
         Rails.logger.warn("   Found in multiple sources: #{all_sources.join(', ')}")
         Rails.logger.warn("   ")
         Rails.logger.warn("   If you're using the SAME webhook URL:")
-        Rails.logger.warn("   → Just register your handlers for the existing '#{name}' provider")
+        Rails.logger.warn("   → Just register your actions for the existing '#{name}' provider")
         Rails.logger.warn("   → Remove the duplicate provider configuration")
         Rails.logger.warn("   ")
         Rails.logger.warn("   If you need DIFFERENT webhook URLs (multi-tenant):")

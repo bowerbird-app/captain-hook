@@ -25,9 +25,6 @@ module CaptainHook
     # Associations
     has_many :incoming_event_actions, dependent: :destroy
 
-    # Deprecated: Backward compatibility alias
-    has_many :incoming_event_handlers, class_name: "IncomingEventAction", foreign_key: :incoming_event_id
-
     # Validations
     validates :provider, presence: true
     validates :external_id, presence: true
