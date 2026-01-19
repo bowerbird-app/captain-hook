@@ -133,7 +133,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededAction",
     priority: 100,
     async: true
   )
@@ -145,12 +145,12 @@ end
 # lib/my_gem/engine.rb
 module MyGem
   class Engine < ::Rails::Engine
-    initializer "my_gem.register_captain_hook_handlers", after: :load_config_initializers do
+    initializer "my_gem.register_captain_hook_actions", after: :load_config_initializers do
       Rails.application.config.after_initialize do
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          action_class: "MyGem::Webhooks::PaymentIntentSucceededHandler",
+          action_class: "MyGem::Webhooks::PaymentIntentSucceededAction",
           priority: 100,
           async: true
         )
@@ -189,7 +189,7 @@ end
 ┌─────────────────────────────────────────────────────────────┐
 │   4. Actions Stored in ActionRegistry                     │
 │      In-memory thread-safe hash:                            │
-│      {"stripe:payment_intent.succeeded" => [HandlerConfig]} │
+│      {"stripe:payment_intent.succeeded" => [ActionConfig]} │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -244,8 +244,8 @@ my_payment_gem/
 │   └── my_payment_gem/
 │       ├── engine.rb                    # ← Registers actions here
 │       └── webhooks/
-│           ├── payment_succeeded_handler.rb
-│           └── refund_processed_handler.rb
+│           ├── payment_succeeded_action.rb
+│           └── refund_processed_action.rb
 │
 └── captain_hook/
     └── providers/
@@ -258,7 +258,7 @@ module MyPaymentGem
   class Engine < ::Rails::Engine
     isolate_namespace MyPaymentGem
 
-    initializer "my_payment_gem.register_handlers", after: :load_config_initializers do
+    initializer "my_payment_gem.register_actions", after: :load_config_initializers do
       Rails.application.config.after_initialize do
         # Register action for payment succeeded
         CaptainHook.register_action(
@@ -369,13 +369,13 @@ end
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Edit Action: PaymentIntentSucceededHandler                   │
+│  Edit Action: PaymentIntentSucceededAction                   │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
 │  Action Details                                               │
 │  • Provider: Stripe                                            │
 │  • Event Type: payment_intent.succeeded                        │
-│  • Action Class: PaymentIntentSucceededHandler                │
+│  • Action Class: PaymentIntentSucceededAction                │
 │                                                                │
 │  Configuration                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -404,8 +404,8 @@ end
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         ProvidersController#scan_handlers                   │
-│   POST /captain_hook/admin/providers/:id/scan_handlers      │
+│         ProvidersController#scan_actions                   │
+│   POST /captain_hook/admin/providers/:id/scan_actions      │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -706,9 +706,9 @@ your_rails_app/
 │   │       └── paypal.rb
 │   │
 │   └── actions/                    # ← Event action classes
-│       ├── stripe_payment_intent_handler.rb
-│       ├── square_bank_account_handler.rb
-│       └── paypal_payment_handler.rb
+│       ├── stripe_payment_intent_action.rb
+│       ├── square_bank_account_action.rb
+│       └── paypal_payment_action.rb
 │
 └── .env                             # Environment variables (gitignored)
     STRIPE_WEBHOOK_SECRET=whsec_xxx
@@ -724,8 +724,8 @@ my_payment_gem/
 │   └── jobs/
 │       └── my_gem/
 │           └── webhooks/
-│               ├── payment_succeeded_handler.rb
-│               └── refund_processed_handler.rb
+│               ├── payment_succeeded_action.rb
+│               └── refund_processed_action.rb
 │
 ├── captain_hook/                    # ← Auto-discovered by CaptainHook
 │   └── providers/
@@ -790,7 +790,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededAction",
     priority: 100,        # Lower = runs first
     async: true,          # Run in background job
     max_attempts: 3,      # Number of retries
@@ -810,10 +810,10 @@ end
 
 ### Action Class Example
 
-**File**: `captain_hook/stripe/actions/payment_intent_succeeded_handler.rb`
+**File**: `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`
 
 ```ruby
-class StripePaymentIntentSucceededHandler
+class StripePaymentIntentSucceededAction
   # Required method signature
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
@@ -1045,7 +1045,7 @@ Click "View Actions" →
 │  Event Type: payment_intent.succeeded                          │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Priority: 100                                            │  │
-│  │ Action: PaymentIntentSucceededHandler                   │  │
+│  │ Action: PaymentIntentSucceededAction                   │  │
 │  │ Execution: Async (Background Job)                        │  │
 │  │ Max Attempts: 3 | Retries: 30s, 60s, 300s                │  │
 │  │                                    [Edit] [Delete]       │  │
@@ -1119,7 +1119,7 @@ CaptainHook's discovery and management system provides:
    end
 
 3. Create Action
-   # captain_hook/stripe/actions/payment_succeeded_handler.rb
+   # captain_hook/stripe/actions/payment_succeeded_action.rb
    class PaymentSucceededHandler
      def handle(event:, payload:, metadata:)
        # Your logic here
@@ -1170,7 +1170,7 @@ captain_hook/
 ├── providers/           # Provider YAML configs
 │   └── *.yml
 └── actions/            # Action classes
-    └── *_handler.rb
+    └── *_action.rb
 
 config/
 └── initializers/

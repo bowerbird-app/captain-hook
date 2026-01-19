@@ -25,7 +25,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler"
+          action_class: "TestAction"
         )
 
         payload = {
@@ -55,7 +55,7 @@ module CaptainHook
         assert_includes json["error"], "Invalid JSON"
       end
 
-      test "should show message when no handlers found" do
+      test "should show message when no actions found" do
         payload = {
           id: "evt_test",
           type: "no.handler.event",
@@ -69,14 +69,14 @@ module CaptainHook
         json = JSON.parse(response.body)
         assert json["success"]
         assert_not json["would_process"]
-        assert_includes json["message"], "No handlers registered"
+        assert_includes json["message"], "No actions registered"
       end
 
-      test "should show message when handlers found" do
+      test "should show message when actions found" do
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler"
+          action_class: "TestAction"
         )
 
         payload = {
@@ -95,13 +95,13 @@ module CaptainHook
         assert_includes json["message"], "Would trigger"
       end
 
-      test "should include handler details in response" do
+      test "should include action details in response" do
         CaptainHook.handler_registry.clear!
 
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler",
+          action_class: "TestAction",
           async: true,
           priority: 100
         )
@@ -119,8 +119,8 @@ module CaptainHook
         json = JSON.parse(response.body)
         assert json["handlers"].is_a?(Array)
         assert json["handlers"].any?
-        handler = json["handlers"].first
-        assert_equal "TestHandler", handler["class"]
+        action_item = json["handlers"].first
+        assert_equal "TestAction", handler["class"]
         assert_equal 100, handler["priority"]
         assert handler["async"]
       end

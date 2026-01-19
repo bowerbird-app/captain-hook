@@ -11,8 +11,8 @@ captain_hook/
 │   ├── square.yml
 │   └── webhook_site.yml
 ├── actions/        # Custom webhook event actions
-│   ├── stripe_payment_intent_handler.rb
-│   └── square_bank_account_handler.rb
+│   ├── stripe_payment_intent_action.rb
+│   └── square_bank_account_action.rb
 └── verifiers/        # Custom signature verification verifiers (optional)
     └── custom_verifier.rb
 ```
@@ -73,8 +73,8 @@ Actions are Ruby classes that process webhook events. Place action files in the 
 ### Example Action
 
 ```ruby
-# actions/stripe_payment_intent_handler.rb
-class StripePaymentIntentHandler
+# actions/stripe_payment_intent_action.rb
+class StripePaymentIntentAction
   def handle(event:, payload:, metadata: {})
     # Process the webhook event
     Rails.logger.info "Processing payment intent: #{payload['id']}"
@@ -95,7 +95,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentIntentHandler",
+    action_class: "StripePaymentIntentAction",
     priority: 100,
     async: true,
     max_attempts: 3
@@ -153,7 +153,7 @@ my_gem/
     ├── providers/
     │   └── my_service.yml
     ├── actions/
-    │   └── my_service_handler.rb
+    │   └── my_service_action.rb
     └── verifiers/
         └── my_service_verifier.rb
 ```

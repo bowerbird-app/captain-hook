@@ -118,16 +118,16 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     let(:gem_provider) { create(:captain_hook_provider, name: "stripe_gem_account", verifier_class: "CaptainHook::Verifiers::Stripe") }
     let(:app_provider) { create(:captain_hook_provider, name: "stripe_app_account", verifier_class: "CaptainHook::Verifiers::Stripe") }
 
-    class GemStripeHandler
+    class GemStripeAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "GemStripeHandler executed"
+        Rails.logger.info "GemStripeAction executed"
         event.update(metadata: event.metadata.merge(gem_stripe_executed: true))
       end
     end
 
-    class AppStripeHandler
+    class AppStripeAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "AppStripeHandler executed"
+        Rails.logger.info "AppStripeAction executed"
         event.update(metadata: event.metadata.merge(app_stripe_executed: true))
       end
     end
@@ -137,7 +137,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: gem_provider.name,
         event_type: "payment_intent.succeeded",
-        action_class: "GemStripeHandler",
+        action_class: "GemStripeAction",
         async: false
       )
 
@@ -145,7 +145,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: app_provider.name,
         event_type: "payment_intent.succeeded",
-        action_class: "AppStripeHandler",
+        action_class: "AppStripeAction",
         async: false
       )
     end
@@ -262,7 +262,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     class FailingHandler
       def self.handle(event:, payload:, metadata:)
         Rails.logger.error "FailingHandler encountered an error"
-        raise StandardError, "Simulated handler failure"
+        raise StandardError, "Simulated action failure"
       end
     end
 
@@ -336,7 +336,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
       expect(action_execution.status).to eq("failed")
       expect(action_execution.failed_at).to be_present
-      expect(action_execution.error_message).to include("Simulated handler failure")
+      expect(action_execution.error_message).to include("Simulated action failure")
     end
   end
 

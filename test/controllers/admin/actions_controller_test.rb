@@ -17,7 +17,7 @@ module CaptainHook
         @action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "TestHandler",
+          action_class: ".*Action",
           priority: 100,
           async: true,
           max_attempts: 3,
@@ -65,7 +65,7 @@ module CaptainHook
         assert_response :unprocessable_entity
       end
 
-      test "should soft delete handler" do
+      test "should soft delete action" do
         delete "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}"
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
@@ -77,7 +77,7 @@ module CaptainHook
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "test.event",
-          action_class: "TestHandler"
+          action_class: ".*Action"
         )
 
         get "/captain_hook/admin/providers/#{@provider.id}/actions"

@@ -53,12 +53,12 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
         expect(event.event_type).to eq("payment_intent.succeeded")
       end
 
-      it "enqueues handler jobs" do
-        # Register a handler
-        CaptainHook.register_handler(
+      it "enqueues action jobs" do
+        # Register an action
+        CaptainHook.register_action(
           provider: provider.name,
           event_type: "payment_intent.succeeded",
-          handler_class: "TestHandler",
+          action_class: "TestAction",
           async: true
         )
 
@@ -72,7 +72,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
                  "Content-Type" => "application/json",
                  "Stripe-Signature" => signature
                }
-        end.to have_enqueued_job(CaptainHook::IncomingHandlerJob)
+        end.to have_enqueued_job(CaptainHook::IncomingActionJob)
 
         expect(response).to have_http_status(:created)
       end

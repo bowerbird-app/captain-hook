@@ -221,7 +221,7 @@ module CaptainHook
       assert @event.status_failed?
     end
 
-    test "recalculate_status! marks as processed when all handlers processed" do
+    test "recalculate_status! marks as processed when all actions processed" do
       @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
       @event.incoming_event_actions.create!(action_class: "Handler2", status: :processed)
 
@@ -229,7 +229,7 @@ module CaptainHook
       assert @event.status_processed?
     end
 
-    test "recalculate_status! marks as failed when all handlers failed" do
+    test "recalculate_status! marks as failed when all actions failed" do
       @event.incoming_event_actions.create!(action_class: "Handler1", status: :failed)
       @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
 
@@ -237,7 +237,7 @@ module CaptainHook
       assert @event.status_failed?
     end
 
-    test "recalculate_status! marks as partially_processed when some handlers failed" do
+    test "recalculate_status! marks as partially_processed when some actions failed" do
       @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
       @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
 
@@ -252,7 +252,7 @@ module CaptainHook
       assert @event.status_processing?
     end
 
-    test "recalculate_status! does nothing when no handlers" do
+    test "recalculate_status! does nothing when no actions" do
       @event.status = :processing
       @event.save!
 
@@ -266,10 +266,10 @@ module CaptainHook
       assert_respond_to @event, :incoming_event_actions
     end
 
-    test "destroys associated handlers when destroyed" do
-      @event.incoming_event_actions.create!(action_class: "TestHandler")
+    test "destroys associated actions when destroyed" do
+      @event.incoming_event_actions.create!(action_class: "TestAction")
 
-      assert_difference "CaptainHook::IncomingEventHandler.count", -1 do
+      assert_difference "CaptainHook::IncomingEventAction.count", -1 do
         @event.destroy
       end
     end

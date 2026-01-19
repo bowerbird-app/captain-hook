@@ -50,7 +50,7 @@ module CaptainHook
       end
 
       # Scan a directory for YAML provider configuration files
-      # Supports provider-specific structure: <provider>/<provider>.yml with optional actions/ folder for handlers
+      # Supports provider-specific structure: <provider>/<provider>.yml with optional actions/ folder for actions
       def scan_directory(directory_path, source:)
         # Scan subdirectories for provider-specific YAML files
         Dir.glob(File.join(directory_path, "*")).select { |f| File.directory?(f) }.each do |subdir|

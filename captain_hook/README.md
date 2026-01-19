@@ -186,14 +186,14 @@ Each gem registers actions for their own provider name:
 CaptainHook.register_action(
   provider: "stripe_gem_a",
   event_type: "payment_intent.succeeded",
-  action_class: "GemA::StripePaymentHandler"
+  action_class: "GemA::StripePaymentAction"
 )
 
 # gem_b/lib/gem_b/engine.rb
 CaptainHook.register_action(
   provider: "stripe_gem_b",
   event_type: "payment_intent.succeeded",
-  action_class: "GemB::StripePaymentHandler"
+  action_class: "GemB::StripePaymentAction"
 )
 ```
 

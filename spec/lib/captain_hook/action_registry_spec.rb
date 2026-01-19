@@ -46,7 +46,7 @@ RSpec.describe CaptainHook::ActionRegistry do
       registry.register(
         provider: "stripe",
         event_type: "test.event",
-        action_class: "TestHandler"
+        action_class: "TestAction"
       )
 
       action = registry.actions_for(provider: "stripe", event_type: "test.event").first

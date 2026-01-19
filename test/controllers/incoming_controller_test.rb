@@ -32,7 +32,7 @@ module CaptainHook
       CaptainHook.register_action(
         provider: "stripe",
         event_type: "charge.succeeded",
-        action_class: "TestChargeHandler"
+        action_class: "TestChargeAction"
       )
 
       @valid_payload = {
@@ -211,11 +211,11 @@ module CaptainHook
       assert_equal "Payload too large", json["error"]
     end
 
-    test "should create handler records for event" do
+    test "should create action records for event" do
       signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
-        assert_difference "CaptainHook::IncomingEventHandler.count", 1 do
+        assert_difference "CaptainHook::IncomingEventAction.count", 1 do
           post "/captain_hook/stripe/test_token",
                params: @valid_payload,
                headers: {
@@ -249,18 +249,18 @@ module CaptainHook
     end
 
     test "should handle events with no registered handlers" do
-      payload_no_handler = {
-        id: "evt_no_handler",
-        type: "no.handler.event",
+      payload_no_action = {
+        id: "evt_no_action",
+        type: "no.action.event",
         data: { object: { id: "ch_test" } }
       }.to_json
 
-      signature = generate_stripe_signature(payload_no_handler, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(payload_no_action, @timestamp, @provider.signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
-        assert_no_difference "CaptainHook::IncomingEventHandler.count" do
+        assert_no_difference "CaptainHook::IncomingEventAction.count" do
           post "/captain_hook/stripe/test_token",
-               params: payload_no_handler,
+               params: payload_no_action,
                headers: {
                  "Content-Type" => "application/json",
                  "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"

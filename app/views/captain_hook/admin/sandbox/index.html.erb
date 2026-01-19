@@ -2,7 +2,7 @@
   <div class="row mb-4">
     <div class="col">
       <h1 class="h3">🧪 Webhook Sandbox</h1>
-      <p class="text-muted">Test webhook payloads in dry-run mode — no database changes, no handler execution.</p>
+      <p class="text-muted">Test webhook payloads in dry-run mode — no database changes, no action execution.</p>
     </div>
   </div>
 
@@ -30,7 +30,7 @@
           <div class="mb-3">
             <label for="payload-input" class="form-label">
               JSON Payload
-              <small class="text-muted ms-2">💡 Change "type" to match your handler event types</small>
+              <small class="text-muted ms-2">💡 Change "type" to match your action event types</small>
             </label>
             <textarea 
               id="payload-input" 
@@ -69,7 +69,7 @@
           <strong>This will:</strong>
           <ul class="mb-0 mt-2">
             <li>Validate JSON format</li>
-            <li>Show matching handlers</li>
+            <li>Show matching actions</li>
             <li>Extract event metadata</li>
           </ul>
         </div>
@@ -77,7 +77,7 @@
           <strong>This will NOT:</strong>
           <ul class="mb-0 mt-2">
             <li>Create database records</li>
-            <li>Execute handler logic</li>
+            <li>Execute action logic</li>
             <li>Enqueue background jobs</li>
           </ul>
         </div>

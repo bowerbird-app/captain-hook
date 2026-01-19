@@ -35,7 +35,7 @@ module CaptainHook
       config1.handler_registry.register(
         provider: "stripe",
         event_type: "test",
-        action_class: "TestHandler"
+        action_class: "TestAction"
       )
 
       refute_same config1.handler_registry, config2.handler_registry

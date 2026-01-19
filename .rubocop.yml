@@ -91,7 +91,7 @@ Lint/ConstantDefinitionInBlock:
     - 'test/**/*'
     - 'spec/**/*'
 
-# Allow unused method arguments in test handlers
+# Allow unused method arguments in test actions
 Lint/UnusedMethodArgument:
   Exclude:
     - 'test/**/*'

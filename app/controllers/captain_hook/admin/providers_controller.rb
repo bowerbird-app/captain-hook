@@ -55,13 +55,13 @@ module CaptainHook
       end
 
       # POST /captain_hook/admin/providers/sync_all
-      # Full sync - updates existing providers/handlers from YAML
+      # Full sync - updates existing providers/actions from YAML
       def sync_all
         perform_scan(update_existing: true, scan_type: "Full Sync")
       end
 
       # POST /captain_hook/admin/providers/discover_new
-      # Discovery only - adds new providers/handlers, skips existing ones
+      # Discovery only - adds new providers/actions, skips existing ones
       def discover_new
         perform_scan(update_existing: false, scan_type: "Discovery")
       end
