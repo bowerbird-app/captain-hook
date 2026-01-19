@@ -14,7 +14,7 @@ captain_hook/
 │   ├── stripe_payment_intent_handler.rb
 │   └── square_bank_account_handler.rb
 └── verifiers/        # Custom signature verification verifiers (optional)
-    └── custom_adapter.rb
+    └── custom_verifier.rb
 ```
 
 ## Provider Configuration Files
@@ -116,7 +116,7 @@ Verifiers handle signature verification for webhook providers. CaptainHook inclu
 If you need a custom verifier, place it in the `verifiers/` directory:
 
 ```ruby
-# verifiers/my_custom_adapter.rb
+# verifiers/my_custom_verifier.rb
 module CaptainHook
   module Verifiers
     class MyCustomVerifier < Base
@@ -139,7 +139,7 @@ end
 Then reference it in your provider YAML:
 
 ```yaml
-verifier_file: my_custom_adapter.rb
+verifier_file: my_custom_verifier.rb
 ```
 
 ## Using in Gems
@@ -155,7 +155,7 @@ my_gem/
     ├── handlers/
     │   └── my_service_handler.rb
     └── verifiers/
-        └── my_service_adapter.rb
+        └── my_service_verifier.rb
 ```
 
 ## Scanning for Providers

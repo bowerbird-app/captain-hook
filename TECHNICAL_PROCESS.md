@@ -1050,10 +1050,10 @@ captain_hook/providers/
 ```
 captain_hook/providers/
 ├── stripe_prod/
-│   ├── stripe_prod.yml         # verifier_file: stripe_adapter.rb
-│   └── stripe_adapter.rb       # Shared implementation
+│   ├── stripe_prod.yml         # verifier_file: stripe_verifier.rb
+│   └── stripe_verifier.rb       # Shared implementation
 └── stripe_test/
-    └── stripe_test.yml         # verifier_file: ../stripe_prod/stripe_adapter.rb (reuses)
+    └── stripe_test.yml         # verifier_file: ../stripe_prod/stripe_verifier.rb (reuses)
 ```
 
 **Works:** Multiple providers can reference the same verifier class
@@ -1112,7 +1112,7 @@ Provider.create!(
 #### ❌ Dynamic Verifier Loading from Gems
 
 ```ruby
-# In gem: lib/example/stripe_adapter.rb
+# In gem: lib/example/stripe_verifier.rb
 # Trying to use: verifier_class: "Example::StripeAdapter"
 ```
 

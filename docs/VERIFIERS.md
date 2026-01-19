@@ -309,7 +309,7 @@ end
 ### Unit Test Example
 
 ```ruby
-# test/verifiers/acme_payments_adapter_test.rb
+# test/verifiers/acme_payments_verifier_test.rb
 require 'test_helper'
 
 class AcmePaymentsVerifierTest < ActiveSupport::TestCase
