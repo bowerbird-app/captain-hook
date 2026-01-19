@@ -239,14 +239,14 @@ module CaptainHook
       assert_equal [], @registry.providers
     end
 
-    def test_find_handler_config_finds_correct_handler
+    def test_find_action_config_finds_correct_action
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
         action_class: "Payment Action"
       )
 
-      config = @registry.find_handler_config(
+      config = @registry.find_action_config(
         provider: "stripe",
         event_type: "payment.succeeded",
         action_class: "Payment Action"
@@ -256,8 +256,8 @@ module CaptainHook
       assert_equal "Payment Action", config.action_class
     end
 
-    def test_find_handler_config_returns_nil_when_not_found
-      config = @registry.find_handler_config(
+    def test_find_action_config_returns_nil_when_not_found
+      config = @registry.find_action_config(
         provider: "stripe",
         event_type: "payment.succeeded",
         action_class: "Nonexistent Action"
@@ -281,7 +281,7 @@ module CaptainHook
 
     # ===  ActionConfig Tests ===
 
-    def test_handler_config_delay_for_attempt
+    def test_action_config_delay_for_attempt
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -299,7 +299,7 @@ module CaptainHook
       assert_equal 30, config.delay_for_attempt(10)
     end
 
-    def test_handler_config_delay_for_attempt_with_empty_delays
+    def test_action_config_delay_for_attempt_with_empty_delays
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -355,7 +355,7 @@ module CaptainHook
       assert(results.all? { |r| r.size == 1 })
     end
 
-    def test_handler_config_delay_for_attempt_returns_correct_delay
+    def test_action_config_delay_for_attempt_returns_correct_delay
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -368,7 +368,7 @@ module CaptainHook
       assert_equal 30, config.delay_for_attempt(2)
     end
 
-    def test_handler_config_delay_for_attempt_returns_last_delay_when_out_of_bounds
+    def test_action_config_delay_for_attempt_returns_last_delay_when_out_of_bounds
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -380,7 +380,7 @@ module CaptainHook
       assert_equal 20, config.delay_for_attempt(5)
     end
 
-    def test_handler_config_delay_for_attempt_returns_default_when_empty_delays
+    def test_action_config_delay_for_attempt_returns_default_when_empty_delays
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -392,7 +392,7 @@ module CaptainHook
       assert_equal 3600, config.delay_for_attempt(0)
     end
 
-    def test_handler_config_async_defaults_to_true_when_nil
+    def test_action_config_async_defaults_to_true_when_nil
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -403,7 +403,7 @@ module CaptainHook
       assert_equal true, config.async
     end
 
-    def test_handler_config_retry_delays_has_default
+    def test_action_config_retry_delays_has_default
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -413,7 +413,7 @@ module CaptainHook
       assert_equal [30, 60, 300, 900, 3600], config.retry_delays
     end
 
-    def test_handler_config_max_attempts_has_default
+    def test_action_config_max_attempts_has_default
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -423,7 +423,7 @@ module CaptainHook
       assert_equal 5, config.max_attempts
     end
 
-    def test_handler_config_priority_has_default
+    def test_action_config_priority_has_default
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",
@@ -433,7 +433,7 @@ module CaptainHook
       assert_equal 100, config.priority
     end
 
-    def test_handler_config_returns_nil_when_no_retry_delays
+    def test_action_config_returns_nil_when_no_retry_delays
       config = CaptainHook::ActionRegistry:: ActionConfig.new(
         provider: "test",
         event_type: "test",

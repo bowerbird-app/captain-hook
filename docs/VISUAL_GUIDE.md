@@ -264,7 +264,7 @@ module MyPaymentGem
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          action_class: "MyPaymentGem::Webhooks::PaymentSucceededHandler",
+          action_class: "MyPaymentGem::Webhooks::PaymentSucceededAction",
           priority: 100,
           async: true,
           max_attempts: 5,
@@ -275,7 +275,7 @@ module MyPaymentGem
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.refunded",
-          action_class: "MyPaymentGem::Webhooks::RefundProcessedHandler",
+          action_class: "MyPaymentGem::Webhooks::RefundProcessedAction",
           priority: 100,
           async: true
         )
@@ -346,7 +346,7 @@ end
 │  │ ┌────────────────────────────────────────────────────┐   │  │
 │  │ │ Pri │ Action Class             │ Exec │ Actions   │   │  │
 │  │ ├─────┼───────────────────────────┼──────┼───────────┤   │  │
-│  │ │ 100 │ ChargeSucceededHandler    │ Async│ Edit Del  │   │  │
+│  │ │ 100 │ ChargeSucceededAction     │ Async│ Edit Del  │   │  │
 │  │ └────────────────────────────────────────────────────┘   │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                │
@@ -356,7 +356,7 @@ end
 │  │ ┌────────────────────────────────────────────────────┐   │  │
 │  │ │ Pri │ Action Class             │ Exec │           │   │  │
 │  │ ├─────┼───────────────────────────┼──────┤           │   │  │
-│  │ │ 100 │ InvoicePaidHandler        │ Async│           │   │  │
+│  │ │ 100 │ InvoicePaidAction         │ Async│           │   │  │
 │  │ └────────────────────────────────────────────────────┘   │  │
 │  │ These actions are in code but not synced to database.   │  │
 │  │ Click "Scan Actions" to sync them.                      │  │
@@ -646,7 +646,7 @@ end
 ┌──────────────────┐    ┌─────────────────────┐
 │ 14a. Async?      │    │  14b. Sync?         │
 │ perform_later    │    │  perform(inline)    │
-│ IncomingHandler  │    │  IncomingHandler    │
+│ IncomingAction   │    │  IncomingAction     │
 │ Job              │    │  Job                │
 └────────┬─────────┘    └──────────┬──────────┘
          │                         │
@@ -801,7 +801,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.*",  # Matches all bank_account.* events
-    action_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true
   )
@@ -1054,7 +1054,7 @@ Click "View Actions" →
 │  Event Type: charge.succeeded                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Priority: 100                                            │  │
-│  │ Action: ChargeSucceededHandler                          │  │
+│  │ Action: ChargeSucceededAction                           │  │
 │  │ Execution: Async                                         │  │
 │  │                                    [Edit] [Delete]       │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -1120,7 +1120,7 @@ CaptainHook's discovery and management system provides:
 
 3. Create Action
    # captain_hook/stripe/actions/payment_succeeded_action.rb
-   class PaymentSucceededHandler
+   class PaymentSucceededAction
      def handle(event:, payload:, metadata:)
        # Your logic here
      end
@@ -1132,7 +1132,7 @@ CaptainHook's discovery and management system provides:
      CaptainHook.register_action(
        provider: "stripe",
        event_type: "payment_intent.succeeded",
-       action_class: "PaymentSucceededHandler"
+       action_class: "PaymentSucceededAction"
      )
    end
 
