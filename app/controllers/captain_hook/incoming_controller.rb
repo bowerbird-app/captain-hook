@@ -145,8 +145,8 @@ module CaptainHook
 
       # Check if this is a duplicate
       if event.previously_new_record?
-        # New event - create handlers
-        create_handlers_for_event(event)
+        # New event - create actions
+        create_actions_for_event(event)
 
         CaptainHook::Instrumentation.incoming_received(
           event,
@@ -188,7 +188,7 @@ module CaptainHook
     end
 
     # Create action records for all registered actions
-    def create_handlers_for_event(event)
+    def create_actions_for_event(event)
       action_configs = CaptainHook::Services::ActionLookup.actions_for(
         provider: event.provider,
         event_type: event.event_type

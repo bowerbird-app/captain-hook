@@ -32,8 +32,8 @@ module CaptainHook
         external_id = verifier.extract_event_id(payload_hash)
         timestamp = verifier.extract_timestamp({})
 
-        # Find matching handlers
-        handler_configs = CaptainHook.handler_registry.handlers_for(
+        # Find matching actions
+        action_configs = CaptainHook.action_registry.actions_for(
           provider: provider.name,
           event_type: event_type
         )
@@ -52,19 +52,19 @@ module CaptainHook
             external_id: external_id,
             timestamp: timestamp
           },
-          handlers: handler_configs.map do |config|
+          actions: action_configs.map do |config|
             {
-              class: config.handler_class.to_s,
+              class: config.action_class.to_s,
               priority: config.priority,
               async: config.async,
               max_attempts: config.max_attempts
             }
           end,
-          would_process: handler_configs.any?,
-          message: if handler_configs.any?
-                     "✓ Would trigger #{handler_configs.count} handler(s)"
+          would_process: action_configs.any?,
+          message: if action_configs.any?
+                     "✓ Would trigger #{action_configs.count} action(s)"
                    else
-                     "⚠ No handlers registered for event type '#{event_type}'"
+                     "⚠ No actions registered for event type '#{event_type}'"
                    end
         }
 
