@@ -74,7 +74,7 @@ module CaptainHook
 
       test "should get handlers from registry" do
         # Register a test handler
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "test.event",
           action_class: "TestHandler"

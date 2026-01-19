@@ -14,7 +14,7 @@ module CaptainHook
 
     # === Registration Tests ===
 
-    def test_register_handler_with_required_parameters
+    def test_register_action_with_required_parameters
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -63,7 +63,7 @@ module CaptainHook
       assert_equal "Failure Action", failed_actions.first.action_class
     end
 
-    def test_register_handler_with_custom_async_option
+    def test_register_action_with_custom_async_option
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -75,7 +75,7 @@ module CaptainHook
       assert_equal false, action.async
     end
 
-    def test_register_handler_with_default_async_true
+    def test_register_action_with_default_async_true
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -86,7 +86,7 @@ module CaptainHook
       assert_equal true, action.async
     end
 
-    def test_register_handler_with_custom_retry_delays
+    def test_register_action_with_custom_retry_delays
       custom_delays = [10, 20, 30]
       @registry.register(
         provider: "stripe",
@@ -99,7 +99,7 @@ module CaptainHook
       assert_equal custom_delays, action.retry_delays
     end
 
-    def test_register_handler_with_default_retry_delays
+    def test_register_action_with_default_retry_delays
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -110,7 +110,7 @@ module CaptainHook
       assert_equal [30, 60, 300, 900, 3600], action.retry_delays
     end
 
-    def test_register_handler_with_custom_max_attempts
+    def test_register_action_with_custom_max_attempts
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -122,7 +122,7 @@ module CaptainHook
       assert_equal 10, action.max_attempts
     end
 
-    def test_register_handler_with_default_max_attempts
+    def test_register_action_with_default_max_attempts
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -133,7 +133,7 @@ module CaptainHook
       assert_equal 5, action.max_attempts
     end
 
-    def test_register_handler_with_custom_priority
+    def test_register_action_with_custom_priority
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",
@@ -145,7 +145,7 @@ module CaptainHook
       assert_equal 50, action.priority
     end
 
-    def test_register_handler_with_default_priority
+    def test_register_action_with_default_priority
       @registry.register(
         provider: "stripe",
         event_type: "payment.succeeded",

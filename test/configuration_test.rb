@@ -9,7 +9,7 @@ module CaptainHook
     end
 
     def test_has_handler_registry
-      assert_instance_of HandlerRegistry, @config.handler_registry
+      assert_instance_of ActionRegistry, @config.handler_registry
     end
 
     def test_has_hooks
@@ -35,12 +35,12 @@ module CaptainHook
       config1.handler_registry.register(
         provider: "stripe",
         event_type: "test",
-        handler_class: "TestHandler"
+        action_class: "TestHandler"
       )
 
       refute_same config1.handler_registry, config2.handler_registry
-      assert config1.handler_registry.handlers_registered?(provider: "stripe", event_type: "test")
-      refute config2.handler_registry.handlers_registered?(provider: "stripe", event_type: "test")
+      assert config1.handler_registry.actions_registered?(provider: "stripe", event_type: "test")
+      refute config2.handler_registry.actions_registered?(provider: "stripe", event_type: "test")
     end
 
     def test_to_h_returns_configuration_summary
@@ -178,7 +178,7 @@ module CaptainHook
     end
 
     def test_handler_registry_returns_registry_instance
-      assert_instance_of CaptainHook::HandlerRegistry, @config.handler_registry
+      assert_instance_of CaptainHook::ActionRegistry, @config.handler_registry
     end
   end
 end

@@ -298,7 +298,7 @@ module CaptainHook
       CaptainHook::Handler.create!(
         provider: @provider.name,
         event_type: "test.event",
-        handler_class: "TestHandler"
+        action_class: "TestHandler"
       )
 
       assert_difference "CaptainHook::Handler.count", -1 do

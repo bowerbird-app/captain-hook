@@ -29,10 +29,10 @@ module CaptainHook
       )
 
       # Register a test handler
-      CaptainHook.register_handler(
+      CaptainHook.register_action(
         provider: "stripe",
         event_type: "charge.succeeded",
-        handler_class: "TestChargeHandler"
+        action_class: "TestChargeHandler"
       )
 
       @valid_payload = {

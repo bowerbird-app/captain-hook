@@ -22,10 +22,10 @@ module CaptainHook
       end
 
       test "should test webhook with valid payload" do
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          handler_class: "TestHandler"
+          action_class: "TestHandler"
         )
 
         payload = {
@@ -73,10 +73,10 @@ module CaptainHook
       end
 
       test "should show message when handlers found" do
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          handler_class: "TestHandler"
+          action_class: "TestHandler"
         )
 
         payload = {
@@ -98,10 +98,10 @@ module CaptainHook
       test "should include handler details in response" do
         CaptainHook.handler_registry.clear!
 
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          handler_class: "TestHandler",
+          action_class: "TestHandler",
           async: true,
           priority: 100
         )
