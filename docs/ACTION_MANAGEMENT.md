@@ -48,7 +48,7 @@ actions = CaptainHook::Services::ActionDiscovery.for_provider("stripe")
 The `ActionSync` service syncs discovered actions to the database:
 
 ```ruby
-sync = CaptainHook::Services::ActionSync.new(handler_definitions)
+sync = CaptainHook::Services::ActionSync.new(action_definitions)
 results = sync.call
 
 # Results include:
@@ -153,14 +153,14 @@ discovery = CaptainHook::Services::ActionDiscovery.new
 all_actions = discovery.call
 
 # Discover actions for specific provider
-stripe_handlers = CaptainHook::Services::ActionDiscovery.for_provider("stripe")
+stripe_actions = CaptainHook::Services::ActionDiscovery.for_provider("stripe")
 ```
 
 ### ActionSync Service
 
 ```ruby
 # Sync action definitions to database
-sync = CaptainHook::Services::ActionSync.new(handler_definitions)
+sync = CaptainHook::Services::ActionSync.new(action_definitions)
 results = sync.call
 
 # Check results
@@ -177,10 +177,10 @@ puts "Errors: #{results[:errors].size}"
 action = CaptainHook::Action.find(id)
 
 # Scopes
-active_handlers = CaptainHook::Action.active
-deleted_handlers = CaptainHook::Action.deleted
-stripe_handlers = CaptainHook::Action.for_provider("stripe")
-payment_handlers = CaptainHook::Action.for_event_type("payment.succeeded")
+active_actions = CaptainHook::Action.active
+deleted_actions = CaptainHook::Action.deleted
+stripe_actions = CaptainHook::Action.for_provider("stripe")
+payment_actions = CaptainHook::Action.for_event_type("payment.succeeded")
 
 # Soft delete
 action.soft_delete!
@@ -198,9 +198,9 @@ provider = action.provider_record
 
 Tests are provided for:
 
-- `Action` model (`test/models/handler_test.rb`)
-- `ActionDiscovery` service (`test/services/handler_discovery_test.rb`)
-- `ActionSync` service (`test/services/handler_sync_test.rb`)
+- `Action` model (`test/models/action_test.rb`)
+- `ActionDiscovery` service (`test/services/action_discovery_test.rb`)
+- `ActionSync` service (`test/services/action_sync_test.rb`)
 
 Run tests:
 

@@ -49,9 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - See `benchmark/README.md` for details
   - Copy-to-clipboard functionality for webhook URLs
   - Manage security settings per provider (rate limiting, payload limits, timestamp validation)
-- Handlers admin interface at `/captain_hook/admin/providers/:id/handlers`
-  - View registered handlers per provider
-  - See handler configuration (priority, async, retry settings)
+- Actions admin interface at `/captain_hook/admin/providers/:id/actions`
+  - View registered actions per provider
+  - See action configuration (priority, async, retry settings)
 - Active/inactive status for providers to enable/disable webhook reception
 - Enhanced security documentation and explanations in admin UI
 
