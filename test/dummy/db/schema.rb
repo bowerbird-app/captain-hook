@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_141440) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_19_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -85,8 +85,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_141440) do
 
   create_table "captain_hook_providers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "active", default: true, null: false
-    t.string "adapter_class"
-    t.string "adapter_file"
     t.datetime "created_at", null: false
     t.text "description"
     t.string "display_name"
@@ -99,6 +97,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_141440) do
     t.integer "timestamp_tolerance_seconds", default: 300
     t.string "token", null: false
     t.datetime "updated_at", null: false
+    t.string "verifier_class"
+    t.string "verifier_file"
     t.index ["active"], name: "index_captain_hook_providers_on_active"
     t.index ["name"], name: "index_captain_hook_providers_on_name", unique: true
     t.index ["token"], name: "index_captain_hook_providers_on_token", unique: true
