@@ -4,13 +4,6 @@ CaptainHook::Engine.routes.draw do
   # Admin interface (must come BEFORE wildcard routes)
   namespace :admin do
     resources :providers do
-      collection do
-        post :sync_all
-        post :discover_new
-      end
-      member do
-        post :scan_actions
-      end
       resources :actions, only: %i[index show edit update destroy]
     end
     resources :incoming_events, only: %i[index show]
