@@ -71,7 +71,7 @@ module CaptainHook
     initializer "captain_hook.auto_scan", after: :load_config_initializers do
       config.after_initialize do
         # Only run in server/console contexts, skip for rake tasks and migrations
-        next if defined?(Rails::Console).nil? && File.basename($PROGRAM_NAME) == "rake"
+        next if !defined?(Rails::Console) && File.basename($PROGRAM_NAME) == "rake"
 
         CaptainHook::Engine.perform_auto_scan
       end
