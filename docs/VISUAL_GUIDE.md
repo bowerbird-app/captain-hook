@@ -1,10 +1,10 @@
 # CaptainHook - Visual Guide
 
-A comprehensive visual walkthrough of CaptainHook's provider discovery, handler management, and webhook processing system.
+A comprehensive visual walkthrough of CaptainHook's provider discovery, action management, and webhook processing system.
 
 ## Overview
 
-CaptainHook provides a file-based configuration system with automatic discovery and database synchronization for both providers and handlers.
+CaptainHook provides a file-based configuration system with automatic discovery and database synchronization for both providers and actions.
 
 ## Provider Discovery UI
 
@@ -103,14 +103,14 @@ CaptainHook provides a file-based configuration system with automatic discovery 
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│         Also Scan and Sync Handlers                         │
-│   HandlerDiscovery + HandlerSync services run automatically │
+│         Also Scan and Sync Actions                         │
+│   ActionDiscovery + ActionSync services run automatically │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Display Flash Message                         │
-│   "Scan completed! Created 3 providers, 5 handlers"         │
+│   "Scan completed! Created 3 providers, 5 actions"         │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -120,20 +120,20 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Handler Registration & Discovery
+## Action Registration & Discovery
 
-### Handler Registration Locations
+### Action Registration Locations
 
-Handlers can be registered in two places:
+Actions can be registered in two places:
 
 **1. Rails Application** (`config/initializers/captain_hook.rb`):
 ```ruby
 # config/initializers/captain_hook.rb
 Rails.application.config.after_initialize do
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededHandler",
     priority: 100,
     async: true
   )
@@ -147,10 +147,10 @@ module MyGem
   class Engine < ::Rails::Engine
     initializer "my_gem.register_captain_hook_handlers", after: :load_config_initializers do
       Rails.application.config.after_initialize do
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          handler_class: "MyGem::Webhooks::PaymentIntentSucceededHandler",
+          action_class: "MyGem::Webhooks::PaymentIntentSucceededHandler",
           priority: 100,
           async: true
         )
@@ -160,7 +160,7 @@ module MyGem
 end
 ```
 
-### Handler Registration Flow
+### Action Registration Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -169,7 +169,7 @@ end
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   1. Load Gems (including 3rd party with handlers)          │
+│   1. Load Gems (including 3rd party with actions)          │
 │      Gem engines load their initializers                    │
 └──────────────────┬──────────────────────────────────────────┘
                    │
@@ -182,38 +182,38 @@ end
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │   3. after_initialize Blocks Execute                        │
-│      All CaptainHook.register_handler calls run             │
+│      All CaptainHook.register_action calls run             │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   4. Handlers Stored in HandlerRegistry                     │
+│   4. Actions Stored in ActionRegistry                     │
 │      In-memory thread-safe hash:                            │
 │      {"stripe:payment_intent.succeeded" => [HandlerConfig]} │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   5. Admin UI: Click "Scan Handlers"                        │
-│      Triggers HandlerDiscovery service                      │
+│   5. Admin UI: Click "Scan Actions"                        │
+│      Triggers ActionDiscovery service                      │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   6. HandlerDiscovery Reads HandlerRegistry                 │
+│   6. ActionDiscovery Reads ActionRegistry                 │
 │      Converts in-memory configs to hash definitions         │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   7. HandlerSync Persists to Database                       │
-│      Creates Handler records for admin UI configuration     │
+│   7. ActionSync Persists to Database                       │
+│      Creates Action records for admin UI configuration     │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │   8. Runtime: Webhook Arrives                               │
-│      IncomingController queries HandlerRegistry             │
+│      IncomingController queries ActionRegistry             │
 │      (NOT database - registry is source of truth)           │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -222,27 +222,27 @@ end
 
 ```ruby
 # ❌ WRONG - Will fail because CaptainHook not loaded yet
-CaptainHook.register_handler(...)
+CaptainHook.register_action(...)
 
 # ✅ CORRECT - Waits for Rails to finish loading
 Rails.application.config.after_initialize do
-  CaptainHook.register_handler(...)
+  CaptainHook.register_action(...)
 end
 ```
 
 The `after_initialize` block ensures:
 1. CaptainHook engine is fully loaded
 2. All dependencies are available
-3. HandlerRegistry is initialized
+3. ActionRegistry is initialized
 4. Thread-safe registration across gems and app
 
-### Example: 3rd Party Gem Handler Discovery
+### Example: 3rd Party Gem Action Discovery
 
 ```
 my_payment_gem/
 ├── lib/
 │   └── my_payment_gem/
-│       ├── engine.rb                    # ← Registers handlers here
+│       ├── engine.rb                    # ← Registers actions here
 │       └── webhooks/
 │           ├── payment_succeeded_handler.rb
 │           └── refund_processed_handler.rb
@@ -260,22 +260,22 @@ module MyPaymentGem
 
     initializer "my_payment_gem.register_handlers", after: :load_config_initializers do
       Rails.application.config.after_initialize do
-        # Register handler for payment succeeded
-        CaptainHook.register_handler(
+        # Register action for payment succeeded
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          handler_class: "MyPaymentGem::Webhooks::PaymentSucceededHandler",
+          action_class: "MyPaymentGem::Webhooks::PaymentSucceededHandler",
           priority: 100,
           async: true,
           max_attempts: 5,
           retry_delays: [30, 60, 300, 900, 3600]
         )
 
-        # Register handler for refund processed
-        CaptainHook.register_handler(
+        # Register action for refund processed
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.refunded",
-          handler_class: "MyPaymentGem::Webhooks::RefundProcessedHandler",
+          action_class: "MyPaymentGem::Webhooks::RefundProcessedHandler",
           priority: 100,
           async: true
         )
@@ -286,18 +286,18 @@ end
 ```
 
 **Result**: When Rails app boots with this gem:
-- Gem's handlers automatically registered in HandlerRegistry
-- Appear in admin UI after "Scan Handlers"
+- Gem's actions automatically registered in ActionRegistry
+- Appear in admin UI after "Scan Actions"
 - Execute when matching webhooks arrive
 - No configuration needed in host Rails app
 
-## Handler Management UI
+## Action Management UI
 
 ### Provider Show Page
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Stripe                  [Scan Handlers] [Edit] [View Handlers]│
+│  Stripe                  [Scan Actions] [Edit] [View Actions]│
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
 │  Webhook Endpoint                                              │
@@ -322,60 +322,60 @@ end
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Handler Index Page
+### Action Index Page
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Event Handlers for Stripe              [Scan Handlers] ←───── │
+│  Event Actions for Stripe              [Scan Actions] ←───── │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│  About Handlers                                                │
-│  Handlers are Ruby classes registered in your application      │
-│  code. Click "Scan Handlers" to discover and sync them.        │
+│  About Actions                                                │
+│  Actions are Ruby classes registered in your application      │
+│  code. Click "Scan Actions" to discover and sync them.        │
 │                                                                │
-│  Configured Handlers (In Database)                             │
+│  Configured Actions (In Database)                             │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Event Type: payment_intent.succeeded                     │  │
 │  │ ┌────────────────────────────────────────────────────┐   │  │
-│  │ │ Pri │ Handler Class             │ Exec │ Actions   │   │  │
+│  │ │ Pri │ Action Class             │ Exec │ Actions   │   │  │
 │  │ ├─────┼───────────────────────────┼──────┼───────────┤   │  │
 │  │ │ 100 │ PaymentIntentSucceeded... │ Async│ Edit Del  │   │  │
 │  │ └────────────────────────────────────────────────────┘   │  │
 │  │                                                          │  │
 │  │ Event Type: charge.succeeded                             │  │
 │  │ ┌────────────────────────────────────────────────────┐   │  │
-│  │ │ Pri │ Handler Class             │ Exec │ Actions   │   │  │
+│  │ │ Pri │ Action Class             │ Exec │ Actions   │   │  │
 │  │ ├─────┼───────────────────────────┼──────┼───────────┤   │  │
 │  │ │ 100 │ ChargeSucceededHandler    │ Async│ Edit Del  │   │  │
 │  │ └────────────────────────────────────────────────────┘   │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                │
-│  ⚠️ Unsynced Handlers (Only shown if any exist)                │
+│  ⚠️ Unsynced Actions (Only shown if any exist)                │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Event Type: invoice.paid                                 │  │
 │  │ ┌────────────────────────────────────────────────────┐   │  │
-│  │ │ Pri │ Handler Class             │ Exec │           │   │  │
+│  │ │ Pri │ Action Class             │ Exec │           │   │  │
 │  │ ├─────┼───────────────────────────┼──────┤           │   │  │
 │  │ │ 100 │ InvoicePaidHandler        │ Async│           │   │  │
 │  │ └────────────────────────────────────────────────────┘   │  │
-│  │ These handlers are in code but not synced to database.   │  │
-│  │ Click "Scan Handlers" to sync them.                      │  │
+│  │ These actions are in code but not synced to database.   │  │
+│  │ Click "Scan Actions" to sync them.                      │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Handler Edit Page
+### Action Edit Page
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  Edit Handler: PaymentIntentSucceededHandler                   │
+│  Edit Action: PaymentIntentSucceededHandler                   │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│  Handler Details                                               │
+│  Action Details                                               │
 │  • Provider: Stripe                                            │
 │  • Event Type: payment_intent.succeeded                        │
-│  • Handler Class: PaymentIntentSucceededHandler                │
+│  • Action Class: PaymentIntentSucceededHandler                │
 │                                                                │
 │  Configuration                                                 │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -389,17 +389,17 @@ end
 │  │ Retry Delays: [30, 60, 300]  (Seconds between retries)   │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                │
-│  [Update Handler]  [Cancel]                                    │
+│  [Update Action]  [Cancel]                                    │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-## Handler Discovery Flow
+## Action Discovery Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    User Action                              │
-│  Click "Scan Handlers" (global or per-provider)             │
+│  Click "Scan Actions" (global or per-provider)             │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
@@ -410,18 +410,18 @@ end
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           HandlerDiscovery Service                          │
-│   Read from in-memory HandlerRegistry                       │
+│           ActionDiscovery Service                          │
+│   Read from in-memory ActionRegistry                       │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
         ┌────────────────────────┐
         │ Get Registered         │
-        │ Handlers from:         │
+        │ Actions from:         │
         │                        │
         │ CaptainHook            │
-        │   .handler_registry    │
-        │   .handlers_for(       │
+        │   .action_registry    │
+        │   .actions_for(       │
         │     provider,          │
         │     event_type         │
         │   )                    │
@@ -429,15 +429,15 @@ end
                  │
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              HandlerSync Service                            │
-│   Sync discovered handlers to database                      │
+│              ActionSync Service                            │
+│   Sync discovered actions to database                      │
 └──────────────────┬──────────────────────────────────────────┘
                    │
         ┌──────────┴──────────────┐
         │                         │
         ▼                         ▼
 ┌──────────────────┐    ┌─────────────────────┐
-│ For Each Handler │    │  Check if Deleted   │
+│ For Each Action │    │  Check if Deleted   │
 │ Find or Create   │    │  (soft_deleted_at)  │
 │ in Database      │    │                     │
 │                  │    │  Skip if deleted    │
@@ -447,10 +447,10 @@ end
                      │
                      ▼
             ┌─────────────────┐
-            │ Save Handler    │
+            │ Save Action    │
             │ • provider      │
             │ • event_type    │
-            │ • handler_class │
+            │ • action_class │
             │ • priority      │
             │ • async         │
             │ • max_attempts  │
@@ -470,13 +470,13 @@ end
                  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               Display Flash Message                         │
-│   "Handler scan completed! Created 2, Updated 1"            │
+│   "Action scan completed! Created 2, Updated 1"            │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│           Redirect to Handler Index                         │
-│   Show configured handlers for this provider                │
+│           Redirect to Action Index                         │
+│   Show configured actions for this provider                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -626,16 +626,16 @@ end
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   12. Find Registered Handlers for Event Type               │
-│   HandlerRegistry.handlers_for(provider, event_type)        │
-│   Returns handler configs sorted by priority                │
+│   12. Find Registered Actions for Event Type               │
+│   ActionRegistry.actions_for(provider, event_type)        │
+│   Returns action configs sorted by priority                │
 └──────────────────┬──────────────────────────────────────────┘
                    │
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   13. For Each Handler Config (by priority)                 │
-│   Create IncomingEventHandler record:                       │
-│   - handler_class, priority, status: pending                │
+│   13. For Each Action Config (by priority)                 │
+│   Create IncomingEventAction record:                       │
+│   - action_class, priority, status: pending                │
 └──────────────────┬──────────────────────────────────────────┘
          │
          └───────────┬─────────────┘
@@ -654,11 +654,11 @@ end
                      │
                      ▼
 ┌─────────────────────────────────────────────────────────────┐
-│   15. IncomingHandlerJob Execution                          │
-│   - Acquire optimistic lock on handler record               │
+│   15. IncomingActionJob Execution                          │
+│   - Acquire optimistic lock on action record               │
 │   - Increment attempt_count                                 │
-│   - Instantiate handler class: handler_class.constantize    │
-│   - Call handler.handle(event:, payload:, metadata:)        │
+│   - Instantiate action class: action_class.constantize    │
+│   - Call action.handle(event:, payload:, metadata:)        │
 └────────┬────────────────────────────────────────────────────┘
          │
         ┌┴────────┐
@@ -669,7 +669,7 @@ end
 │ Status:  │  │ Status: failed                               │
 │ processed│  │ Check max_attempts:                          │
 │ Mark     │  │ - If exceeded: stop                          │
-│ handler  │  │ - Else: schedule retry with backoff          │
+│ action  │  │ - Else: schedule retry with backoff          │
 │ complete │  │   (delays: 30s, 60s, 300s, 900s, 3600s)      │
 │          │  │ - Reset status: pending                      │
 │ Update   │  │ - Enqueue with wait: delay.seconds           │
@@ -689,7 +689,7 @@ your_rails_app/
 │
 ├── config/
 │   ├── initializers/
-│   │   └── captain_hook.rb         # Handler registrations
+│   │   └── captain_hook.rb         # Action registrations
 │   └── environments/
 │       └── production.rb            # Configuration
 │
@@ -705,7 +705,7 @@ your_rails_app/
 │   │       ├── paypal.yml
 │   │       └── paypal.rb
 │   │
-│   └── handlers/                    # ← Event handler classes
+│   └── actions/                    # ← Event action classes
 │       ├── stripe_payment_intent_handler.rb
 │       ├── square_bank_account_handler.rb
 │       └── paypal_payment_handler.rb
@@ -735,7 +735,7 @@ my_payment_gem/
 │
 └── lib/
     └── my_gem/
-        └── engine.rb               # Register handlers here
+        └── engine.rb               # Register actions here
 ```
 
 **Note**: Verifiers are provider-specific and ship with individual gems or in your host application. Each provider has a YAML config file and a Ruby verifier class in the same directory. See [Setting Up Webhooks in Your Gem](GEM_WEBHOOK_SETUP.md) for creating custom verifiers.
@@ -773,7 +773,7 @@ max_payload_size_bytes: 1048576                # 1 MB max
 active: true                                    # Enable/disable webhooks
 ```
 
-### Handler Registration
+### Action Registration
 
 **File**: `config/initializers/captain_hook.rb`
 
@@ -784,31 +784,31 @@ CaptainHook.configure do |config|
   # config.retention_days = 90
 end
 
-# Register handlers - must be in after_initialize block
+# Register actions - must be in after_initialize block
 Rails.application.config.after_initialize do
-  # Handler for specific event
-  CaptainHook.register_handler(
+  # Action for specific event
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentIntentSucceededHandler",
+    action_class: "StripePaymentIntentSucceededHandler",
     priority: 100,        # Lower = runs first
     async: true,          # Run in background job
     max_attempts: 3,      # Number of retries
     retry_delays: [30, 60, 300]  # Delays in seconds
   )
 
-  # Handler with wildcard event types
-  CaptainHook.register_handler(
+  # Action with wildcard event types
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.*",  # Matches all bank_account.* events
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountHandler",
     priority: 100,
     async: true
   )
 end
 ```
 
-### Handler Class Example
+### Action Class Example
 
 **File**: `captain_hook/stripe/actions/payment_intent_succeeded_handler.rb`
 
@@ -984,7 +984,7 @@ Navigate to: /captain_hook/admin/providers
 ┌────────────────────────────────────────────────────────────────┐
 │  Webhook Providers            [Discover New] [Full Sync]             │
 ├────────────────────────────────────────────────────────────────┤
-│  ✓ Scan completed! Created 3 providers, 5 handlers             │
+│  ✓ Scan completed! Created 3 providers, 5 actions             │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Name    │ Display │ Verifier │ Status │ Events │ Actions  │  │
@@ -1002,7 +1002,7 @@ Navigate to: /captain_hook/admin/providers
 Click "View" on Stripe →
 
 ┌────────────────────────────────────────────────────────────────┐
-│  Stripe              [Scan Handlers] [Edit] [View Handlers]    │
+│  Stripe              [Scan Actions] [Edit] [View Actions]    │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
 │  📌 Webhook Endpoint                                           │
@@ -1031,21 +1031,21 @@ Click "View" on Stripe →
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### Step 4: Manage Handlers
+### Step 4: Manage Actions
 
 ```
-Click "View Handlers" →
+Click "View Actions" →
 
 ┌────────────────────────────────────────────────────────────────┐
-│  Event Handlers for Stripe              [Scan Handlers]        │
+│  Event Actions for Stripe              [Scan Actions]        │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│  Configured Handlers                                           │
+│  Configured Actions                                           │
 │                                                                │
 │  Event Type: payment_intent.succeeded                          │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Priority: 100                                            │  │
-│  │ Handler: PaymentIntentSucceededHandler                   │  │
+│  │ Action: PaymentIntentSucceededHandler                   │  │
 │  │ Execution: Async (Background Job)                        │  │
 │  │ Max Attempts: 3 | Retries: 30s, 60s, 300s                │  │
 │  │                                    [Edit] [Delete]       │  │
@@ -1054,7 +1054,7 @@ Click "View Handlers" →
 │  Event Type: charge.succeeded                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ Priority: 100                                            │  │
-│  │ Handler: ChargeSucceededHandler                          │  │
+│  │ Action: ChargeSucceededHandler                          │  │
 │  │ Execution: Async                                         │  │
 │  │                                    [Edit] [Delete]       │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -1073,11 +1073,11 @@ CaptainHook's discovery and management system provides:
 - 📦 **Gem Support**: Providers can be shipped with gems
 - 🔄 **Consistent Setup**: Same configuration across all environments
 
-### Handler Management
-- 🔍 **Auto-Discovery**: Scan handlers from in-memory registry
+### Action Management
+- 🔍 **Auto-Discovery**: Scan actions from in-memory registry
 - ⚙️ **Configurable**: Edit async/sync, retries, priority via UI
-- 🎭 **Soft Delete**: Prevent re-addition of deleted handlers
-- 📊 **Visibility**: See registered vs configured handlers
+- 🎭 **Soft Delete**: Prevent re-addition of deleted actions
+- 📊 **Visibility**: See registered vs configured actions
 - 🔗 **Database Sync**: Bridge between code and database
 
 ### Webhook Processing
@@ -1086,7 +1086,7 @@ CaptainHook's discovery and management system provides:
 - 🚦 **Rate Limiting**: Per-provider request limits
 - 🔁 **Auto Retry**: Exponential backoff for failures
 - 📝 **Audit Trail**: All events stored for debugging
-- 🎯 **Priority Execution**: Control handler order
+- 🎯 **Priority Execution**: Control action order
 
 ### Security
 - 🔒 **AES-256-GCM Encryption**: Secrets encrypted at rest
@@ -1118,7 +1118,7 @@ CaptainHook's discovery and management system provides:
      end
    end
 
-3. Create Handler
+3. Create Action
    # captain_hook/stripe/actions/payment_succeeded_handler.rb
    class PaymentSucceededHandler
      def handle(event:, payload:, metadata:)
@@ -1126,13 +1126,13 @@ CaptainHook's discovery and management system provides:
      end
    end
 
-4. Register Handler
+4. Register Action
    # config/initializers/captain_hook.rb
    Rails.application.config.after_initialize do
-     CaptainHook.register_handler(
+     CaptainHook.register_action(
        provider: "stripe",
        event_type: "payment_intent.succeeded",
-       handler_class: "PaymentSucceededHandler"
+       action_class: "PaymentSucceededHandler"
      )
    end
 
@@ -1158,7 +1158,7 @@ CaptainHook's discovery and management system provides:
 /captain_hook/admin                          # Dashboard
 /captain_hook/admin/providers                # Provider list
 /captain_hook/admin/providers/:id            # Provider details
-/captain_hook/admin/providers/:id/handlers   # Handler management
+/captain_hook/admin/providers/:id/actions   # Action management
 /captain_hook/admin/incoming_events          # Event log
 /captain_hook/admin/sandbox                  # Test webhooks
 ```
@@ -1169,19 +1169,19 @@ CaptainHook's discovery and management system provides:
 captain_hook/
 ├── providers/           # Provider YAML configs
 │   └── *.yml
-└── handlers/            # Handler classes
+└── actions/            # Action classes
     └── *_handler.rb
 
 config/
 └── initializers/
-    └── captain_hook.rb  # Handler registration
+    └── captain_hook.rb  # Action registration
 
 app/
   controllers/...
-  handlers/...                # ← Webhook handler classes
+  actions/...                # ← Webhook action classes
 ```
 
-**Note**: All webhook signature verification verifiers are built into the CaptainHook gem. If you need support for a new provider, the CaptainHook gem itself must be updated. Host applications only create handlers (business logic) and provider YAML configs.
+**Note**: All webhook signature verification verifiers are built into the CaptainHook gem. If you need support for a new provider, the CaptainHook gem itself must be updated. Host applications only create actions (business logic) and provider YAML configs.
 
 ## Troubleshooting
 
@@ -1192,12 +1192,12 @@ app/
 4. Click "Discover New" or "Full Sync" again
 5. Check Rails logs for errors
 
-### Handlers Not Working?
-1. Verify handlers are registered in initializer
+### Actions Not Working?
+1. Verify actions are registered in initializer
 2. Check registration is inside `after_initialize` block
-3. Restart Rails server after adding handlers
-4. Click "Scan Handlers" in admin UI
-5. Verify handler class names match exactly
+3. Restart Rails server after adding actions
+4. Click "Scan Actions" in admin UI
+5. Verify action class names match exactly
 
 ### Signature Verification Failing?
 1. Check ENV variable is set correctly
@@ -1211,12 +1211,12 @@ app/
 2. Verify webhook URL includes correct token
 3. Check Sidekiq/background job processor is running
 4. Review incoming events in admin UI
-5. Check handler execution status and errors
+5. Check action execution status and errors
 
 ---
 
 For more detailed information, see:
-- [Handler Management](HANDLER_MANAGEMENT.md) - Handler configuration and management
+- [Action Management](ACTION_MANAGEMENT.md) - Action configuration and management
 - [Provider Discovery](PROVIDER_DISCOVERY.md) - Provider discovery system details
 - [Verifiers](VERIFIERS.md) - Built-in signature verification verifiers
 - [Gem Webhook Setup](GEM_WEBHOOK_SETUP.md) - Setting up webhooks in gems

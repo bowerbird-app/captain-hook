@@ -11,7 +11,7 @@ captain_hook/
 ├── stripe/
 │   ├── stripe.yml           # Provider configuration
 │   ├── stripe.rb            # (Optional) Custom verifier if not built-in
-│   └── actions/             # Handler files for this provider
+│   └── actions/             # Action files for this provider
 │       ├── payment_intent_succeeded_handler.rb
 │       └── charge_refunded_handler.rb
 ├── paypal/
@@ -34,7 +34,7 @@ For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need t
 captain_hook/
 ├── stripe/
 │   ├── stripe.yml       # verifier_file: stripe.rb will use built-in verifier
-│   └── actions/         # Your handlers go here
+│   └── actions/         # Your actions go here
 ├── square/
 │   ├── square.yml
 │   └── actions/
@@ -57,7 +57,7 @@ captain_hook/
 └── custom_provider/
     ├── custom_provider.yml       # Configuration with verifier_file: custom_provider.rb
     ├── custom_provider.rb        # Your custom verifier logic
-    └── actions/                  # Your handlers
+    └── actions/                  # Your actions
         └── event_handler.rb
 ```
 
@@ -65,12 +65,12 @@ captain_hook/
 
 **Before creating a new provider, check if one already exists!**
 
-If your app or a gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Just register your handlers in the provider's `actions/` folder.
+If your app or a gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Just register your actions in the provider's `actions/` folder.
 
 **One Provider = One Webhook Endpoint**
 - A provider represents a single webhook URL with signature verification
-- Multiple handlers can share the same provider to process different event types
-- Handlers for a provider should be placed in its `actions/` folder
+- Multiple actions can share the same provider to process different event types
+- Actions for a provider should be placed in its `actions/` folder
 - Only create separate providers for multi-tenant scenarios (different accounts/secrets)
 
 See `docs/GEM_WEBHOOK_SETUP.md` for detailed guidance on when to share vs. create providers.
@@ -100,7 +100,7 @@ To use a provider in your Rails application:
    STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
    ```
 
-4. **Add your handlers** to the `actions/` folder:
+4. **Add your actions** to the `actions/` folder:
    ```ruby
    # captain_hook/stripe/actions/payment_intent_succeeded_handler.rb
    module Stripe
@@ -112,14 +112,14 @@ To use a provider in your Rails application:
    end
    ```
 
-5. **Register handlers** in an initializer or engine:
+5. **Register actions** in an initializer or engine:
    ```ruby
    # config/initializers/captain_hook.rb
    CaptainHook.configure do |config|
-     config.handler_registry.register(
+     config.action_registry.register(
        provider: "stripe",
        event_type: "payment_intent.succeeded",
-       handler_class: Stripe::PaymentIntentSucceededHandler
+       action_class: Stripe::PaymentIntentSucceededHandler
      )
    end
    ```
@@ -134,18 +134,18 @@ If you're building a gem that integrates with a webhook provider:
 
 1. **Use built-in verifiers when available** - No need to ship your own verifier for Stripe, Square, PayPal, or WebhookSite
 
-2. **Include the YAML and handlers** - Add to your gem:
+2. **Include the YAML and actions** - Add to your gem:
    ```
    captain_hook/
    └── stripe/
        ├── stripe.yml              # Provider config
-       └── actions/                # Your handlers
+       └── actions/                # Your actions
            └── subscription_updated_handler.rb
    ```
 
 3. **For custom providers** - Ship both the YAML and verifier file if CaptainHook doesn't have a built-in verifier
 
-4. **Register handlers** - In your gem's engine.rb, register which handlers process which events
+4. **Register actions** - In your gem's engine.rb, register which actions process which events
 
 See `docs/GEM_WEBHOOK_SETUP.md` for detailed instructions.
 
@@ -180,20 +180,20 @@ Both use the same `CaptainHook::Verifiers::Stripe` verifier but have different:
 - Signing secrets (different environment variables)
 - Webhook URLs (generated based on provider name)
 
-Each gem registers handlers for their own provider name:
+Each gem registers actions for their own provider name:
 ```ruby
 # gem_a/lib/gem_a/engine.rb
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe_gem_a",
   event_type: "payment_intent.succeeded",
-  handler_class: "GemA::StripePaymentHandler"
+  action_class: "GemA::StripePaymentHandler"
 )
 
 # gem_b/lib/gem_b/engine.rb
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe_gem_b",
   event_type: "payment_intent.succeeded",
-  handler_class: "GemB::StripePaymentHandler"
+  action_class: "GemB::StripePaymentHandler"
 )
 ```
 

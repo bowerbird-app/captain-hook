@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- **Renamed handlers to actions**: Terminology change for consistency and clarity
+  - `Handler` → `Action` (class names, model names)
+  - `handler` → `action` (method names, variable names)
+  - `handlers` → `actions` (plurals)
+  - Database table: `captain_hook_actions` (was `captain_hook_handlers`)
+  - Model: `CaptainHook::Action` (was `CaptainHook::Handler`)
+  - Registry: `CaptainHook::ActionRegistry` (was `CaptainHook::HandlerRegistry`)
+  - Services: `ActionDiscovery`, `ActionSync` (was `HandlerDiscovery`, `HandlerSync`)
+  - Job: `IncomingActionJob` (was `IncomingHandlerJob`)
+  - Method: `register_action` (was `register_handler`)
+  - See migration guide in docs/ACTION_MANAGEMENT.md
 - **Removed outgoing webhooks functionality**: CaptainHook now focuses exclusively on receiving and processing incoming webhooks
 - Removed `OutgoingEvent` model and all associated functionality
 - Removed `OutgoingJob` and circuit breaker service

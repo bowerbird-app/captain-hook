@@ -8,7 +8,7 @@ The benchmark suite measures:
 
 - **Signature Verification**: Verifier performance across providers
 - **Database Operations**: Event creation and query performance
-- **Handler Execution**: Registry lookups and handler dispatch
+- **Action Execution**: Registry lookups and action dispatch
 - **Memory Usage**: Memory allocation and retention
 - **End-to-End**: Complete webhook processing pipeline
 
@@ -25,7 +25,7 @@ bundle exec rake benchmark:all
 ```bash
 bundle exec rake benchmark:signatures  # Signature verification
 bundle exec rake benchmark:database    # Database operations
-bundle exec rake benchmark:handlers    # Handler execution
+bundle exec rake benchmark:actions    # Action execution
 bundle exec rake benchmark:memory      # Memory profiling
 bundle exec rake benchmark:e2e         # End-to-end pipeline
 ```
@@ -80,7 +80,7 @@ Target benchmarks for CaptainHook:
 | Webhook Reception | > 1000/sec | End-to-end throughput |
 | Signature Verification | > 10,000/sec | Per verifier |
 | Event Creation | > 1000/sec | Including idempotency check |
-| Handler Lookup | > 50,000/sec | Registry performance |
+| Action Lookup | > 50,000/sec | Registry performance |
 | Memory per Request | < 5 MB | Allocated memory |
 
 ## Continuous Integration

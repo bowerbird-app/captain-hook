@@ -14,7 +14,7 @@ Instead of implementing webhook handling from scratch in every gem, CaptainHook 
 
 - **Signature Verification**: Ensures webhooks are authentic and from the claimed provider
 - **Event Storage**: Persists all incoming webhooks for audit trails and debugging
-- **Handler Registration**: Routes events to your business logic automatically
+- **Action Registration**: Routes events to your business logic automatically
 - **Admin UI**: Provides visibility into webhook traffic and processing status
 - **Reliability**: Built-in retry logic, background job processing, and error tracking
 
@@ -24,11 +24,11 @@ Your gem provides three key components:
 
 1. **Provider Config** - YAML file with webhook endpoint settings (configuration)
 2. **Verifier** - Ruby class that verifies webhook signatures (security)
-3. **Handlers** - Job classes that process specific event types (business logic)
+3. **Actions** - Job classes that process specific event types (business logic)
 
 When installed in a Rails app, CaptainHook:
 - Discovers your provider configuration and verifier
-- Registers your handlers
+- Registers your actions
 - Routes incoming webhooks to your code
 - Manages the entire webhook lifecycle
 
@@ -44,11 +44,11 @@ This keeps your gem focused on **what to do** with webhook data, while CaptainHo
 
 **You can create custom verifiers for any provider!** Verifiers are now provider-specific and ship with your gem.
 
-## Important: One Provider, Many Handlers
+## Important: One Provider, Many Actions
 
 **Before creating a new provider, check if one already exists!**
 
-If your Rails app or another gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Instead, just register your handlers for the existing provider.
+If your Rails app or another gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Instead, just register your actions for the existing provider.
 
 ### When to Share a Provider
 
@@ -60,24 +60,24 @@ If your Rails app or another gem already has a provider for your service (e.g., 
 **Your app:**
 ```ruby
 # captain_hook/providers/stripe/stripe.yml already exists
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.created",
-  handler_class: "MyApp::PaymentHandler"
+  action_class: "MyApp::PaymentHandler"
 )
 ```
 
 **Your gem:**
 ```ruby
 # DON'T create a new stripe provider - use the existing one!
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",  # Same provider name
   event_type: "invoice.paid",
-  handler_class: "MyGem::InvoiceHandler"
+  action_class: "MyGem::InvoiceHandler"
 )
 ```
 
-Both handlers use the **same webhook endpoint** and **same signature verification**.
+Both actions use the **same webhook endpoint** and **same signature verification**.
 
 ### When to Create a New Provider
 
@@ -108,7 +108,7 @@ Create this structure in your gem:
 ```
 your_gem/
 ├── app/
-│   └── jobs/                          # Event processing handlers (REQUIRED)
+│   └── jobs/                          # Event processing actions (REQUIRED)
 │       └── your_gem/
 │           └── webhooks/
 │               ├── event_one_handler.rb        # e.g., payment_succeeded_handler.rb
@@ -121,7 +121,7 @@ your_gem/
 │           └── your_provider.rb       # Verifier implementation (e.g., stripe.rb)
 ├── lib/
 │   └── your_gem/
-│       └── engine.rb                  # Handler registration (REQUIRED)
+│       └── engine.rb                  # Action registration (REQUIRED)
 └── your_gem.gemspec                   # Gem dependencies (REQUIRED)
 ```
 
@@ -131,9 +131,9 @@ your_gem/
 
 - **Verifier (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::VerifierHelpers` for security methods like HMAC generation and constant-time comparison.
 
-- **Handlers (`*_handler.rb`)**: Your business logic. Each handler processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
+- **Actions (`*_handler.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
 
-- **Engine (`engine.rb`)**: Registers your handlers with CaptainHook when your gem loads. This tells CaptainHook which Ruby classes should process which event types.
+- **Engine (`engine.rb`)**: Registers your actions with CaptainHook when your gem loads. This tells CaptainHook which Ruby classes should process which event types.
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
@@ -270,13 +270,13 @@ verifier_file: stripe_secondary.rb
 signing_secret: ENV[STRIPE_SECONDARY_SECRET]
 ```
 
-Each instance gets its own webhook URL and handlers.
+Each instance gets its own webhook URL and actions.
 
-## Step 3: Create Handler Classes
+## Step 3: Create Action Classes
 
-Create handler classes for each event type you want to process. Handlers are plain Ruby classes with a `handle` method that receives the webhook data.
+Create action classes for each event type you want to process. Actions are plain Ruby classes with a `handle` method that receives the webhook data.
 
-### Example Handler Structure
+### Example Action Structure
 
 Create `app/jobs/your_gem/webhooks/[event_name]_handler.rb`:
 
@@ -289,8 +289,8 @@ Create `app/jobs/your_gem/webhooks/payment_intent_succeeded_handler.rb`:
 
 module YourGem
   module Webhooks
-    # Handler for Stripe payment_intent.succeeded events
-    # Handlers are plain Ruby classes with a `handle` method
+    # Action for Stripe payment_intent.succeeded events
+    # Actions are plain Ruby classes with a `handle` method
     # CaptainHook manages job queuing, retries, and execution
     class PaymentIntentSucceededHandler
       # Required method signature: handle(event:, payload:, metadata:)
@@ -333,7 +333,7 @@ Create `app/jobs/your_gem/webhooks/charge_succeeded_handler.rb`:
 
 module YourGem
   module Webhooks
-    # Handler for Stripe charge.succeeded events
+    # Action for Stripe charge.succeeded events
     class ChargeSucceededHandler
       def handle(event:, payload:, metadata:)
         charge_id = payload.dig("data", "object", "id")
@@ -358,7 +358,7 @@ Create `app/jobs/your_gem/webhooks/customer_created_handler.rb`:
 
 module YourGem
   module Webhooks
-    # Handler for Stripe customer.created events
+    # Action for Stripe customer.created events
     class CustomerCreatedHandler
       def handle(event:, payload:, metadata:)
         customer_id = payload.dig("data", "object", "id")
@@ -375,15 +375,15 @@ module YourGem
 end
 ```
 
-### Important Notes About Handlers
+### Important Notes About Actions
 
-**Handlers are NOT ActiveJob classes!** They are plain Ruby classes with a `handle` method. CaptainHook wraps them in its own job system (`IncomingHandlerJob`) which provides:
+**Actions are NOT ActiveJob classes!** They are plain Ruby classes with a `handle` method. CaptainHook wraps them in its own job system (`IncomingActionJob`) which provides:
 - Automatic retry logic with exponential backoff
 - Priority-based execution
 - Status tracking and logging
 - Optimistic locking to prevent duplicate processing
 
-If you need to enqueue additional background jobs from within a handler, you can do so:
+If you need to enqueue additional background jobs from within a action, you can do so:
 
 ```ruby
 def handle(event:, payload:, metadata:)
@@ -396,21 +396,21 @@ def handle(event:, payload:, metadata:)
 end
 ```
 
-## Step 4: Register Handlers in Your Engine
+## Step 4: Register Actions in Your Engine
 
-⚠️ **CRITICAL STEP**: Without this step, your handlers won't be called!
+⚠️ **CRITICAL STEP**: Without this step, your actions won't be called!
 
-Handler registration tells CaptainHook which Ruby classes should process which webhook events. When a webhook arrives:
+Action registration tells CaptainHook which Ruby classes should process which webhook events. When a webhook arrives:
 1. CaptainHook verifies the signature and stores the event
-2. It looks up registered handlers for that provider + event type
-3. It enqueues background jobs for each registered handler
-4. Your handlers execute and process the business logic
+2. It looks up registered actions for that provider + event type
+3. It enqueues background jobs for each registered action
+4. Your actions execute and process the business logic
 
-**Without registration, CaptainHook won't know about your handlers and they'll never run.**
+**Without registration, CaptainHook won't know about your actions and they'll never run.**
 
 ### Registration Pattern
 
-Update your `lib/your_gem/engine.rb` to register handlers for each event type you want to handle:
+Update your `lib/your_gem/engine.rb` to register actions for each event type you want to handle:
 
 ```ruby
 # frozen_string_literal: true
@@ -419,54 +419,54 @@ module YourGem
   class Engine < ::Rails::Engine
     isolate_namespace YourGem
 
-    # IMPORTANT: Register webhook handlers after Rails initializes
-    # This tells CaptainHook which handler classes process which events
+    # IMPORTANT: Register webhook actions after Rails initializes
+    # This tells CaptainHook which action classes process which events
     config.after_initialize do
       # Only register if CaptainHook is available
       if defined?(CaptainHook)
         # Registration format:
-        # CaptainHook.register_handler(
+        # CaptainHook.register_action(
         #   provider: "provider_name",      # Must match provider YAML name (e.g., "stripe", "paypal")
         #   event_type: "event.type",       # Exact event type string from webhook payload
-        #   handler_class: "Full::ClassName" # Full class name as string
+        #   action_class: "Full::ClassName" # Full class name as string
         # )
 
-        # Example: Stripe handlers
-        CaptainHook.register_handler(
+        # Example: Stripe actions
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          handler_class: "YourGem::Webhooks::PaymentIntentSucceededHandler"
+          action_class: "YourGem::Webhooks::PaymentIntentSucceededHandler"
         )
 
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          handler_class: "YourGem::Webhooks::ChargeSucceededHandler"
+          action_class: "YourGem::Webhooks::ChargeSucceededHandler"
         )
 
-        CaptainHook.register_handler(
+        CaptainHook.register_action(
           provider: "stripe",
           event_type: "customer.created",
-          handler_class: "YourGem::Webhooks::CustomerCreatedHandler"
+          action_class: "YourGem::Webhooks::CustomerCreatedHandler"
         )
 
-        # Example: PayPal handlers (if you're also integrating PayPal)
-        # CaptainHook.register_handler(
+        # Example: PayPal actions (if you're also integrating PayPal)
+        # CaptainHook.register_action(
         #   provider: "paypal",
         #   event_type: "PAYMENT.SALE.COMPLETED",
-        #   handler_class: "YourGem::Webhooks::PaypalPaymentCompletedHandler"
+        #   action_class: "YourGem::Webhooks::PaypalPaymentCompletedHandler"
         # )
 
-        # Example: Square handlers (if you're also integrating Square)
-        # CaptainHook.register_handler(
+        # Example: Square actions (if you're also integrating Square)
+        # CaptainHook.register_action(
         #   provider: "square",
         #   event_type: "payment.created",
-        #   handler_class: "YourGem::Webhooks::SquarePaymentCreatedHandler"
+        #   action_class: "YourGem::Webhooks::SquarePaymentCreatedHandler"
         # )
 
-        Rails.logger.info "YourGem: Registered webhook handlers"
+        Rails.logger.info "YourGem: Registered webhook actions"
       else
-        Rails.logger.warn "YourGem: CaptainHook not available, webhook handlers not registered"
+        Rails.logger.warn "YourGem: CaptainHook not available, webhook actions not registered"
       end
     end
   end
@@ -476,32 +476,32 @@ end
 ### Why `after_initialize`?
 
 Using `config.after_initialize` ensures:
-- CaptainHook is fully loaded before we try to register handlers
-- All your handler classes are loaded and available
-- The handler registry is ready to accept registrations
+- CaptainHook is fully loaded before we try to register actions
+- All your action classes are loaded and available
+- The action registry is ready to accept registrations
 
 ### Verifying Registration Works
 
-After adding this code and restarting your server, verify handlers are registered:
+After adding this code and restarting your server, verify actions are registered:
 
 ```ruby
-# Rails console - Check specific handler
-CaptainHook.handler_registry.handlers_for(provider: "your_provider", event_type: "your.event.type")
+# Rails console - Check specific action
+CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event.type")
 # Should return: ["YourGem::Webhooks::YourHandlerClass"]
 
 # Example for Stripe:
-CaptainHook.handler_registry.handlers_for(provider: "stripe", event_type: "payment_intent.succeeded")
+CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
 # Should return: ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
 
-# Check all registered handlers across all providers
-CaptainHook.handler_registry.all_handlers
-# Should show all your registered handlers
+# Check all registered actions across all providers
+CaptainHook.action_registry.all_actions
+# Should show all your registered actions
 ```
 
-If handlers aren't showing up:
+If actions aren't showing up:
 1. Make sure you restarted the Rails server after adding registration code
-2. Check the Rails logs for "Registered webhook handlers" message
-3. Verify the handler class names are correct (full namespace)
+2. Check the Rails logs for "Registered webhook actions" message
+3. Verify the action class names are correct (full namespace)
 4. Ensure CaptainHook is loaded before your gem (it usually is)
 
 ## Step 5: Update Your Gemspec
@@ -690,15 +690,15 @@ Most providers offer a test/sandbox mode where you can trigger real events:
 
 ## Verification
 
-### Check handlers are registered:
+### Check actions are registered:
 
 ```ruby
 # Rails console
-CaptainHook.handler_registry.handlers_for(provider: "your_provider", event_type: "your.event")
+CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event")
 # => ["YourGem::Webhooks::YourHandler"]
 
 # Example for Stripe:
-CaptainHook.handler_registry.handlers_for(provider: "stripe", event_type: "payment_intent.succeeded")
+CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
 # => ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
 ```
 
@@ -722,11 +722,11 @@ CaptainHook::IncomingEvent.where(provider: "your_provider_name").order(created_a
 CaptainHook::IncomingEvent.where(provider: "stripe").order(created_at: :desc).first
 ```
 
-## Adding More Event Handlers
+## Adding More Event Actions
 
 To handle additional events from your provider:
 
-1. **Create a new handler class** in `app/jobs/your_gem/webhooks/`
+1. **Create a new action class** in `app/jobs/your_gem/webhooks/`
 2. **Register it in your engine** in `config.after_initialize` block
 3. **Restart your Rails server**
 
@@ -751,27 +751,27 @@ end
 Register in engine.rb:
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "invoice.payment_succeeded",
-  handler_class: "YourGem::Webhooks::InvoicePaymentSucceededHandler"
+  action_class: "YourGem::Webhooks::InvoicePaymentSucceededHandler"
 )
 ```
 
 ## Troubleshooting
 
-### Handlers not being called?
+### Actions not being called?
 
-**Most common issue**: Handlers not registered properly
+**Most common issue**: Actions not registered properly
 
-1. **Verify handlers are registered**:
+1. **Verify actions are registered**:
    ```ruby
    # Rails console
-   CaptainHook.handler_registry.handlers_for(provider: "stripe", event_type: "payment_intent.succeeded")
+   CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
    # Should return: ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
    ```
    
-   If this returns an empty array, your handlers aren't registered! Check:
+   If this returns an empty array, your actions aren't registered! Check:
    - Did you add the registration code to `lib/your_gem/engine.rb`?
    - Did you restart the Rails server after adding the code?
    - Are the provider names matching exactly? (case-sensitive: "stripe" not "Stripe")
@@ -783,7 +783,7 @@ CaptainHook.register_handler(
    ```
    If nil, use "Discover New" or "Full Sync" in the admin UI
 
-3. **Check Sidekiq is running** (handlers are background jobs)
+3. **Check Sidekiq is running** (actions are background jobs)
    ```bash
    bundle exec sidekiq
    ```
@@ -792,7 +792,7 @@ CaptainHook.register_handler(
    ```bash
    tail -f log/development.log
    ```
-   Look for handler execution errors or job failures
+   Look for action execution errors or job failures
 
 5. **Check the engine is loading**:
    ```ruby
@@ -823,8 +823,8 @@ CaptainHook.register_handler(
    - Example: `/captain_hook/stripe/abc123` or `/captain_hook/paypal/xyz789`
 2. **CaptainHook receives** → Verifies signature using your custom verifier
 3. **Creates IncomingEvent** → Stores event in database for audit trail
-4. **Finds registered handlers** → Looks up handlers for `provider` + `event_type`
+4. **Finds registered actions** → Looks up actions for `provider` + `event_type`
    - Example: `stripe` + `payment_intent.succeeded`
-5. **Enqueues handler jobs** → Adds jobs to background queue (Sidekiq/Solid Queue)
-6. **Handlers execute** → Your business logic runs in background jobs
-7. **Updates handler status** → Marks as completed or failed, with retry logic
+5. **Enqueues action jobs** → Adds jobs to background queue (Sidekiq/Solid Queue)
+6. **Actions execute** → Your business logic runs in background jobs
+7. **Updates action status** → Marks as completed or failed, with retry logic

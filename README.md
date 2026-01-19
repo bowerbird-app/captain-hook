@@ -7,19 +7,19 @@ A comprehensive Rails engine for receiving and processing webhooks from external
 CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
 
 1. **Provider Setup**: Define providers in YAML files (`captain_hook/providers/*.yml`), use "Discover New" to add new providers or "Full Sync" to update all from YAML
-2. **Handler Registration**: Register handlers in `config/initializers/captain_hook.rb`, handlers are automatically discovered and synced during provider scanning
+2. **Action Registration**: Register actions in `config/initializers/captain_hook.rb`, actions are automatically discovered and synced during provider scanning
 3. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
 4. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
 5. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
-6. **Handler Execution**: Looks up handlers from registry, creates execution records, enqueues jobs
-7. **Background Processing**: `IncomingHandlerJob` executes handlers with retry logic and exponential backoff
+6. **Action Execution**: Looks up actions from registry, creates execution records, enqueues jobs
+7. **Background Processing**: `IncomingActionJob` executes actions with retry logic and exponential backoff
 8. **Observability**: ActiveSupport::Notifications events for monitoring
 
 **Key Architecture Points:**
 - **File-based Discovery**: Providers and verifiers auto-discovered from YAML files in app or gems
-- **In-Memory Registry**: Handlers stored in thread-safe `HandlerRegistry` then synced to database
+- **In-Memory Registry**: Actions stored in thread-safe `ActionRegistry` then synced to database
 - **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
-- **Async by Default**: Handlers run in background jobs with configurable retry delays
+- **Async by Default**: Actions run in background jobs with configurable retry delays
 - **Provider Verifiers**: Each provider has verifier class for signature verification (Stripe, Square, PayPal, etc.)
 
 ## Features
@@ -30,7 +30,7 @@ CaptainHook provides a complete webhook management system with automatic discove
   - Rate limiting per provider
   - Payload size limits
   - Timestamp validation to prevent replay attacks
-  - Handler priority and ordering
+  - Action priority and ordering
   - Automatic retry with exponential backoff
   - Optimistic locking for safe concurrency
 
@@ -44,14 +44,14 @@ CaptainHook provides a complete webhook management system with automatic discove
 - **Admin Interface**
   - View and manage providers
   - View incoming events with filtering
-  - View registered handlers per provider
-  - **Edit and configure handlers** (async/sync, retries, priority)
-  - **Discover New**: Add new providers/handlers without updating existing ones
-  - **Full Sync**: Update all providers/handlers from YAML files
+  - View registered actions per provider
+  - **Edit and configure actions** (async/sync, retries, priority)
+  - **Discover New**: Add new providers/actions without updating existing ones
+  - **Full Sync**: Update all providers/actions from YAML files
   - **Duplicate detection**: Warns when same provider exists in multiple sources
-  - **Soft-delete handlers** to prevent re-addition
+  - **Soft-delete actions** to prevent re-addition
   - Monitor event processing status
-  - Track handler execution
+  - Track action execution
 
 - **Security Features**
   - HMAC signature verification
@@ -233,7 +233,7 @@ Providers are automatically discovered from:
 - Your Rails app: `Rails.root/captain_hook/<provider_name>/<provider_name>.yml`
 - Loaded gems: `<gem_root>/captain_hook/<provider_name>/<provider_name>.yml`
 
-Handlers are automatically loaded from:
+Actions are automatically loaded from:
 - Provider's `actions/` folder: `captain_hook/<provider_name>/actions/*.rb`
 
 The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
@@ -270,7 +270,7 @@ class StripeAccountBVerifier
 end
 ```
 
-Each gets its own webhook URL and can have different handlers.
+Each gets its own webhook URL and can have different actions.
 
 ### 3. Get Your Webhook URL
 
@@ -287,9 +287,9 @@ Share this URL with your provider (e.g., in Stripe's webhook settings). The toke
 
 **Codespaces/Forwarding**: CaptainHook automatically detects GitHub Codespaces URLs or you can set `APP_URL` environment variable to override the base URL.
 
-### 4. Create a Handler
+### 4. Create a Action
 
-Create a handler class in the provider's `actions/` folder:
+Create a action class in the provider's `actions/` folder:
 
 ```ruby
 # captain_hook/stripe/actions/payment_succeeded_handler.rb
@@ -301,14 +301,14 @@ class StripePaymentSucceededHandler
 end
 ```
 
-Handler method signature:
+Action method signature:
 - `event`: The `CaptainHook::IncomingEvent` record
 - `payload`: The parsed JSON payload (Hash)
 - `metadata`: Additional metadata (Hash with `:timestamp`, `:headers`, etc.)
 
-**Note**: Handlers are automatically loaded from the provider's `actions/` folder. You can also place handlers elsewhere and register them manually, but the recommended location is `captain_hook/<provider>/actions/` to keep all webhook-related code organized together.
+**Note**: Actions are automatically loaded from the provider's `actions/` folder. You can also place actions elsewhere and register them manually, but the recommended location is `captain_hook/<provider>/actions/` to keep all webhook-related code organized together.
 
-### 5. Register the Handler
+### 5. Register the Action
 
 In `config/initializers/captain_hook.rb`:
 
@@ -320,30 +320,30 @@ CaptainHook.configure do |config|
   # config.retention_days = 90
 end
 
-# Register handlers - must be inside after_initialize block
+# Register actions - must be inside after_initialize block
 Rails.application.config.after_initialize do
-  # Register handler for specific event type
-  CaptainHook.register_handler(
+  # Register action for specific event type
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentSucceededHandler",
+    action_class: "StripePaymentSucceededHandler",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  # Register handler for multiple event types with wildcard
-  CaptainHook.register_handler(
+  # Register action for multiple event types with wildcard
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountHandler",
     priority: 100,
     async: true
   )
 end
 ```
 
-**Important**: Handler registration must be inside `Rails.application.config.after_initialize` to ensure CaptainHook is fully loaded.
+**Important**: Action registration must be inside `Rails.application.config.after_initialize` to ensure CaptainHook is fully loaded.
 
 ### 6. Test with Sandbox
 
@@ -352,9 +352,9 @@ CaptainHook includes a webhook sandbox at `/captain_hook/admin/sandbox`:
 1. Select a provider
 2. Enter a sample payload (JSON)
 3. Click "Send Test Webhook"
-4. View the results and handler execution logs
+4. View the results and action execution logs
 
-This lets you test your handlers without needing to trigger real events from the provider.
+This lets you test your actions without needing to trigger real events from the provider.
 
 ## Configuration
 
@@ -372,13 +372,13 @@ Each provider can be configured with:
 - **rate_limit_period**: Time period for rate limiting (seconds)
 - **active**: Enable/disable webhook reception
 
-### Handler Registration
+### Action Registration
 
-Handlers can be configured with:
+Actions can be configured with:
 
 - **provider**: Provider name (must match a provider)
 - **event_type**: Event type to handle (e.g., "payment.succeeded")
-- **handler_class**: Class name (as string) that implements the handler
+- **action_class**: Class name (as string) that implements the action
 - **priority**: Execution order (lower numbers run first)
 - **async**: Whether to run in background job (default: true)
 - **max_attempts**: Maximum retry attempts (default: 5)
@@ -469,16 +469,16 @@ Access the admin interface at `/captain_hook/admin`:
 
 - **Providers**: Manage webhook providers, view webhook URLs, configure settings
   - **Scan for Providers**: Discover providers from YAML files and sync to database
-  - **Scan Handlers**: Discover and sync handlers for each provider
+  - **Scan Actions**: Discover and sync actions for each provider
 - **Incoming Events**: View all received webhooks with filtering and search
-- **Handlers**: View, edit, and manage registered handlers per provider
+- **Actions**: View, edit, and manage registered actions per provider
   - Configure async/sync execution mode
   - Set retry attempts and delays
-  - Adjust handler priority
-  - Soft-delete handlers to prevent re-addition
+  - Adjust action priority
+  - Soft-delete actions to prevent re-addition
 - **Sandbox**: Test webhooks without triggering real events from providers
 
-See [Handler Management](docs/HANDLER_MANAGEMENT.md) for detailed documentation on managing handlers.
+See [Action Management](docs/ACTION_MANAGEMENT.md) for detailed documentation on managing actions.
 
 ## Testing Webhooks
 
@@ -488,7 +488,7 @@ See [Handler Management](docs/HANDLER_MANAGEMENT.md) for detailed documentation 
 2. Select your provider from the dropdown
 3. Enter a test payload (JSON format)
 4. Click "Send Test Webhook"
-5. View handler execution results and logs
+5. View action execution results and logs
 
 The sandbox bypasses signature verification for easy testing.
 
@@ -513,12 +513,12 @@ Most providers offer webhook testing tools:
 
 Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for simple testing without signature verification.
 
-## Handler Examples
+## Action Examples
 
-### Basic Handler
+### Basic Action
 
 ```ruby
-# app/handlers/stripe_payment_succeeded_handler.rb
+# app/actions/stripe_payment_succeeded_handler.rb
 class StripePaymentSucceededHandler
   def handle(event:, payload:, metadata:)
     Rails.logger.info "Payment succeeded: #{payload['id']}"
@@ -526,7 +526,7 @@ class StripePaymentSucceededHandler
 end
 ```
 
-### Handler with Error Handling
+### Action with Error Handling
 
 ```ruby
 class StripePaymentSucceededHandler
@@ -546,7 +546,7 @@ class StripePaymentSucceededHandler
 end
 ```
 
-### Handler with Wildcard Event Types
+### Action with Wildcard Event Types
 
 ```ruby
 # Handles multiple related events
@@ -565,10 +565,10 @@ class SquareBankAccountHandler
 end
 
 # Register with wildcard
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "square",
   event_type: "bank_account.*",
-  handler_class: "SquareBankAccountHandler",
+  action_class: "SquareBankAccountHandler",
   async: true
 )
 ```
@@ -581,11 +581,11 @@ CaptainHook.register_handler(
 
 See our comprehensive guide: [**Setting Up Webhooks in Your Gem**](docs/GEM_WEBHOOK_SETUP.md)
 
-This guide shows you how to create provider verifiers, handler classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
+This guide shows you how to create provider verifiers, action classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
 
 ### General Documentation
 
-- **Handler Management**: [docs/HANDLER_MANAGEMENT.md](docs/HANDLER_MANAGEMENT.md) - Managing handlers via admin UI
+- **Action Management**: [docs/ACTION_MANAGEMENT.md](docs/ACTION_MANAGEMENT.md) - Managing actions via admin UI
 - **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](docs/PROVIDER_DISCOVERY.md) - File-based provider configuration
 - **Verifiers Reference**: [docs/VERIFIERS.md](docs/VERIFIERS.md) - Detailed verifier implementation guide
 - **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
@@ -609,7 +609,7 @@ cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:all
 # Individual benchmarks
 cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:signatures
 cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:database
-cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:handlers
+cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:actions
 ```
 
 See [benchmark/README.md](benchmark/README.md) for complete documentation.
