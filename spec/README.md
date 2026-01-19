@@ -18,7 +18,7 @@ spec/
 │   ├── verifiers/                    # Verifier specs (Stripe, Square, etc.)
 │   │   ├── stripe_spec.rb
 │   │   └── square_spec.rb
-│   └── handler_registry_spec.rb     # Action registry specs
+│   └── action_registry_spec.rb     # Action registry specs
 ├── models/                          # Model specs
 │   └── provider_spec.rb            # Provider model specs
 ├── requests/                        # Request specs

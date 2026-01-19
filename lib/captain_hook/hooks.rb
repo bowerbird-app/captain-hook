@@ -34,66 +34,66 @@ module CaptainHook
 
     # Register a before_initialize hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield Block to execute
-    def before_initialize(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:before_initialize, handler, priority: priority, &)
+    def before_initialize(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:before_initialize, callable, priority: priority, &)
     end
 
     # Register an after_initialize hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield Block to execute
-    def after_initialize(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:after_initialize, handler, priority: priority, &)
+    def after_initialize(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:after_initialize, callable, priority: priority, &)
     end
 
     # Register an on_configuration hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield Block to execute
-    def on_configuration(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:on_configuration, handler, priority: priority, &)
+    def on_configuration(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:on_configuration, callable, priority: priority, &)
     end
 
     # Register a before_service hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield [service_class, args] Block receives service class and arguments
-    def before_service(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:before_service, handler, priority: priority, &)
+    def before_service(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:before_service, callable, priority: priority, &)
     end
 
     # Register an after_service hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield [service_class, result] Block receives service class and result
-    def after_service(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:after_service, handler, priority: priority, &)
+    def after_service(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:after_service, callable, priority: priority, &)
     end
 
     # Register an around_service hook
     #
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield [service, block] Block receives service instance and execution block
-    def around_service(handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(:around_service, handler, priority: priority, &)
+    def around_service(callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(:around_service, callable, priority: priority, &)
     end
 
     # Register a custom event hook
     #
     # @param event_name [Symbol] The event name to listen for
-    # @param handler [#call] An object that responds to `call`
+    # @param callable [#call] An object that responds to `call`
     # @param priority [Integer] Hook priority (lower runs first)
     # @yield Block to execute when event fires
-    def on(event_name, handler = nil, priority: DEFAULT_PRIORITY, &)
-      register(event_name, handler, priority: priority, &)
+    def on(event_name, callable = nil, priority: DEFAULT_PRIORITY, &)
+      register(event_name, callable, priority: priority, &)
     end
 
     # Register a model extension
@@ -203,8 +203,8 @@ module CaptainHook
 
     private
 
-    def register(event_name, handler, priority:, &block)
-      callable = handler || block
+    def register(event_name, callable, priority:, &block)
+      callable ||= block
       return unless callable
 
       @mutex.synchronize do
@@ -216,11 +216,11 @@ module CaptainHook
       end
     end
 
-    def execute_hook(handler, *)
-      if handler.respond_to?(:call)
-        handler.call(*)
-      elsif handler.respond_to?(:to_proc)
-        handler.to_proc.call(*)
+    def execute_hook(callable, *)
+      if callable.respond_to?(:call)
+        callable.call(*)
+      elsif callable.respond_to?(:to_proc)
+        callable.to_proc.call(*)
       end
     end
 

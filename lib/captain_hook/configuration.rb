@@ -18,12 +18,6 @@ module CaptainHook
       @providers = {}
     end
 
-    # Deprecated: Backward compatibility for handler_registry
-    def handler_registry
-      warn "[DEPRECATION] `handler_registry` is deprecated. Use `action_registry` instead."
-      @action_registry
-    end
-
     # Register a provider configuration (for backward compatibility)
     # Note: Providers should now be managed via the Provider model in the database
     def register_provider(name, **)

@@ -87,10 +87,10 @@ FactoryBot.define do
     end
   end
 
-  factory :captain_hook_handler, class: "CaptainHook::Handler" do
+  factory :captain_hook_action, class: "CaptainHook::Action" do
     provider { "test_provider" }
     event_type { "test.event" }
-    handler_class { "TestHandler" }
+    action_class { "TestAction" }
     priority { 100 }
     async { true }
     max_attempts { 3 }
@@ -114,9 +114,9 @@ FactoryBot.define do
     end
   end
 
-  factory :captain_hook_incoming_event_handler, class: "CaptainHook::IncomingEventHandler" do
+  factory :captain_hook_incoming_event_action, class: "CaptainHook::IncomingEventAction" do
     association :incoming_event, factory: :captain_hook_incoming_event
-    handler_class { "TestHandler" }
+    action_class { "TestAction" }
     status { :pending }
     priority { 100 }
     attempt_count { 0 }

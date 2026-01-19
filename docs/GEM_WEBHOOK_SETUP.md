@@ -63,7 +63,7 @@ If your Rails app or another gem already has a provider for your service (e.g., 
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.created",
-  action_class: "MyApp::PaymentHandler"
+  action_class: "MyApp::PaymentAction"
 )
 ```
 
@@ -73,7 +73,7 @@ CaptainHook.register_action(
 CaptainHook.register_action(
   provider: "stripe",  # Same provider name
   event_type: "invoice.paid",
-  action_class: "MyGem::InvoiceHandler"
+  action_class: "MyGem::InvoiceAction"
 )
 ```
 
@@ -111,9 +111,9 @@ your_gem/
 │   └── jobs/                          # Event processing actions (REQUIRED)
 │       └── your_gem/
 │           └── webhooks/
-│               ├── event_one_handler.rb        # e.g., payment_succeeded_handler.rb
-│               ├── event_two_handler.rb        # e.g., refund_processed_handler.rb
-│               └── event_three_handler.rb      # e.g., subscription_updated_handler.rb
+│               ├── event_one_action.rb        # e.g., payment_succeeded_action.rb
+│               ├── event_two_action.rb        # e.g., refund_processed_action.rb
+│               └── event_three_action.rb      # e.g., subscription_updated_action.rb
 ├── captain_hook/                      # Provider configuration (REQUIRED)
 │   └── providers/
 │       └── your_provider/             # Provider-specific directory
@@ -131,7 +131,7 @@ your_gem/
 
 - **Verifier (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::VerifierHelpers` for security methods like HMAC generation and constant-time comparison.
 
-- **Actions (`*_handler.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
+- **Actions (`*_action.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
 
 - **Engine (`engine.rb`)**: Registers your actions with CaptainHook when your gem loads. This tells CaptainHook which Ruby classes should process which event types.
 
@@ -278,11 +278,11 @@ Create action classes for each event type you want to process. Actions are plain
 
 ### Example Action Structure
 
-Create `app/jobs/your_gem/webhooks/[event_name]_handler.rb`:
+Create `app/jobs/your_gem/webhooks/[event_name]_action.rb`:
 
 **Example: Stripe Payment Intent Succeeded**
 
-Create `app/jobs/your_gem/webhooks/payment_intent_succeeded_handler.rb`:
+Create `app/jobs/your_gem/webhooks/payment_intent_succeeded_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
@@ -292,7 +292,7 @@ module YourGem
     # Action for Stripe payment_intent.succeeded events
     # Actions are plain Ruby classes with a `handle` method
     # CaptainHook manages job queuing, retries, and execution
-    class PaymentIntentSucceededHandler
+    class PaymentIntentSucceededAction
       # Required method signature: handle(event:, payload:, metadata:)
       # @param event [CaptainHook::IncomingEvent] The stored webhook event
       # @param payload [Hash] The parsed webhook payload
@@ -326,7 +326,7 @@ end
 
 **Example: Stripe Charge Succeeded**
 
-Create `app/jobs/your_gem/webhooks/charge_succeeded_handler.rb`:
+Create `app/jobs/your_gem/webhooks/charge_succeeded_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
@@ -334,7 +334,7 @@ Create `app/jobs/your_gem/webhooks/charge_succeeded_handler.rb`:
 module YourGem
   module Webhooks
     # Action for Stripe charge.succeeded events
-    class ChargeSucceededHandler
+    class ChargeSucceededAction
       def handle(event:, payload:, metadata:)
         charge_id = payload.dig("data", "object", "id")
         amount = payload.dig("data", "object", "amount")
@@ -351,7 +351,7 @@ end
 
 **Example: Stripe Customer Created**
 
-Create `app/jobs/your_gem/webhooks/customer_created_handler.rb`:
+Create `app/jobs/your_gem/webhooks/customer_created_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
@@ -359,7 +359,7 @@ Create `app/jobs/your_gem/webhooks/customer_created_handler.rb`:
 module YourGem
   module Webhooks
     # Action for Stripe customer.created events
-    class CustomerCreatedHandler
+    class CustomerCreatedAction
       def handle(event:, payload:, metadata:)
         customer_id = payload.dig("data", "object", "id")
         email = payload.dig("data", "object", "email")
@@ -435,33 +435,33 @@ module YourGem
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "payment_intent.succeeded",
-          action_class: "YourGem::Webhooks::PaymentIntentSucceededHandler"
+          action_class: "YourGem::Webhooks::PaymentIntentSucceededAction"
         )
 
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "charge.succeeded",
-          action_class: "YourGem::Webhooks::ChargeSucceededHandler"
+          action_class: "YourGem::Webhooks::ChargeSucceededAction"
         )
 
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "customer.created",
-          action_class: "YourGem::Webhooks::CustomerCreatedHandler"
+          action_class: "YourGem::Webhooks::CustomerCreatedAction"
         )
 
         # Example: PayPal actions (if you're also integrating PayPal)
         # CaptainHook.register_action(
         #   provider: "paypal",
         #   event_type: "PAYMENT.SALE.COMPLETED",
-        #   action_class: "YourGem::Webhooks::PaypalPaymentCompletedHandler"
+        #   action_class: "YourGem::Webhooks::PaypalPaymentCompletedAction"
         # )
 
         # Example: Square actions (if you're also integrating Square)
         # CaptainHook.register_action(
         #   provider: "square",
         #   event_type: "payment.created",
-        #   action_class: "YourGem::Webhooks::SquarePaymentCreatedHandler"
+        #   action_class: "YourGem::Webhooks::SquarePaymentCreatedAction"
         # )
 
         Rails.logger.info "YourGem: Registered webhook actions"
@@ -487,11 +487,11 @@ After adding this code and restarting your server, verify actions are registered
 ```ruby
 # Rails console - Check specific action
 CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event.type")
-# Should return: ["YourGem::Webhooks::YourHandlerClass"]
+# Should return: ["YourGem::Webhooks::YourActionClass"]
 
 # Example for Stripe:
 CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-# Should return: ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
+# Should return: ["YourGem::Webhooks::PaymentIntentSucceededAction"]
 
 # Check all registered actions across all providers
 CaptainHook.action_registry.all_actions
@@ -695,11 +695,11 @@ Most providers offer a test/sandbox mode where you can trigger real events:
 ```ruby
 # Rails console
 CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event")
-# => ["YourGem::Webhooks::YourHandler"]
+# => ["YourGem::Webhooks::YourAction"]
 
 # Example for Stripe:
 CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-# => ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
+# => ["YourGem::Webhooks::PaymentIntentSucceededAction"]
 ```
 
 ### Check provider is created:
@@ -735,10 +735,10 @@ To handle additional events from your provider:
 For handling `invoice.payment_succeeded`:
 
 ```ruby
-# app/jobs/your_gem/webhooks/invoice_payment_succeeded_handler.rb
+# app/jobs/your_gem/webhooks/invoice_payment_succeeded_action.rb
 module YourGem
   module Webhooks
-    class InvoicePaymentSucceededHandler
+    class InvoicePaymentSucceededAction
       def handle(event:, payload:, metadata:)
         invoice_id = payload.dig("data", "object", "id")
         # Your logic here
@@ -754,7 +754,7 @@ Register in engine.rb:
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "invoice.payment_succeeded",
-  action_class: "YourGem::Webhooks::InvoicePaymentSucceededHandler"
+  action_class: "YourGem::Webhooks::InvoicePaymentSucceededAction"
 )
 ```
 
@@ -768,7 +768,7 @@ CaptainHook.register_action(
    ```ruby
    # Rails console
    CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-   # Should return: ["YourGem::Webhooks::PaymentIntentSucceededHandler"]
+   # Should return: ["YourGem::Webhooks::PaymentIntentSucceededAction"]
    ```
    
    If this returns an empty array, your actions aren't registered! Check:

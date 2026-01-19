@@ -4,29 +4,29 @@ require "rails_helper"
 
 RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
   # Test scenario: Third-party gem with webhook + Rails app with same webhook (same signing secret)
-  # Note: These tests need refactoring to match the actual handler interface
+  # Note: These tests need refactoring to match the actual action interface
   xdescribe "Third-party gem and Rails app sharing same webhook provider" do
     let(:shared_secret) { "whsec_shared_secret_#{SecureRandom.hex(16)}" }
     let(:provider) { create(:captain_hook_provider, :stripe, signing_secret: shared_secret) }
 
-    # Simulate a handler from a third-party gem
+    # Simulate an action from a third-party gem
     class GemWebhookHandler
       def self.handle(event:, payload:, metadata:)
         Rails.logger.info "GemWebhookHandler executed for event #{event.external_id}"
-        event.update(metadata: event.metadata.merge(gem_handler_executed: true))
+        event.update(metadata: event.metadata.merge(gem_action_executed: true))
       end
     end
 
-    # Simulate a handler from the Rails app
+    # Simulate an action from the Rails app
     class AppWebhookHandler
       def self.handle(event:, payload:, metadata:)
         Rails.logger.info "AppWebhookHandler executed for event #{event.external_id}"
-        event.update(metadata: event.metadata.merge(app_handler_executed: true))
+        event.update(metadata: event.metadata.merge(app_action_executed: true))
       end
     end
 
     before do
-      # Register both handlers for the same event type
+      # Register both actions for the same event type
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "payment_intent.succeeded",
@@ -44,7 +44,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       )
     end
 
-    it "executes both gem and app handlers for the same webhook" do
+    it "executes both gem and app actions for the same webhook" do
       payload = {
         id: "evt_shared_123",
         type: "payment_intent.succeeded",
@@ -67,10 +67,10 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
       event = CaptainHook::IncomingEvent.find_by(external_id: "evt_shared_123")
       expect(event).to be_present
-      expect(event.metadata["gem_handler_executed"]).to be true
-      expect(event.metadata["app_handler_executed"]).to be true
+      expect(event.metadata["gem_action_executed"]).to be true
+      expect(event.metadata["app_action_executed"]).to be true
 
-      # Verify both handlers were created
+      # Verify both actions were created
       expect(event.incoming_event_actions.count).to eq(2)
       expect(event.incoming_event_actions.pluck(:action_class)).to contain_exactly(
         "GemWebhookHandler",
@@ -78,17 +78,17 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       )
     end
 
-    it "executes handlers in priority order" do
+    it "executes actions in priority order" do
       execution_order = []
 
       allow(GemWebhookHandler).to receive(:handle) do |**args|
         execution_order << "GemWebhookHandler"
-        args[:event].update(metadata: args[:event].metadata.merge(gem_handler_executed: true))
+        args[:event].update(metadata: args[:event].metadata.merge(gem_action_executed: true))
       end
 
       allow(AppWebhookHandler).to receive(:handle) do |**args|
         execution_order << "AppWebhookHandler"
-        args[:event].update(metadata: args[:event].metadata.merge(app_handler_executed: true))
+        args[:event].update(metadata: args[:event].metadata.merge(app_action_executed: true))
       end
 
       payload = {
@@ -133,7 +133,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     end
 
     before do
-      # Register gem handler for gem provider
+      # Register gem action for gem provider
       CaptainHook.register_action(
         provider: gem_provider.name,
         event_type: "payment_intent.succeeded",
@@ -141,7 +141,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
         async: false
       )
 
-      # Register app handler for app provider
+      # Register app action for app provider
       CaptainHook.register_action(
         provider: app_provider.name,
         event_type: "payment_intent.succeeded",
@@ -150,7 +150,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       )
     end
 
-    it "routes webhooks to correct handlers based on provider" do
+    it "routes webhooks to correct actions based on provider" do
       # Gem webhook
       gem_payload = {
         id: "evt_gem_123",
@@ -247,8 +247,8 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     end
   end
 
-  # Test scenario: Handler execution successes and failures
-  xdescribe "Handler execution outcomes" do
+  # Test scenario: Action execution successes and failures
+  xdescribe "Action execution outcomes" do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
     class SuccessfulHandler
@@ -283,7 +283,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       )
     end
 
-    it "marks handler as completed on success" do
+    it "marks action as completed on success" do
       payload = {
         id: "evt_success_123",
         type: "payment_intent.succeeded",
@@ -304,14 +304,14 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       expect(response).to have_http_status(:created)
 
       event = CaptainHook::IncomingEvent.find_by(external_id: "evt_success_123")
-      handler_execution = event.incoming_event_actions.first
+      action_execution = event.incoming_event_actions.first
 
-      expect(handler_execution.status).to eq("completed")
-      expect(handler_execution.completed_at).to be_present
-      expect(handler_execution.error_message).to be_nil
+      expect(action_execution.status).to eq("completed")
+      expect(action_execution.completed_at).to be_present
+      expect(action_execution.error_message).to be_nil
     end
 
-    it "marks handler as failed after errors" do
+    it "marks action as failed after errors" do
       payload = {
         id: "evt_failure_456",
         type: "payment_intent.failed",
@@ -332,16 +332,16 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       expect(response).to have_http_status(:created)
 
       event = CaptainHook::IncomingEvent.find_by(external_id: "evt_failure_456")
-      handler_execution = event.incoming_event_actions.first
+      action_execution = event.incoming_event_actions.first
 
-      expect(handler_execution.status).to eq("failed")
-      expect(handler_execution.failed_at).to be_present
-      expect(handler_execution.error_message).to include("Simulated handler failure")
+      expect(action_execution.status).to eq("failed")
+      expect(action_execution.failed_at).to be_present
+      expect(action_execution.error_message).to include("Simulated handler failure")
     end
   end
 
-  # Test scenario: Async vs Sync handler execution
-  xdescribe "Async and Sync handler execution" do
+  # Test scenario: Async vs Sync action execution
+  xdescribe "Async and Sync action execution" do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
     class AsyncTestHandler
@@ -358,7 +358,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       end
     end
 
-    it "enqueues async handlers as background jobs" do
+    it "enqueues async actions as background jobs" do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "async.test",
@@ -388,7 +388,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       expect(response).to have_http_status(:created)
     end
 
-    it "executes sync handlers immediately" do
+    it "executes sync actions immediately" do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "sync.test",
@@ -418,8 +418,8 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       event = CaptainHook::IncomingEvent.find_by(external_id: "evt_sync_456")
       expect(event.metadata["sync_executed"]).to be true
 
-      handler_execution = event.incoming_event_actions.first
-      expect(handler_execution.status).to eq("completed")
+      action_execution = event.incoming_event_actions.first
+      expect(action_execution.status).to eq("completed")
     end
   end
 

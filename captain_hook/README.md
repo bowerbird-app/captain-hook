@@ -12,8 +12,8 @@ captain_hook/
 │   ├── stripe.yml           # Provider configuration
 │   ├── stripe.rb            # (Optional) Custom verifier if not built-in
 │   └── actions/             # Action files for this provider
-│       ├── payment_intent_succeeded_handler.rb
-│       └── charge_refunded_handler.rb
+│       ├── payment_intent_succeeded_action.rb
+│       └── charge_refunded_action.rb
 ├── paypal/
 │   ├── paypal.yml
 │   └── actions/
@@ -58,7 +58,7 @@ captain_hook/
     ├── custom_provider.yml       # Configuration with verifier_file: custom_provider.rb
     ├── custom_provider.rb        # Your custom verifier logic
     └── actions/                  # Your actions
-        └── event_handler.rb
+        └── event_action.rb
 ```
 
 ## ⚠️ Important: Check Before Creating
@@ -102,9 +102,9 @@ To use a provider in your Rails application:
 
 4. **Add your actions** to the `actions/` folder:
    ```ruby
-   # captain_hook/stripe/actions/payment_intent_succeeded_handler.rb
+   # captain_hook/stripe/actions/payment_intent_succeeded_action.rb
    module Stripe
-     class PaymentIntentSucceededHandler
+     class PaymentIntentSucceededAction
        def self.call(event)
          # Process payment.intent.succeeded event
        end
@@ -119,7 +119,7 @@ To use a provider in your Rails application:
      config.action_registry.register(
        provider: "stripe",
        event_type: "payment_intent.succeeded",
-       action_class: Stripe::PaymentIntentSucceededHandler
+       action_class: Stripe::PaymentIntentSucceededAction
      )
    end
    ```
@@ -140,7 +140,7 @@ If you're building a gem that integrates with a webhook provider:
    └── stripe/
        ├── stripe.yml              # Provider config
        └── actions/                # Your actions
-           └── subscription_updated_handler.rb
+           └── subscription_updated_action.rb
    ```
 
 3. **For custom providers** - Ship both the YAML and verifier file if CaptainHook doesn't have a built-in verifier

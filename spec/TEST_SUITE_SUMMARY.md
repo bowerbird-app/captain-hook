@@ -53,7 +53,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 
 ### 6. Library Specs (`spec/lib/captain_hook/`)
 
-- **`handler_registry_spec.rb`**: Action registry tests
+- **`action_registry_spec.rb`**: Action registry tests
   - Action registration
   - Action lookup by provider and event type
   - Wildcard event type matching
@@ -144,7 +144,7 @@ bundle exec rspec spec/lib/captain_hook/verifiers/webhook_site_spec.rb
 bundle exec rspec spec/models/provider_spec.rb
 
 # Registry specs
-bundle exec rspec spec/lib/captain_hook/handler_registry_spec.rb
+bundle exec rspec spec/lib/captain_hook/action_registry_spec.rb
 ```
 
 ### With Rake
