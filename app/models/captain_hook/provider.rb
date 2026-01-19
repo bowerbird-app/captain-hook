@@ -12,8 +12,11 @@ module CaptainHook
 
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
-    has_many :handlers, primary_key: :name, foreign_key: :provider, class_name: "CaptainHook::Handler",
+    has_many :actions, primary_key: :name, foreign_key: :provider, class_name: "CaptainHook::Action",
                         dependent: :destroy
+
+    # Deprecated: Backward compatibility alias
+    has_many :handlers, class_name: "CaptainHook::Action", foreign_key: :provider, primary_key: :name
 
     # Validations
     validates :name, presence: true, uniqueness: true,

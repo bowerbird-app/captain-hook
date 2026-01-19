@@ -187,16 +187,16 @@ module CaptainHook
       headers
     end
 
-    # Create handler records for all registered handlers
+    # Create action records for all registered actions
     def create_handlers_for_event(event)
-      handler_configs = CaptainHook::Services::HandlerLookup.handlers_for(
+      action_configs = CaptainHook::Services::ActionLookup.actions_for(
         provider: event.provider,
         event_type: event.event_type
       )
 
-      handler_configs.each do |config|
-        handler = event.incoming_event_handlers.create!(
-          handler_class: config.handler_class.to_s,
+      action_configs.each do |config|
+        action = event.incoming_event_actions.create!(
+          action_class: config.action_class.to_s,
           status: :pending,
           priority: config.priority,
           attempt_count: 0
@@ -204,10 +204,10 @@ module CaptainHook
 
         # Enqueue job if async
         if config.async
-          CaptainHook::IncomingHandlerJob.perform_later(handler.id)
+          CaptainHook::IncomingActionJob.perform_later(action.id)
         else
           # Execute synchronously
-          CaptainHook::IncomingHandlerJob.new.perform(handler.id)
+          CaptainHook::IncomingActionJob.new.perform(action.id)
         end
       end
     end

@@ -9,9 +9,9 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><%= @provider.display_name || @provider.name.titleize %></h1>
     <div>
-      <%= button_to "Scan Handlers", scan_handlers_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered handlers in your application code. Continue?" } %>
+      <%= button_to "Scan Actions", scan_actions_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered actions in your application code. Continue?" } %>
       <%= link_to "Edit", edit_admin_provider_path(@provider), class: "btn btn-secondary" %>
-      <%= link_to "View Handlers", admin_provider_handlers_path(@provider), class: "btn btn-info" %>
+      <%= link_to "View Actions", admin_provider_actions_path(@provider), class: "btn btn-info" %>
     </div>
   </div>
 
@@ -132,7 +132,7 @@
               <tr>
                 <th>Event Type</th>
                 <th>Status</th>
-                <th>Handlers</th>
+                <th>Actions</th>
                 <th>Received</th>
                 <th>Actions</th>
               </tr>
@@ -146,7 +146,7 @@
                       <%= event.status&.titleize || 'N/A' %>
                     </span>
                   </td>
-                  <td><%= event.incoming_event_handlers.count %></td>
+                  <td><%= event.incoming_event_actions.count %></td>
                   <td><%= time_ago_in_words(event.created_at) %> ago</td>
                   <td>
                     <%= link_to "View", [:admin, event], class: "btn btn-sm btn-outline-primary" %>

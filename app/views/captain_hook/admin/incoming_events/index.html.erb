@@ -45,7 +45,7 @@
                 <th>Event Type</th>
                 <th>External ID</th>
                 <th>Status</th>
-                <th>Handlers</th>
+                <th>Actions</th>
                 <th>Received At</th>
                 <th>Actions</th>
               </tr>
@@ -61,7 +61,7 @@
                       <%= event.status&.titleize || 'N/A' %>
                     </span>
                   </td>
-                  <td><%= event.incoming_event_handlers.count %></td>
+                  <td><%= event.incoming_event_actions.count %></td>
                   <td><%= time_ago_in_words(event.created_at) %> ago</td>
                   <td>
                     <%= link_to "View", captain_hook.admin_incoming_event_path(event), class: "btn btn-sm btn-outline-primary" %>

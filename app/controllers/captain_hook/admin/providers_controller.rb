@@ -4,7 +4,7 @@ module CaptainHook
   module Admin
     # Admin controller for managing webhook providers
     class ProvidersController < BaseController
-      before_action :set_provider, only: %i[show edit update destroy scan_handlers]
+      before_action :set_provider, only: %i[show edit update destroy scan_actions]
 
       # GET /captain_hook/admin/providers
       def index
@@ -66,35 +66,35 @@ module CaptainHook
         perform_scan(update_existing: false, scan_type: "Discovery")
       end
 
-      # POST /captain_hook/admin/providers/:id/scan_handlers
-      def scan_handlers
-        # Discover handlers from HandlerRegistry for this provider
-        handler_definitions = CaptainHook::Services::HandlerDiscovery.for_provider(@provider.name)
+      # POST /captain_hook/admin/providers/:id/scan_actions
+      def scan_actions
+        # Discover actions from ActionRegistry for this provider
+        action_definitions = CaptainHook::Services::ActionDiscovery.for_provider(@provider.name)
 
-        if handler_definitions.empty?
+        if action_definitions.empty?
           redirect_to [:admin, @provider],
-                      alert: "No handlers registered for this provider. Register handlers in your application code."
+                      alert: "No actions registered for this provider. Register actions in your application code."
           return
         end
 
-        # Sync handlers to database
-        sync = CaptainHook::Services::HandlerSync.new(handler_definitions)
+        # Sync actions to database
+        sync = CaptainHook::Services::ActionSync.new(action_definitions)
         results = sync.call
 
         messages = []
-        messages << "Created #{results[:created].size} handler(s)" if results[:created].any?
-        messages << "Updated #{results[:updated].size} handler(s)" if results[:updated].any?
-        messages << "Skipped #{results[:skipped].size} deleted handler(s)" if results[:skipped].any?
+        messages << "Created #{results[:created].size} action(s)" if results[:created].any?
+        messages << "Updated #{results[:updated].size} action(s)" if results[:updated].any?
+        messages << "Skipped #{results[:skipped].size} deleted action(s)" if results[:skipped].any?
 
         all_errors = results[:errors]
 
         if all_errors.any?
-          error_details = all_errors.map { |e| "#{e[:handler]}: #{e[:error]}" }.join("; ")
-          redirect_to [:admin, @provider], alert: "Handler sync completed with errors: #{error_details}"
+          error_details = all_errors.map { |e| "#{e[:action]}: #{e[:error]}" }.join("; ")
+          redirect_to [:admin, @provider], alert: "Action sync completed with errors: #{error_details}"
         elsif messages.any?
-          redirect_to [:admin, @provider], notice: "Handler sync completed! #{messages.join(', ')}"
+          redirect_to [:admin, @provider], notice: "Action sync completed! #{messages.join(', ')}"
         else
-          redirect_to [:admin, @provider], notice: "All handlers are up to date."
+          redirect_to [:admin, @provider], notice: "All actions are up to date."
         end
       end
 
@@ -128,23 +128,23 @@ module CaptainHook
           end
         end
 
-        # Also scan and sync handlers
-        handler_discovery = CaptainHook::Services::HandlerDiscovery.new
-        handler_definitions = handler_discovery.call
+        # Also scan and sync actions
+        action_discovery = CaptainHook::Services::ActionDiscovery.new
+        action_definitions = action_discovery.call
 
-        handler_sync = CaptainHook::Services::HandlerSync.new(handler_definitions, update_existing: update_existing)
-        handler_results = handler_sync.call
+        action_sync = CaptainHook::Services::ActionSync.new(action_definitions, update_existing: update_existing)
+        action_results = action_sync.call
 
-        # Update warnings with handler counts now that handlers are synced
+        # Update warnings with action counts now that actions are synced
         if results[:warnings]&.any?
           results[:warnings].each do |warning|
             provider = CaptainHook::Provider.find_by(name: warning[:name])
-            handler_count = provider&.handlers&.count || 0
-            next unless handler_count > 0
+            action_count = provider&.actions&.count || 0
+            next unless action_count > 0
 
             warning[:message] =
               warning[:message].sub(". If using",
-                                    ". Note: #{handler_count} handler(s) are now registered to the '#{warning[:name]}' provider. If using")
+                                    ". Note: #{action_count} action(s) are now registered to the '#{warning[:name]}' provider. If using")
           end
         end
 
@@ -153,11 +153,11 @@ module CaptainHook
         messages << "Created #{results[:created].size} provider(s)" if results[:created].any?
         messages << "Updated #{results[:updated].size} provider(s)" if results[:updated].any?
         messages << "Skipped #{results[:skipped].size} provider(s)" if results[:skipped].any?
-        messages << "Created #{handler_results[:created].size} handler(s)" if handler_results[:created].any?
-        messages << "Updated #{handler_results[:updated].size} handler(s)" if handler_results[:updated].any?
-        messages << "Skipped #{handler_results[:skipped].size} handler(s)" if handler_results[:skipped].any?
+        messages << "Created #{action_results[:created].size} action(s)" if action_results[:created].any?
+        messages << "Updated #{action_results[:updated].size} action(s)" if action_results[:updated].any?
+        messages << "Skipped #{action_results[:skipped].size} action(s)" if action_results[:skipped].any?
 
-        all_errors = results[:errors] + handler_results[:errors].map { |e| { name: e[:handler], error: e[:error] } }
+        all_errors = results[:errors] + action_results[:errors].map { |e| { name: e[:action], error: e[:error] } }
 
         if all_errors.any?
           error_details = all_errors.map { |e| "#{e[:name]}: #{e[:error]}" }.join("; ")
@@ -175,7 +175,7 @@ module CaptainHook
             warning_messages = results[:warnings].map { |w| "⚠️ #{w[:message]}" }.join("\n\n")
             flash[:warning] = warning_messages
           end
-          redirect_to admin_providers_url, notice: "Scan completed. All providers and handlers are up to date."
+          redirect_to admin_providers_url, notice: "Scan completed. All providers and actions are up to date."
         end
       end
 

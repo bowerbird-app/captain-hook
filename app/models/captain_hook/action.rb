@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  # Represents a webhook handler configuration persisted to the database
-  # Handlers are discovered from HandlerRegistry and synced to the database
-  class Handler < ApplicationRecord
-    self.table_name = "captain_hook_handlers"
+  # Represents a webhook action configuration persisted to the database
+  # Actions are discovered from ActionRegistry and synced to the database
+  class Action < ApplicationRecord
+    self.table_name = "captain_hook_actions"
 
     # Validations
     validates :provider, presence: true
     validates :event_type, presence: true
-    validates :handler_class, presence: true
+    validates :action_class, presence: true
     validates :priority, presence: true, numericality: { only_integer: true }
     validates :max_attempts, presence: true, numericality: { only_integer: true, greater_than: 0 }
     validates :retry_delays, presence: true
@@ -20,7 +20,7 @@ module CaptainHook
     # Scopes
     scope :active, -> { where(deleted_at: nil) }
     scope :deleted, -> { where.not(deleted_at: nil) }
-    scope :by_priority, -> { order(priority: :asc, handler_class: :asc) }
+    scope :by_priority, -> { order(priority: :asc, action_class: :asc) }
     scope :for_provider, ->(provider) { where(provider: provider) }
     scope :for_event_type, ->(event_type) { where(event_type: event_type) }
 
@@ -34,7 +34,7 @@ module CaptainHook
       update!(deleted_at: nil)
     end
 
-    # Check if handler is deleted
+    # Check if action is deleted
     def deleted?
       deleted_at.present?
     end

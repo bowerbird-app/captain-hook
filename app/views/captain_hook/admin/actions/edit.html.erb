@@ -3,21 +3,21 @@
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
       <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
-      <li class="breadcrumb-item"><%= link_to "Handlers", admin_provider_handlers_path(@provider) %></li>
+      <li class="breadcrumb-item"><%= link_to "Actions", admin_provider_actions_path(@provider) %></li>
       <li class="breadcrumb-item active" aria-current="page">Edit</li>
     </ol>
   </nav>
 
-  <h1 class="mb-4">Edit Handler</h1>
+  <h1 class="mb-4">Edit Action</h1>
 
   <div class="card">
     <div class="card-body">
-      <%= form_with(model: @handler, url: admin_provider_handler_path(@provider, @handler), method: :patch, local: true) do |f| %>
-        <% if @handler.errors.any? %>
+      <%= form_with(model: @action, url: admin_provider_action_path(@provider, @action), method: :patch, local: true) do |f| %>
+        <% if @action.errors.any? %>
           <div class="alert alert-danger">
-            <h5><%= pluralize(@handler.errors.count, "error") %> prohibited this handler from being saved:</h5>
+            <h5><%= pluralize(@action.errors.count, "error") %> prohibited this action from being saved:</h5>
             <ul class="mb-0">
-              <% @handler.errors.each do |error| %>
+              <% @action.errors.each do |error| %>
                 <li><%= error.full_message %></li>
               <% end %>
             </ul>
@@ -32,16 +32,16 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label">Handler Class</label>
-          <input type="text" class="form-control" value="<%= @handler.handler_class %>" disabled>
-          <small class="text-muted">Handler class cannot be changed</small>
+          <label class="form-label">Action Class</label>
+          <input type="text" class="form-control" value="<%= @action.action_class %>" disabled>
+          <small class="text-muted">Action class cannot be changed</small>
         </div>
 
         <!-- Event Type -->
         <div class="mb-3">
           <%= f.label :event_type, class: "form-label" %>
           <%= f.text_field :event_type, class: "form-control" %>
-          <small class="text-muted">The webhook event type this handler processes (e.g., "payment.succeeded")</small>
+          <small class="text-muted">The webhook event type this action processes (e.g., "payment.succeeded")</small>
         </div>
 
         <!-- Async/Sync Toggle -->
@@ -56,8 +56,8 @@
             <%= f.label :async, "Sync (Run immediately in request)", for: "async_false", class: "form-check-label" %>
           </div>
           <small class="text-muted">
-            <strong>Async:</strong> Handler runs in a background job (recommended for most cases)<br>
-            <strong>Sync:</strong> Handler runs immediately in the webhook request (only for fast handlers)
+            <strong>Async:</strong> Action runs in a background job (recommended for most cases)<br>
+            <strong>Sync:</strong> Action runs immediately in the webhook request (only for fast actions)
           </small>
         </div>
 
@@ -80,7 +80,7 @@
           <%= f.label :retry_delays, "Retry Delays (seconds)", class: "form-label" %>
           <%= f.text_field :retry_delays, 
                            class: "form-control", 
-                           value: @handler.retry_delays.join(", "),
+                           value: @action.retry_delays.join(", "),
                            placeholder: "30, 60, 300, 900, 3600" %>
           <small class="text-muted">
             Comma-separated list of delay times in seconds between retries.<br>
@@ -89,8 +89,8 @@
         </div>
 
         <div class="d-flex justify-content-between">
-          <%= f.submit "Update Handler", class: "btn btn-primary" %>
-          <%= link_to "Cancel", admin_provider_handlers_path(@provider), class: "btn btn-secondary" %>
+          <%= f.submit "Update Action", class: "btn btn-primary" %>
+          <%= link_to "Cancel", admin_provider_actions_path(@provider), class: "btn btn-secondary" %>
         </div>
       <% end %>
     </div>
@@ -102,16 +102,16 @@
       <h5 class="mb-0">Danger Zone</h5>
     </div>
     <div class="card-body">
-      <h6>Delete Handler</h6>
+      <h6>Delete Action</h6>
       <p class="text-muted mb-3">
-        Soft-deleting this handler will prevent it from being re-added during future scans.
-        The handler will remain in the database but marked as deleted.
+        Soft-deleting this action will prevent it from being re-added during future scans.
+        The action will remain in the database but marked as deleted.
       </p>
-      <%= button_to "Delete Handler", 
-                    admin_provider_handler_path(@provider, @handler), 
+      <%= button_to "Delete Action", 
+                    admin_provider_action_path(@provider, @action), 
                     method: :delete, 
                     class: "btn btn-danger", 
-                    data: { confirm: "Are you sure you want to delete this handler? It will be skipped during future scans." } %>
+                    data: { confirm: "Are you sure you want to delete this action? It will be skipped during future scans." } %>
     </div>
   </div>
 </div>
@@ -120,7 +120,7 @@
 // Parse retry_delays before form submission
 document.addEventListener('DOMContentLoaded', function() {
   const form = document.querySelector('form');
-  const retryDelaysInput = document.querySelector('#handler_retry_delays');
+  const retryDelaysInput = document.querySelector('#action_retry_delays');
   
   form.addEventListener('submit', function(e) {
     // Convert comma-separated string to JSON array
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create a hidden field with JSON array
     const hiddenField = document.createElement('input');
     hiddenField.type = 'hidden';
-    hiddenField.name = 'handler[retry_delays]';
+    hiddenField.name = 'action[retry_delays]';
     hiddenField.value = JSON.stringify(delaysArray);
     
     form.appendChild(hiddenField);

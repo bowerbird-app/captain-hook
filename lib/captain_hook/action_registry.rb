@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  # Registry for incoming webhook handlers
-  # Manages handler registrations with priority and retry configuration
-  class HandlerRegistry
-    HandlerConfig = Struct.new(
+  # Registry for incoming webhook actions
+  # Manages action registrations with priority and retry configuration
+  class ActionRegistry
+    ActionConfig = Struct.new(
       :provider,
       :event_type,
-      :handler_class,
+      :action_class,
       :async,
       :retry_delays,
       :max_attempts,
@@ -33,37 +33,37 @@ module CaptainHook
       @mutex = Mutex.new
     end
 
-    # Register a handler for a provider and event type
-    def register(provider:, event_type:, handler_class:, **options)
+    # Register an action for a provider and event type
+    def register(provider:, event_type:, action_class:, **options)
       @mutex.synchronize do
         key = registry_key(provider, event_type)
         @registry[key] ||= []
 
-        config = HandlerConfig.new(
+        config = ActionConfig.new(
           provider: provider,
           event_type: event_type,
-          handler_class: handler_class,
+          action_class: action_class,
           **options
         )
 
         @registry[key] << config
 
-        # Sort by priority (lower number = higher priority), then by handler class name for determinism
-        @registry[key].sort_by! { |h| [h.priority, h.handler_class.to_s] }
+        # Sort by priority (lower number = higher priority), then by action class name for determinism
+        @registry[key].sort_by! { |h| [h.priority, h.action_class.to_s] }
       end
     end
 
-    # Get all handlers for a provider and event type
-    def handlers_for(provider:, event_type:)
+    # Get all actions for a provider and event type
+    def actions_for(provider:, event_type:)
       @mutex.synchronize do
         key = registry_key(provider, event_type)
         @registry[key] || []
       end
     end
 
-    # Check if any handlers are registered for a provider and event type
-    def handlers_registered?(provider:, event_type:)
-      handlers_for(provider: provider, event_type: event_type).any?
+    # Check if any actions are registered for a provider and event type
+    def actions_registered?(provider:, event_type:)
+      actions_for(provider: provider, event_type: event_type).any?
     end
 
     # Get all registered providers
@@ -73,15 +73,15 @@ module CaptainHook
       end
     end
 
-    # Get all registered handlers across all providers
-    def all_handlers
+    # Get all registered actions across all providers
+    def all_actions
       @mutex.synchronize do
         @registry.values.flatten
       end
     end
 
-    # Get all handlers for a specific provider (all event types)
-    def handlers_for_provider(provider)
+    # Get all actions for a specific provider (all event types)
+    def actions_for_provider(provider)
       @mutex.synchronize do
         @registry.select { |key, _| key.start_with?("#{provider}:") }.values.flatten
       end
@@ -94,10 +94,10 @@ module CaptainHook
       end
     end
 
-    # Get handler config by class name
-    def find_handler_config(provider:, event_type:, handler_class:)
-      handlers_for(provider: provider, event_type: event_type).find do |config|
-        config.handler_class.to_s == handler_class.to_s
+    # Get action config by class name
+    def find_action_config(provider:, event_type:, action_class:)
+      actions_for(provider: provider, event_type: event_type).find do |config|
+        config.action_class.to_s == action_class.to_s
       end
     end
 
