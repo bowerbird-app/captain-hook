@@ -13,6 +13,13 @@ require "captain_hook/instrumentation"
 # Load adapter helpers (available to host app and external adapters)
 require "captain_hook/adapter_helpers"
 
+# Load default adapters bundled with the gem
+require "captain_hook/adapters/base"
+require "captain_hook/adapters/stripe"
+require "captain_hook/adapters/square"
+require "captain_hook/adapters/paypal"
+require "captain_hook/adapters/webhook_site"
+
 # Load services
 require "captain_hook/services/base_service"
 require "captain_hook/services/rate_limiter"
