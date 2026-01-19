@@ -56,7 +56,7 @@ class RemoveOutgoingEventsAddProviders < ActiveRecord::Migration[8.0]
       t.index :status
       t.index :created_at
       t.index :archived_at
-      t.index [:provider, :created_at]
+      t.index %i[provider created_at]
     end
   end
 end

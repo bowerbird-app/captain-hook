@@ -161,6 +161,7 @@ module CaptainHook
 
         # Find the file in possible locations
         possible_paths = [
+          Rails.root.join("captain_hook", name, verifier_file),
           Rails.root.join("captain_hook", "providers", name, verifier_file),
           Rails.root.join("captain_hook", "providers", verifier_file)
         ]
@@ -171,11 +172,12 @@ module CaptainHook
 
         # Also check in other gems
         Bundler.load.specs.each do |spec|
-          gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
-          next unless File.directory?(gem_providers_path)
+          gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+          next unless File.directory?(gem_captain_hook_path)
 
-          possible_paths << File.join(gem_providers_path, name, verifier_file)
-          possible_paths << File.join(gem_providers_path, verifier_file)
+          possible_paths << File.join(gem_captain_hook_path, name, verifier_file)
+          possible_paths << File.join(gem_captain_hook_path, "providers", name, verifier_file)
+          possible_paths << File.join(gem_captain_hook_path, "providers", verifier_file)
         end
 
         file_path = possible_paths.find { |path| File.exist?(path) }

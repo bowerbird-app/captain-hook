@@ -74,4 +74,4 @@ end
 
 gem "pry"
 
-gem "marikit_country_list", git: "https://github.com/bowerbird-app/marikit-country-list.git"
+# gem "marikit_country_list", git: "https://github.com/bowerbird-app/marikit-country-list.git"

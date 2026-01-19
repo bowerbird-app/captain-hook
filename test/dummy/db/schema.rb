@@ -10,10 +10,26 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_19_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_19_085033) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
+
+  create_table "captain_hook_actions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "action_class", null: false
+    t.boolean "async", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.string "event_type", null: false
+    t.integer "max_attempts", default: 5, null: false
+    t.integer "priority", default: 100, null: false
+    t.string "provider", null: false
+    t.jsonb "retry_delays", default: [30, 60, 300, 900, 3600], null: false
+    t.datetime "updated_at", null: false
+    t.index ["deleted_at"], name: "index_captain_hook_actions_on_deleted_at"
+    t.index ["provider", "event_type", "action_class"], name: "idx_captain_hook_actions_unique", unique: true
+    t.index ["provider"], name: "index_captain_hook_actions_on_provider"
+  end
 
   create_table "captain_hook_examples", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.boolean "active", default: true, null: false
@@ -26,27 +42,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000001) do
     t.index ["name"], name: "index_captain_hook_examples_on_name"
   end
 
-  create_table "captain_hook_handlers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.boolean "async", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "deleted_at"
-    t.string "event_type", null: false
-    t.string "handler_class", null: false
-    t.integer "max_attempts", default: 5, null: false
-    t.integer "priority", default: 100, null: false
-    t.string "provider", null: false
-    t.jsonb "retry_delays", default: [30, 60, 300, 900, 3600], null: false
-    t.datetime "updated_at", null: false
-    t.index ["deleted_at"], name: "index_captain_hook_handlers_on_deleted_at"
-    t.index ["provider", "event_type", "handler_class"], name: "idx_captain_hook_handlers_unique", unique: true
-    t.index ["provider"], name: "index_captain_hook_handlers_on_provider"
-  end
-
-  create_table "captain_hook_incoming_event_handlers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+  create_table "captain_hook_incoming_event_actions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "action_class", null: false
     t.integer "attempt_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.text "error_message"
-    t.string "handler_class", null: false
     t.uuid "incoming_event_id", null: false
     t.datetime "last_attempt_at"
     t.integer "lock_version", default: 0, null: false
@@ -56,9 +56,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000001) do
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["incoming_event_id"], name: "index_captain_hook_incoming_event_handlers_on_incoming_event_id"
-    t.index ["locked_at"], name: "index_captain_hook_incoming_event_handlers_on_locked_at"
-    t.index ["status", "priority", "handler_class"], name: "idx_captain_hook_handlers_processing_order"
-    t.index ["status"], name: "index_captain_hook_incoming_event_handlers_on_status"
+    t.index ["locked_at"], name: "index_captain_hook_incoming_event_actions_on_locked_at"
+    t.index ["status", "priority", "action_class"], name: "idx_captain_hook_handlers_processing_order"
+    t.index ["status"], name: "index_captain_hook_incoming_event_actions_on_status"
   end
 
   create_table "captain_hook_incoming_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -134,5 +134,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_19_000001) do
     t.index ["provider", "event_type"], name: "index_webhook_logs_on_provider_and_event_type"
   end
 
-  add_foreign_key "captain_hook_incoming_event_handlers", "captain_hook_incoming_events", column: "incoming_event_id"
+  add_foreign_key "captain_hook_incoming_event_actions", "captain_hook_incoming_events", column: "incoming_event_id"
 end
