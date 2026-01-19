@@ -15,7 +15,7 @@ spec/
 ├── integration/                     # Integration tests for complex scenarios
 │   └── complex_webhook_scenarios_spec.rb
 ├── lib/captain_hook/
-│   ├── adapters/                    # Adapter specs (Stripe, Square, etc.)
+│   ├── verifiers/                    # Verifier specs (Stripe, Square, etc.)
 │   │   ├── stripe_spec.rb
 │   │   └── square_spec.rb
 │   └── handler_registry_spec.rb     # Handler registry specs
@@ -51,8 +51,8 @@ bundle exec rspec spec/integration
 # Run incoming webhook tests
 bundle exec rspec spec/requests/incoming_webhooks_spec.rb
 
-# Run adapter tests
-bundle exec rspec spec/lib/captain_hook/adapters
+# Run verifier tests
+bundle exec rspec spec/lib/captain_hook/verifiers
 
 # Run a specific test
 bundle exec rspec spec/models/provider_spec.rb:123
@@ -92,16 +92,16 @@ The CI workflow runs RSpec tests automatically:
 - ✅ Invalid JSON handling
 - ✅ Multiple provider support
 
-### Adapter Scenarios
+### Verifier Scenarios
 
-#### Stripe Adapter
+#### Stripe Verifier
 - ✅ Valid signature verification (v0, v1, multiple versions)
 - ✅ Invalid signature rejection
 - ✅ Timestamp validation with tolerance windows
 - ✅ Event ID and type extraction
 - ✅ Timestamp extraction from headers
 
-#### Square Adapter
+#### Square Verifier
 - ✅ HMAC-SHA256 Base64 signature verification
 - ✅ Notification URL validation
 - ✅ Event ID and type extraction
@@ -129,7 +129,7 @@ The CI workflow runs RSpec tests automatically:
 - ✅ Sync handlers executed immediately
 - ✅ Execution status tracking
 
-#### Multiple Providers with Same Adapter
+#### Multiple Providers with Same Verifier
 - ✅ Different signing secrets per provider instance
 - ✅ Signature verification with correct provider secret
 - ✅ Unique webhook URLs per provider
@@ -147,7 +147,7 @@ The CI workflow runs RSpec tests automatically:
 - ✅ Timestamp validation checks
 - ✅ Signing secret encryption
 - ✅ Environment variable override for secrets
-- ✅ Adapter instantiation
+- ✅ Verifier instantiation
 - ✅ Activation/deactivation
 
 ### Handler Registry Specs

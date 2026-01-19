@@ -72,7 +72,7 @@ signing_secret_key: "STRIPE_PRODUCTION_SECRET"
 STRIPE_PRODUCTION_SECRET=whsec_abc123...
 ```
 
-**Update adapter to read from ENV:**
+**Update verifier to read from ENV:**
 
 ```ruby
 def signing_secret

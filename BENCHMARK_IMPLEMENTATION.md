@@ -31,9 +31,9 @@ benchmark/
 ### 3. Benchmark Scripts
 
 #### Signature Verification (`signature_verification_benchmark.rb`)
-- Tests adapter performance across different payload sizes
-- Compares Stripe, Square, and WebhookSite adapters
-- Measures iterations per second for each adapter
+- Tests verifier performance across different payload sizes
+- Compares Stripe, Square, and WebhookSite verifiers
+- Measures iterations per second for each verifier
 
 **Example Output:**
 ```
@@ -118,7 +118,7 @@ Updated `.gitignore` to exclude:
 | Metric | Target | Purpose |
 |--------|--------|---------|
 | Webhook Reception | > 1000/sec | End-to-end throughput |
-| Signature Verification | > 10,000/sec | Per adapter performance |
+| Signature Verification | > 10,000/sec | Per verifier performance |
 | Event Creation | > 1000/sec | Database write performance |
 | Handler Lookup | > 50,000/sec | Registry efficiency |
 | Memory per Request | < 5 MB | Memory efficiency |
@@ -187,27 +187,27 @@ Example PR comment:
 4. `/workspace/.gitignore` - Added benchmark results exclusions
 5. `/workspace/README.md` - Added benchmark documentation section
 6. `/workspace/CHANGELOG.md` - Documented new feature
-7. `/workspace/app/models/captain_hook/provider.rb` - Fixed adapter initialization bug
+7. `/workspace/app/models/captain_hook/provider.rb` - Fixed verifier initialization bug
 
 ## Bug Fix During Implementation
 
-**Issue**: The `Provider#adapter` method was initializing adapters with `signing_secret:` keyword argument, but the `Base` adapter constructor expects the full `provider_config` object.
+**Issue**: The `Provider#verifier` method was initializing verifiers with `signing_secret:` keyword argument, but the `Base` verifier constructor expects the full `provider_config` object.
 
-**Fix**: Updated `Provider#adapter` to pass `self` (the provider instance) instead of just the signing secret:
+**Fix**: Updated `Provider#verifier` to pass `self` (the provider instance) instead of just the signing secret:
 
 ```ruby
 # Before
-def adapter
-  adapter_class.constantize.new(signing_secret: signing_secret)
+def verifier
+  verifier_class.constantize.new(signing_secret: signing_secret)
 end
 
 # After
-def adapter
-  adapter_class.constantize.new(self)
+def verifier
+  verifier_class.constantize.new(self)
 end
 ```
 
-This allows adapters to access all provider configuration (timestamp validation, tolerance settings, etc.).
+This allows verifiers to access all provider configuration (timestamp validation, tolerance settings, etc.).
 
 ## Next Steps (Future Enhancements)
 
@@ -247,6 +247,6 @@ ls -la /workspace/benchmark/results/
 - [x] CHANGELOG.md updated
 - [x] Results directory gitignored
 - [x] Benchmarks execute successfully
-- [x] Bug fix: Provider#adapter initialization corrected
+- [x] Bug fix: Provider#verifier initialization corrected
 
 All benchmarks are operational and ready for CI integration! 🎉

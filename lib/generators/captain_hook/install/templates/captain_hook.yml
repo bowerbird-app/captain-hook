@@ -9,7 +9,7 @@
 #   name: "stripe",
 #   display_name: "Stripe",
 #   signing_secret: ENV["STRIPE_WEBHOOK_SECRET"],
-#   adapter_class: "CaptainHook::Adapters::Stripe",
+#   verifier_class: "CaptainHook::Verifiers::Stripe",
 #   active: true
 # )
 #

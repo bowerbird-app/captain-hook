@@ -16,12 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed inter-gem communication documentation
 
 ### Added
-- **Built-in adapters**: CaptainHook now ships with adapters for common webhook providers
-  - Stripe adapter (`CaptainHook::Adapters::Stripe`)
-  - Square adapter (`CaptainHook::Adapters::Square`)
-  - PayPal adapter (`CaptainHook::Adapters::Paypal`)
-  - WebhookSite adapter (`CaptainHook::Adapters::WebhookSite`) for testing
-- **Adapter discovery service**: Automatically discovers available adapters (built-in and custom)
+- **Built-in verifiers**: CaptainHook now ships with verifiers for common webhook providers
+  - Stripe verifier (`CaptainHook::Verifiers::Stripe`)
+  - Square verifier (`CaptainHook::Verifiers::Square`)
+  - PayPal verifier (`CaptainHook::Verifiers::Paypal`)
+  - WebhookSite verifier (`CaptainHook::Verifiers::WebhookSite`) for testing
+- **Verifier discovery service**: Automatically discovers available verifiers (built-in and custom)
 - **Provider templates**: Example YAML configurations for common providers in `captain_hook/providers/*.yml.example`
 - **Multi-tenant provider support**: Can have multiple instances of the same provider type with different credentials
 - **Provider Management**: New `Provider` model for database-backed webhook provider configuration
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Create, read, update, and delete webhook providers
   - View webhook URLs for sharing with providers
 - **Performance Benchmarking Suite**: Comprehensive benchmarks for monitoring performance
-  - Signature verification benchmarks across all adapters
+  - Signature verification benchmarks across all verifiers
   - Database operation benchmarks (event creation, idempotency checks, queries)
   - Handler execution and registry lookup benchmarks
   - Memory profiling for leak detection
@@ -45,15 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced security documentation and explanations in admin UI
 
 ### Changed
-- **Architecture**: Adapters can only be created within the CaptainHook gem itself
-  - All adapters live in `lib/captain_hook/adapters/` in the CaptainHook gem
-  - Host applications and other gems cannot create custom adapters
+- **Architecture**: Verifiers can only be created within the CaptainHook gem itself
+  - All verifiers live in `lib/captain_hook/verifiers/` in the CaptainHook gem
+  - Host applications and other gems cannot create custom verifiers
   - This ensures consistent security verification across all installations
   - To add support for new providers, submit a pull request to CaptainHook
-- **Documentation**: Completely rewritten to emphasize built-in adapters and controlled adapter development
-  - README.md updated with built-in adapter information
-  - docs/GEM_WEBHOOK_SETUP.md streamlined to focus on using built-in adapters
-  - docs/ADAPTERS.md updated with contributing guidelines
+- **Documentation**: Completely rewritten to emphasize built-in verifiers and controlled verifier development
+  - README.md updated with built-in verifier information
+  - docs/GEM_WEBHOOK_SETUP.md streamlined to focus on using built-in verifiers
+  - docs/VERIFIERS.md updated with contributing guidelines
 - Admin interface now defaults to providers list instead of incoming events
 - Webhook tester page reworded to focus on provider connectivity testing
 - Configuration now supports both in-memory and database-backed providers

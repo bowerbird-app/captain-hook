@@ -51,7 +51,7 @@ Edit `test/dummy/config/database.yml` if your PostgreSQL setup differs from defa
 
 ```yaml
 default: &default
-  adapter: postgresql
+  verifier: postgresql
   encoding: unicode
   pool: 5
   host: <%= ENV.fetch("DB_HOST", "localhost") %>

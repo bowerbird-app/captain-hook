@@ -13,7 +13,7 @@ captain_hook/
 ├── handlers/        # Custom webhook event handlers
 │   ├── stripe_payment_intent_handler.rb
 │   └── square_bank_account_handler.rb
-└── adapters/        # Custom signature verification adapters (optional)
+└── verifiers/        # Custom signature verification verifiers (optional)
     └── custom_adapter.rb
 ```
 
@@ -28,7 +28,7 @@ Provider configuration files are YAML files that define webhook providers. Capta
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_file: stripe.rb
+verifier_file: stripe.rb
 active: true
 
 # Security settings
@@ -48,7 +48,7 @@ max_payload_size_bytes: 1048576
 - **name** (required): Unique identifier for the provider (lowercase, underscores only)
 - **display_name** (optional): Human-readable name shown in the UI
 - **description** (optional): Description of the provider
-- **adapter_file** (optional): Ruby file containing the signature verification adapter class
+- **verifier_file** (optional): Ruby file containing the signature verification verifier class
 - **active** (optional, default: true): Whether the provider is active
 - **signing_secret** (optional): Webhook signing secret. Use `ENV[VARIABLE_NAME]` to reference environment variables
 - **timestamp_tolerance_seconds** (optional): Maximum allowed time difference for timestamp validation
@@ -103,23 +103,23 @@ Rails.application.config.after_initialize do
 end
 ```
 
-## Adapters
+## Verifiers
 
-Adapters handle signature verification for webhook providers. CaptainHook includes built-in adapters for:
+Verifiers handle signature verification for webhook providers. CaptainHook includes built-in verifiers for:
 
-- Stripe (`CaptainHook::Adapters::Stripe`)
-- Square (`CaptainHook::Adapters::Square`)
-- PayPal (`CaptainHook::Adapters::PayPal`)
+- Stripe (`CaptainHook::Verifiers::Stripe`)
+- Square (`CaptainHook::Verifiers::Square`)
+- PayPal (`CaptainHook::Verifiers::PayPal`)
 
-### Custom Adapters
+### Custom Verifiers
 
-If you need a custom adapter, place it in the `adapters/` directory:
+If you need a custom verifier, place it in the `verifiers/` directory:
 
 ```ruby
-# adapters/my_custom_adapter.rb
+# verifiers/my_custom_adapter.rb
 module CaptainHook
-  module Adapters
-    class MyCustomAdapter < Base
+  module Verifiers
+    class MyCustomVerifier < Base
       def verify_signature(payload:, headers:)
         # Implement signature verification
       end
@@ -139,7 +139,7 @@ end
 Then reference it in your provider YAML:
 
 ```yaml
-adapter_file: my_custom_adapter.rb
+verifier_file: my_custom_adapter.rb
 ```
 
 ## Using in Gems
@@ -154,7 +154,7 @@ my_gem/
     │   └── my_service.yml
     ├── handlers/
     │   └── my_service_handler.rb
-    └── adapters/
+    └── verifiers/
         └── my_service_adapter.rb
 ```
 
@@ -175,6 +175,6 @@ To discover and create providers from YAML files:
 1. **Store secrets in environment variables**: Never commit signing secrets to version control
 2. **Use descriptive names**: Provider names should be clear and unique
 3. **Document your handlers**: Add comments explaining what each handler does
-4. **Test your adapters**: Ensure signature verification works correctly
+4. **Test your verifiers**: Ensure signature verification works correctly
 5. **Keep YAMLs in sync**: Update YAML files when provider settings change
-6. **Version control**: Commit YAML files and handler/adapter code to your repository
+6. **Version control**: Commit YAML files and handler/verifier code to your repository

@@ -24,7 +24,7 @@ Provider configurations are defined in YAML files with the following structure:
 name: stripe                                    # Required: unique identifier
 display_name: Stripe                            # Optional: human-readable name
 description: Stripe payment webhooks            # Optional: description
-adapter_file: stripe.rb                         # Optional: file with signature verification adapter
+verifier_file: stripe.rb                         # Optional: file with signature verification verifier
 active: true                                    # Optional: default true
 
 # Security settings
@@ -52,7 +52,7 @@ your_rails_app/
 ├── captain_hook/
 │   ├── stripe/                          # Provider directory
 │   │   ├── stripe.yml                   # Provider config
-│   │   ├── stripe.rb                    # (Optional) Custom adapter
+│   │   ├── stripe.rb                    # (Optional) Custom verifier
 │   │   └── actions/                     # Handler files for this provider
 │   │       └── payment_intent_succeeded_handler.rb
 │   ├── square/
@@ -69,7 +69,7 @@ your_gem/
 └── captain_hook/                        # Gems can also define providers!
     └── my_service/
         ├── my_service.yml               # Provider config
-        ├── my_service.rb                # Custom adapter
+        ├── my_service.rb                # Custom verifier
         └── actions/                     # Handler files
             └── my_service_event_handler.rb
 ```
@@ -77,7 +77,7 @@ your_gem/
 **Key Design Decisions:**
 
 - **Centralized Location**: All webhook-related code in one `captain_hook/` directory
-- **Provider-Specific Structure**: Each provider has its own folder with config, optional adapter, and actions
+- **Provider-Specific Structure**: Each provider has its own folder with config, optional verifier, and actions
 - **Gem Support**: Any gem can ship providers by including a `captain_hook/<provider>/` directory
 - **Handler Co-location**: Handlers live in the provider's `actions/` folder for better organization
 
@@ -90,7 +90,7 @@ your_gem/
 **Algorithm**:
 1. Scan `Rails.root/captain_hook/<provider>/<provider>.{yml,yaml}`
 2. Scan all loaded gems for `<gem_root>/captain_hook/<provider>/<provider>.{yml,yaml}`
-3. Auto-load custom adapters from `<provider>/<provider>.rb` if present
+3. Auto-load custom verifiers from `<provider>/<provider>.rb` if present
 4. Auto-load handlers from `<provider>/actions/*.rb`
 5. Parse each YAML file
 6. Add metadata (source_file, source) to each definition
@@ -208,13 +208,13 @@ end
 ```ruby
 config.autoload_paths += [
   Rails.root.join("captain_hook", "handlers"),
-  Rails.root.join("captain_hook", "adapters")
+  Rails.root.join("captain_hook", "verifiers")
 ]
 ```
 
 **Key Design Decisions:**
 
-- **Automatic Loading**: Handlers and adapters are automatically loaded by Rails
+- **Automatic Loading**: Handlers and verifiers are automatically loaded by Rails
 - **No Manual Requires**: Developers don't need to manually require files
 - **Zeitwerk Compatible**: Works with Rails' Zeitwerk autoloader
 
@@ -251,10 +251,10 @@ Providers are validated before saving:
 ```ruby
 validates :name, presence: true, uniqueness: true,
           format: { with: /\A[a-z0-9_]+\z/ }
-validates :adapter_class, presence: true
+validates :verifier_class, presence: true
 ```
 
-Note: `adapter_class` is auto-extracted from the `adapter_file` during sync.
+Note: `verifier_class` is auto-extracted from the `verifier_file` during sync.
 
 This prevents invalid or malicious provider configurations.
 
@@ -299,7 +299,7 @@ If you have existing providers created via the UI:
 ```ruby
 # In test/dummy/captain_hook/test/test.yml
 name: test_provider
-adapter_file: test.rb
+verifier_file: test.rb
 signing_secret: ENV[TEST_SECRET]
 
 # In test
@@ -323,18 +323,18 @@ Handlers are now automatically loaded from the provider's `actions/` folder:
 ```yaml
 # captain_hook/stripe/stripe.yml
 name: stripe
-adapter_file: stripe.rb
+verifier_file: stripe.rb
 ```
 
 Handlers in `captain_hook/stripe/actions/*.rb` are automatically loaded and available for registration.
 
-### 2. Adapter Auto-Loading
+### 2. Verifier Auto-Loading
 
-Custom adapters are automatically loaded from the provider directory:
+Custom verifiers are automatically loaded from the provider directory:
 
 ```yaml
 # captain_hook/custom/custom.yml
-adapter_file: custom.rb  # Auto-loaded from captain_hook/custom/custom.rb
+verifier_file: custom.rb  # Auto-loaded from captain_hook/custom/custom.rb
 ```
 
 ### 3. Validation Rules
@@ -376,7 +376,7 @@ Add a "Edit as YAML" button in the UI that:
 
 **Check**: Are there validation errors? Check the flash message after scan
 **Check**: Does a provider with that name already exist?
-**Check**: Is the adapter_file valid and does the adapter class exist in the file?
+**Check**: Is the verifier_file valid and does the verifier class exist in the file?
 
 ### Handlers Not Loading
 
@@ -392,6 +392,6 @@ The Provider Discovery System provides a modern, developer-friendly approach to 
 - **Automated**: One-click scanning and sync
 - **Secure**: Environment variables for secrets, encryption at rest
 - **Flexible**: Works with monoliths and gems
-- **Maintainable**: Clear separation of providers, handlers, and adapters
+- **Maintainable**: Clear separation of providers, handlers, and verifiers
 
 This implementation follows Rails conventions, uses modern Ruby features, and provides a solid foundation for webhook management at scale.

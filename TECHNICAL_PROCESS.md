@@ -1,4 +1,4 @@
-# Technical Process: Providers and Adapters
+# Technical Process: Providers and Verifiers
 
 This document provides a deep technical explanation of how CaptainHook's provider system works, from file discovery to webhook verification.
 
@@ -8,7 +8,7 @@ This document provides a deep technical explanation of how CaptainHook's provide
 2. [The Scanning Process](#the-scanning-process)
 3. [Provider Table Schema](#provider-table-schema)
 4. [Webhook Processing Flow](#webhook-processing-flow)
-5. [Adapter Verification Methods](#adapter-verification-methods)
+5. [Verifier Verification Methods](#verifier-verification-methods)
 6. [Why YAML + Ruby Files](#why-yaml--ruby-files)
 7. [Scenarios & Limitations (Providers)](#scenarios--limitations-providers)
 8. [Handlers: Business Logic Execution](#handlers-business-logic-execution)
@@ -35,7 +35,7 @@ Both locations support two file structure patterns:
 ```
 captain_hook/providers/
 ├── stripe.yml          # Provider configuration
-├── stripe.rb           # Adapter implementation (optional)
+├── stripe.rb           # Verifier implementation (optional)
 ├── square.yml
 └── square.rb
 ```
@@ -45,7 +45,7 @@ captain_hook/providers/
 captain_hook/providers/
 ├── stripe/
 │   ├── stripe.yml      # Provider configuration
-│   └── stripe.rb       # Adapter implementation
+│   └── stripe.rb       # Verifier implementation
 ├── square/
 │   ├── square.yml
 │   └── square.rb
@@ -69,7 +69,7 @@ Each provider needs a YAML file with these fields:
 name: stripe                                  # Required: Unique identifier (lowercase, underscores only)
 display_name: Stripe                          # Optional: Human-readable name
 description: Stripe payment webhooks          # Optional: Description
-adapter_file: stripe.rb                       # Optional: Ruby file with adapter class for signature verification
+verifier_file: stripe.rb                       # Optional: Ruby file with verifier class for signature verification
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]    # Optional: HMAC secret (supports ENV[] syntax)
 active: true                                  # Optional: Enable/disable (default: true)
 
@@ -82,14 +82,14 @@ rate_limit_requests: 100                      # Max requests (default: 100)
 rate_limit_period: 60                         # Period in seconds (default: 60)
 ```
 
-### Ruby Adapter Structure
+### Ruby Verifier Structure
 
 If your provider needs signature verification, create a corresponding `.rb` file:
 
 ```ruby
 # captain_hook/providers/stripe/stripe.rb
-class StripeAdapter
-  include CaptainHook::AdapterHelpers
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
 
   # Required: Verify webhook signature
   def verify_signature(payload:, headers:, provider_config:)
@@ -166,21 +166,21 @@ yaml_data.merge!(
 - `"application"` = Your Rails app
 - `"gem:example-stripe"` = From a specific gem
 
-#### Step 3: Adapter Auto-loading
+#### Step 3: Verifier Auto-loading
 
-If using nested structure, the adapter `.rb` file is automatically loaded:
+If using nested structure, the verifier `.rb` file is automatically loaded:
 
 ```ruby
 # If stripe/stripe.yml exists, also load stripe/stripe.rb
-adapter_file = File.join(subdir, "#{provider_name}.rb")
+verifier_file = File.join(subdir, "#{provider_name}.rb")
 
-if File.exist?(adapter_file)
-  load adapter_file  # Loads the Ruby class
-  Rails.logger.debug("Loaded adapter from #{adapter_file}")
+if File.exist?(verifier_file)
+  load verifier_file  # Loads the Ruby class
+  Rails.logger.debug("Loaded verifier from #{verifier_file}")
 end
 ```
 
-This happens **during discovery**, so the adapter class is available when needed.
+This happens **during discovery**, so the verifier class is available when needed.
 
 #### Step 4: Database Synchronization
 
@@ -244,8 +244,8 @@ CREATE TABLE captain_hook_providers (
   
   -- Security configuration
   signing_secret VARCHAR,                    -- Encrypted HMAC secret
-  adapter_class VARCHAR DEFAULT NULL,        -- Adapter class name (NULL = no verification, auto-extracted)
-  adapter_file VARCHAR,                      -- Ruby file containing adapter (added in 20260117000002)
+  verifier_class VARCHAR DEFAULT NULL,        -- Verifier class name (NULL = no verification, auto-extracted)
+  verifier_file VARCHAR,                      -- Ruby file containing verifier (added in 20260117000002)
   timestamp_tolerance_seconds INTEGER DEFAULT 300,  -- Replay attack protection
   
   -- Resource limits
@@ -309,20 +309,20 @@ CREATE INDEX ON captain_hook_providers(active);
 - Environment variables override database values
 - Model getter checks: `ENV["#{name.upcase}_WEBHOOK_SECRET"]` first
 
-**`adapter_class`** (VARCHAR, NULLABLE)
+**`verifier_class`** (VARCHAR, NULLABLE)
 - **Changed from NOT NULL to NULLABLE in migration 20260117000001**
-- **Auto-extracted from adapter_file during provider sync (migration 20260117000002)**
-- Class name of adapter (e.g., `"StripeAdapter"`)
+- **Auto-extracted from verifier_file during provider sync (migration 20260117000002)**
+- Class name of verifier (e.g., `"StripeAdapter"`)
 - `NULL` means no signature verification (token-only authentication)
 - Class must exist and be loadable when webhook arrives
-- Auto-detected from adapter_file specified in YAML during provider scan
-- Used to instantiate adapter: `adapter_class.constantize.new`
+- Auto-detected from verifier_file specified in YAML during provider scan
+- Used to instantiate verifier: `verifier_class.constantize.new`
 
 **`timestamp_tolerance_seconds`** (INTEGER, DEFAULT 300)
 - Maximum age of webhook timestamps (5 minutes default)
 - Prevents replay attacks (attacker resending old webhooks)
 - `NULL` or `0` disables timestamp validation
-- Checked using adapter's `extract_timestamp(headers)` method
+- Checked using verifier's `extract_timestamp(headers)` method
 - Formula: `(current_time - timestamp).abs <= tolerance`
 
 #### Resource Limits
@@ -450,9 +450,9 @@ Checked **before** JSON parsing to prevent memory exhaustion attacks.
 raw_payload = request.raw_post  # Original body as string
 headers = extract_headers(request)  # HTTP headers as hash
 
-adapter = provider.adapter  # Instantiate adapter class
+verifier = provider.verifier  # Instantiate verifier class
 
-unless adapter.verify_signature(
+unless verifier.verify_signature(
   payload: raw_payload,
   headers: headers,
   provider_config: provider
@@ -462,10 +462,10 @@ unless adapter.verify_signature(
 end
 ```
 
-**What happens in adapter:**
+**What happens in verifier:**
 
 ```ruby
-# Example: Stripe adapter
+# Example: Stripe verifier
 def verify_signature(payload:, headers:, provider_config:)
   # 1. Extract signature from headers
   signature_header = extract_header(headers, "Stripe-Signature")
@@ -518,17 +518,17 @@ Parsing happens **after** signature verification to ensure we only parse trusted
 ### 8. Metadata Extraction
 
 ```ruby
-external_id = adapter.extract_event_id(parsed_payload)
+external_id = verifier.extract_event_id(parsed_payload)
 # => "evt_1JqXyZ2eZvKYlo2C8"
 
-event_type = adapter.extract_event_type(parsed_payload)
+event_type = verifier.extract_event_type(parsed_payload)
 # => "payment_intent.succeeded"
 
-timestamp = adapter.extract_timestamp(headers)
+timestamp = verifier.extract_timestamp(headers)
 # => 1609459200
 ```
 
-Adapters normalize provider-specific formats into CaptainHook's standard fields.
+Verifiers normalize provider-specific formats into CaptainHook's standard fields.
 
 ### 9. Timestamp Validation
 
@@ -594,9 +594,9 @@ end
 
 ---
 
-## Adapter Verification Methods
+## Verifier Verification Methods
 
-The `CaptainHook::AdapterHelpers` module provides battle-tested security methods for adapters.
+The `CaptainHook::VerifierHelpers` module provides battle-tested security methods for verifiers.
 
 ### Core Verification Methods
 
@@ -785,11 +785,11 @@ end
 - ISO8601: `"2024-01-01T12:00:00Z"` → `1704110400`
 - Invalid formats: Returns `nil` instead of raising
 
-### Example: Complete Adapter Implementation
+### Example: Complete Verifier Implementation
 
 ```ruby
-class StripeAdapter
-  include CaptainHook::AdapterHelpers
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Stripe-Signature"
 
@@ -846,7 +846,7 @@ end
 
 Every provider requires **two files**:
 1. **YAML file** (`.yml` or `.yaml`) - Configuration data
-2. **Ruby file** (`.rb`) - Adapter implementation (optional if no verification)
+2. **Ruby file** (`.rb`) - Verifier implementation (optional if no verification)
 
 This might seem redundant, but there are important architectural reasons.
 
@@ -893,8 +893,8 @@ end
 - Can't scan configs without executing code
 - Hard to override settings per environment
 - Mixing data and behavior
-- Can't use configs without loading adapters
-- Dangerous if adapter has errors or side effects
+- Can't use configs without loading verifiers
+- Dangerous if verifier has errors or side effects
 
 **Option 2: YAML + Ruby (Current Design)**
 ```yaml
@@ -907,7 +907,7 @@ timestamp_tolerance_seconds: 300
 
 ```ruby
 # GOOD: Behavior in Ruby
-class StripeAdapter
+class StripeVerifier
   def verify_signature(...)
     # ...
   end
@@ -918,7 +918,7 @@ end
 - Read configuration without loading Ruby
 - Scan all providers quickly
 - Override configs per environment (dev vs prod)
-- Adapter errors don't break provider discovery
+- Verifier errors don't break provider discovery
 - Clear separation of concerns
 
 ### From Third-Party Gems
@@ -934,7 +934,7 @@ example-stripe/
     └── providers/
         └── stripe/
             ├── stripe.yml          # Webhook config (scanned)
-            └── stripe.rb           # Webhook adapter (loaded by CaptainHook)
+            └── stripe.rb           # Webhook verifier (loaded by CaptainHook)
 ```
 
 **Important:** The `lib/example/stripe.rb` file is the gem's main business logic (API client, payment processing, etc.) and is NOT scanned by CaptainHook. Only files in the `captain_hook/providers/` directory are discovered during provider scanning.
@@ -943,7 +943,7 @@ example-stripe/
 
 1. **YAML provides defaults**: Gem can ship sensible defaults
 2. **Host can override**: Application can create its own `stripe.yml` with environment-specific settings
-3. **Adapter is reusable**: Same adapter class works for all instances
+3. **Verifier is reusable**: Same verifier class works for all instances
 4. **Discovery works automatically**: CaptainHook finds gem providers without configuration
 
 **Discovery precedence:**
@@ -960,38 +960,38 @@ For multiple instances of the same provider type:
 ```
 captain_hook/providers/
 ├── stripe_prod/
-│   ├── stripe_prod.yml         # adapter_file: stripe_prod.rb
+│   ├── stripe_prod.yml         # verifier_file: stripe_prod.rb
 │   └── stripe_prod.rb
 ├── stripe_test/
-│   ├── stripe_test.yml         # adapter_file: stripe_test.rb
+│   ├── stripe_test.yml         # verifier_file: stripe_test.rb
 │   └── stripe_test.rb
 └── stripe_dev/
-    ├── stripe_dev.yml          # adapter_file: stripe_dev.rb
+    ├── stripe_dev.yml          # verifier_file: stripe_dev.rb
     └── stripe_dev.rb
 ```
 
 Each gets:
 - Unique name (`stripe_prod`, `stripe_test`)
 - Own YAML configuration
-- Own adapter class (or shared adapter with different class name)
+- Own verifier class (or shared verifier with different class name)
 - Separate webhook URLs
 - Independent settings
 
 ### Providers Without Verification
 
-**Since migration 20260117000001**, `adapter_class` can be `NULL`:
+**Since migration 20260117000001**, `verifier_class` can be `NULL`:
 
 ```yaml
 # captain_hook/providers/internal_service/internal_service.yml
 name: internal_service
 display_name: Internal Service
-# No adapter_file - relies on token-only auth
+# No verifier_file - relies on token-only auth
 signing_secret: null  # No HMAC verification
 ```
 
 **In this case:**
 - YAML file is still required (defines provider)
-- Ruby file is not needed (no adapter)
+- Ruby file is not needed (no verifier)
 - Only token authentication is used
 - Suitable for trusted internal services
 
@@ -1036,34 +1036,34 @@ example-stripe/
 ```
 captain_hook/providers/
 ├── stripe_account_a/
-│   ├── stripe_account_a.yml    # adapter_file: stripe_account_a.rb
+│   ├── stripe_account_a.yml    # verifier_file: stripe_account_a.rb
 │   └── stripe_account_a.rb
 └── stripe_account_b/
-    ├── stripe_account_b.yml    # adapter_file: stripe_account_b.rb
+    ├── stripe_account_b.yml    # verifier_file: stripe_account_b.rb
     └── stripe_account_b.rb
 ```
 
 **Works:** Each gets unique name, URL, and configuration
 
-#### ✅ Shared Adapter Class
+#### ✅ Shared Verifier Class
 
 ```
 captain_hook/providers/
 ├── stripe_prod/
-│   ├── stripe_prod.yml         # adapter_file: stripe_adapter.rb
+│   ├── stripe_prod.yml         # verifier_file: stripe_adapter.rb
 │   └── stripe_adapter.rb       # Shared implementation
 └── stripe_test/
-    └── stripe_test.yml         # adapter_file: ../stripe_prod/stripe_adapter.rb (reuses)
+    └── stripe_test.yml         # verifier_file: ../stripe_prod/stripe_adapter.rb (reuses)
 ```
 
-**Works:** Multiple providers can reference the same adapter class
+**Works:** Multiple providers can reference the same verifier class
 
 #### ✅ No Verification Providers
 
 ```yaml
 # captain_hook/providers/internal/internal.yml
 name: internal
-# adapter_file: (not specified - no verification)
+# verifier_file: (not specified - no verification)
 ```
 
 **Works:** Token-only authentication, no signature verification
@@ -1100,7 +1100,7 @@ Gem 2 (example-square):
 # Cannot create provider without YAML file
 Provider.create!(
   name: "custom",
-  adapter_file: "custom.rb"
+  verifier_file: "custom.rb"
 )
 # Discovery won't find this on next scan
 ```
@@ -1109,20 +1109,20 @@ Provider.create!(
 
 **Workaround:** Create YAML file, then scan
 
-#### ❌ Dynamic Adapter Loading from Gems
+#### ❌ Dynamic Verifier Loading from Gems
 
 ```ruby
 # In gem: lib/example/stripe_adapter.rb
-# Trying to use: adapter_class: "Example::StripeAdapter"
+# Trying to use: verifier_class: "Example::StripeAdapter"
 ```
 
-**Limitation:** Adapter must be in `captain_hook/providers/` directory, not `lib/`
+**Limitation:** Verifier must be in `captain_hook/providers/` directory, not `lib/`
 
 **Reason:** Auto-loading looks in specific provider directories
 
-**Workaround:** Put adapter in `captain_hook/providers/stripe/stripe.rb` inside gem
+**Workaround:** Put verifier in `captain_hook/providers/stripe/stripe.rb` inside gem
 
-#### ❌ Adapter Without YAML
+#### ❌ Verifier Without YAML
 
 ```
 captain_hook/providers/
@@ -1192,10 +1192,10 @@ Gem 2:     captain_hook/providers/stripe/stripe.yml
 
 ### Edge Cases
 
-#### Adapter Class Not Found
+#### Verifier Class Not Found
 
 ```yaml
-adapter_class: NonExistentAdapter
+verifier_class: NonExistentAdapter
 ```
 
 **Behavior:**
@@ -1203,7 +1203,7 @@ adapter_class: NonExistentAdapter
 - Provider created in database
 - Error when webhook arrives: `AdapterNotFoundError`
 
-**Solution:** Ensure Ruby file defines the adapter class
+**Solution:** Ensure Ruby file defines the verifier class
 
 #### Signing Secret ENV Variable Missing
 
@@ -1218,11 +1218,11 @@ signing_secret: ENV[MISSING_VAR]
 
 **Solution:** Set environment variable or update YAML
 
-#### Circular Adapter Dependencies
+#### Circular Verifier Dependencies
 
 ```ruby
 # stripe.rb
-class StripeAdapter
+class StripeVerifier
   def verify_signature(...)
     PaypalAdapter.new.verify_signature(...)  # BAD: Circular
   end
@@ -1231,7 +1231,7 @@ end
 
 **Behavior:** Potential infinite loop or load errors
 
-**Solution:** Keep adapters independent
+**Solution:** Keep verifiers independent
 
 #### Malformed YAML
 
@@ -1267,11 +1267,11 @@ max_payload_size_bytes: 10485760  # 10MB
 
 ### What Are Handlers?
 
-Handlers are **Ruby classes that contain your business logic** for processing webhooks. While providers and adapters handle the security and verification of incoming webhooks, handlers contain the actual application-specific code that runs in response to webhook events.
+Handlers are **Ruby classes that contain your business logic** for processing webhooks. While providers and verifiers handle the security and verification of incoming webhooks, handlers contain the actual application-specific code that runs in response to webhook events.
 
 **Key Concepts:**
 
-- **Separation of Concerns**: Security (adapters) vs. Business Logic (handlers)
+- **Separation of Concerns**: Security (verifiers) vs. Business Logic (handlers)
 - **Event-Driven**: Handlers react to specific event types
 - **Asynchronous by Default**: Execute in background jobs for reliability
 - **Retryable**: Automatic retry with exponential backoff on failures
@@ -1751,7 +1751,7 @@ example-stripe/
 ├── captain_hook/
 │   └── stripe/
 │       ├── stripe.yml
-│       ├── stripe.rb        # (Optional) Custom adapter if not built-in
+│       ├── stripe.rb        # (Optional) Custom verifier if not built-in
 │       └── actions/         # Handlers auto-loaded from here
 │           ├── charge_handler.rb
 │           └── payment_intent_handler.rb
@@ -2756,7 +2756,7 @@ end
 1. **Discovery is file-based**: Providers must exist as YAML files in `captain_hook/providers/`
 2. **Dual files serve different purposes**: YAML = configuration (required), Ruby = behavior (optional)
 3. **Security is layered**: Token authentication, signature verification, timestamp validation, rate limiting
-4. **Adapters are isolated**: Each provider's adapter is self-contained with verification logic
+4. **Verifiers are isolated**: Each provider's verifier is self-contained with verification logic
 5. **Idempotency is automatic**: Same webhook won't be processed twice
 
 **Handlers:**
@@ -2853,7 +2853,7 @@ end
 ### References
 
 - [Provider Discovery Documentation](docs/PROVIDER_DISCOVERY.md)
-- [Adapter Implementation Guide](docs/ADAPTERS.md)
+- [Verifier Implementation Guide](docs/VERIFIERS.md)
 - [Handler Management Guide](docs/HANDLER_MANAGEMENT.md)
 - [Setting Up Webhooks in Gems](docs/GEM_WEBHOOK_SETUP.md)
 - [Signing Secret Storage](docs/SIGNING_SECRET_STORAGE.md)
@@ -2872,12 +2872,12 @@ end
 
 3. **Security is layered**:
    - Token authentication (always)
-   - Signature verification (optional, via adapter)
+   - Signature verification (optional, via verifier)
    - Timestamp validation (optional)
    - Rate limiting (optional)
    - Payload size limits (optional)
 
-4. **Adapters are isolated**: Each provider's adapter is self-contained with verification logic
+4. **Verifiers are isolated**: Each provider's verifier is self-contained with verification logic
 
 5. **Idempotency is automatic**: Same webhook won't be processed twice
 
@@ -2886,6 +2886,6 @@ end
 ### References
 
 - [Provider Discovery Documentation](docs/PROVIDER_DISCOVERY.md)
-- [Adapter Implementation Guide](docs/ADAPTERS.md)
+- [Verifier Implementation Guide](docs/VERIFIERS.md)
 - [Setting Up Webhooks in Gems](docs/GEM_WEBHOOK_SETUP.md)
 - [Signing Secret Storage](docs/SIGNING_SECRET_STORAGE.md)
