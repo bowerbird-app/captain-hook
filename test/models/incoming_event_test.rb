@@ -222,31 +222,31 @@ module CaptainHook
     end
 
     test "recalculate_status! marks as processed when all handlers processed" do
-      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
-      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Handler2", status: :processed)
 
       @event.recalculate_status!
       assert @event.status_processed?
     end
 
     test "recalculate_status! marks as failed when all handlers failed" do
-      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :failed)
-      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Handler1", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_failed?
     end
 
     test "recalculate_status! marks as partially_processed when some handlers failed" do
-      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :processed)
-      @event.incoming_event_handlers.create!(handler_class: "Handler2", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_partially_processed?
     end
 
     test "recalculate_status! marks as processing when none processed or failed" do
-      @event.incoming_event_handlers.create!(handler_class: "Handler1", status: :pending)
+      @event.incoming_event_actions.create!(action_class: "Handler1", status: :pending)
 
       @event.recalculate_status!
       assert @event.status_processing?
@@ -262,12 +262,12 @@ module CaptainHook
 
     # === Associations ===
 
-    test "has many incoming_event_handlers" do
-      assert_respond_to @event, :incoming_event_handlers
+    test "has many incoming_event_actions" do
+      assert_respond_to @event, :incoming_event_actions
     end
 
     test "destroys associated handlers when destroyed" do
-      @event.incoming_event_handlers.create!(handler_class: "TestHandler")
+      @event.incoming_event_actions.create!(action_class: "TestHandler")
 
       assert_difference "CaptainHook::IncomingEventHandler.count", -1 do
         @event.destroy

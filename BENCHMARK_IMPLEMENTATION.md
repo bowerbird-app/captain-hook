@@ -18,7 +18,7 @@ benchmark/
 ├── benchmarks/                # Individual benchmark files
 │   ├── signature_verification_benchmark.rb
 │   ├── database_operations_benchmark.rb
-│   ├── handler_execution_benchmark.rb
+│   ├── action_execution_benchmark.rb
 │   ├── memory_benchmark.rb
 │   └── end_to_end_benchmark.rb
 ├── support/                   # Shared utilities
@@ -47,10 +47,10 @@ WebhookSite: ~5,400,000/second (no verification)
 - Tests idempotency checks (duplicate detection)
 - Measures query performance (by provider, by event_type, recent events)
 
-#### Handler Execution (`handler_execution_benchmark.rb`)
-- Tests handler registry lookup performance
-- Benchmarks handler record creation
-- Measures handler registration overhead
+#### Action Execution (`action_execution_benchmark.rb`)
+- Tests action registry lookup performance
+- Benchmarks action record creation
+- Measures action registration overhead
 
 #### Memory Profiling (`memory_benchmark.rb`)
 - Tracks memory allocation during webhook processing
@@ -68,7 +68,7 @@ WebhookSite: ~5,400,000/second (no verification)
 rake benchmark:all          # Run all benchmarks
 rake benchmark:signatures   # Signature verification only
 rake benchmark:database     # Database operations only
-rake benchmark:handlers     # Handler execution only
+rake benchmark:actions     # Action execution only
 rake benchmark:memory       # Memory profiling only
 rake benchmark:e2e          # End-to-end pipeline only
 rake benchmark:ci           # Run and save results for CI
@@ -120,7 +120,7 @@ Updated `.gitignore` to exclude:
 | Webhook Reception | > 1000/sec | End-to-end throughput |
 | Signature Verification | > 10,000/sec | Per verifier performance |
 | Event Creation | > 1000/sec | Database write performance |
-| Handler Lookup | > 50,000/sec | Registry efficiency |
+| Action Lookup | > 50,000/sec | Registry efficiency |
 | Memory per Request | < 5 MB | Memory efficiency |
 
 ## Usage Examples

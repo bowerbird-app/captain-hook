@@ -4,21 +4,21 @@ This directory contains the comprehensive RSpec test suite for CaptainHook, a Ra
 
 ## Overview
 
-The RSpec test suite provides extensive coverage of webhook reception, signature verification, handler execution, and complex integration scenarios. It complements the existing Minitest suite and provides BDD-style specifications.
+The RSpec test suite provides extensive coverage of webhook reception, signature verification, action execution, and complex integration scenarios. It complements the existing Minitest suite and provides BDD-style specifications.
 
 ## Test Structure
 
 ```
 spec/
 ├── factories/                      # FactoryBot factories for test data
-│   └── captain_hook_factories.rb   # Provider, event, and handler factories
+│   └── captain_hook_factories.rb   # Provider, event, and action factories
 ├── integration/                     # Integration tests for complex scenarios
 │   └── complex_webhook_scenarios_spec.rb
 ├── lib/captain_hook/
 │   ├── verifiers/                    # Verifier specs (Stripe, Square, etc.)
 │   │   ├── stripe_spec.rb
 │   │   └── square_spec.rb
-│   └── handler_registry_spec.rb     # Handler registry specs
+│   └── handler_registry_spec.rb     # Action registry specs
 ├── models/                          # Model specs
 │   └── provider_spec.rb            # Provider model specs
 ├── requests/                        # Request specs
@@ -82,7 +82,7 @@ The CI workflow runs RSpec tests automatically:
 ### Incoming Webhook Scenarios
 
 - ✅ Successful webhook reception and event creation
-- ✅ Handler job enqueueing (async and sync)
+- ✅ Action job enqueueing (async and sync)
 - ✅ Idempotency and duplicate detection
 - ✅ Authentication (token validation, provider activation)
 - ✅ Signature verification (valid/invalid/missing)
@@ -109,24 +109,24 @@ The CI workflow runs RSpec tests automatically:
 ### Integration Scenarios
 
 #### Third-Party Gem + Rails App (Same Webhook)
-- ✅ Multiple handlers for same event type
+- ✅ Multiple actions for same event type
 - ✅ Shared signing secret usage
-- ✅ Handler execution in priority order
-- ✅ Both gem and app handlers execute correctly
+- ✅ Action execution in priority order
+- ✅ Both gem and app actions execute correctly
 
 #### Separate Webhook Providers
 - ✅ Independent webhook routing based on provider
 - ✅ Separate event histories per provider
-- ✅ Correct handler association per provider
+- ✅ Correct action association per provider
 
-#### Handler Execution Outcomes
-- ✅ Successful handler completion
-- ✅ Failed handler with error messages
+#### Action Execution Outcomes
+- ✅ Successful action completion
+- ✅ Failed action with error messages
 - ✅ Retry logic and exponential backoff
 
 #### Async vs Sync Execution
-- ✅ Async handlers enqueued as background jobs
-- ✅ Sync handlers executed immediately
+- ✅ Async actions enqueued as background jobs
+- ✅ Sync actions executed immediately
 - ✅ Execution status tracking
 
 #### Multiple Providers with Same Verifier
@@ -139,7 +139,7 @@ The CI workflow runs RSpec tests automatically:
 #### Provider Model
 - ✅ Validations (presence, uniqueness, format, numericality)
 - ✅ Callbacks (name normalization, token generation)
-- ✅ Associations (incoming_events, handlers)
+- ✅ Associations (incoming_events, actions)
 - ✅ Scopes (active, inactive, by_name)
 - ✅ Webhook URL generation
 - ✅ Rate limiting checks
@@ -150,11 +150,11 @@ The CI workflow runs RSpec tests automatically:
 - ✅ Verifier instantiation
 - ✅ Activation/deactivation
 
-### Handler Registry Specs
-- ✅ Handler registration
-- ✅ Multiple handlers per event
+### Action Registry Specs
+- ✅ Action registration
+- ✅ Multiple actions per event
 - ✅ Default parameter values
-- ✅ Handler lookup by provider and event type
+- ✅ Action lookup by provider and event type
 - ✅ Wildcard event type matching
 - ✅ Priority-based ordering
 - ✅ Thread safety
@@ -180,7 +180,7 @@ The RSpec test suite uses these gems:
 - FactoryBot integration
 - Shoulda Matchers configuration
 - WebMock network request stubbing
-- Handler registry cleanup between tests
+- Action registry cleanup between tests
 
 ### Spec Helper
 
@@ -200,11 +200,11 @@ Each test runs in a database transaction that's rolled back after completion:
 config.use_transactional_fixtures = true
 ```
 
-The handler registry is cleared before each test:
+The action registry is cleared before each test:
 
 ```ruby
 config.before(:each) do
-  CaptainHook.handler_registry.clear!
+  CaptainHook.action_registry.clear!
 end
 ```
 
@@ -243,8 +243,8 @@ expect(response).to have_http_status(:created)
 Test complex scenarios that span multiple components:
 
 ```ruby
-# Register multiple handlers
-CaptainHook.register_handler(...)
+# Register multiple actions
+CaptainHook.register_action(...)
 
 # Send webhook
 post "/captain_hook/..."
@@ -280,14 +280,14 @@ If you see `FactoryBot::InvalidFactoryError`, ensure factories are loaded:
 config.include FactoryBot::Syntax::Methods
 ```
 
-### Handler Registry Pollution
+### Action Registry Pollution
 
-If tests fail due to handler registry state, ensure cleanup:
+If tests fail due to action registry state, ensure cleanup:
 
 ```ruby
 # In rails_helper.rb
 config.before(:each) do
-  CaptainHook.handler_registry.clear!
+  CaptainHook.action_registry.clear!
 end
 ```
 

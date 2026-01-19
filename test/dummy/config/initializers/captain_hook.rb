@@ -21,80 +21,80 @@ end
 #   provider.active = true
 # end
 
-# Register handlers for webhook processing
+# Register actions for webhook processing
 Rails.application.config.after_initialize do
-  # Handler for webhook.site test events
+  # Action for webhook.site test events
   # To trigger this, send a webhook with: { "type": "test", ... }
   # Or: { "event_type": "test", ... }
   # Or: { "event": "test", ... }
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "webhook_site",
     event_type: "test",
-    handler_class: "WebhookSiteTestHandler",
+    action_class: "WebhookSiteTestAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  # Handler for Square bank_account events
+  # Action for Square bank_account events
   # Handles: bank_account.created, bank_account.verified, bank_account.disabled, bank_account.updated
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.created",
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.verified",
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.disabled",
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.updated",
-    handler_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  # Explicit registrations for dummy app Stripe handlers
-  CaptainHook.register_handler(
+  # Explicit registrations for dummy app Stripe actions
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.created",
-    handler_class: "StripePaymentIntentCreatedHandler",
+    action_class: "StripePaymentIntentCreatedAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "charge.updated",
-    handler_class: "StripeChargeUpdatedHandler",
+    action_class: "StripeChargeUpdatedAction",
     priority: 100,
     async: true,
     max_attempts: 3
   )
 
-  Rails.logger.info "🎣 Registered WebhookSiteTestHandler for webhook_site:test events"
-  Rails.logger.info "💳 Registered StripePaymentIntentHandler for stripe payment_intent.* events"
-  Rails.logger.info "🟦 Registered SquareBankAccountHandler for square bank_account.* events"
+  Rails.logger.info "🎣 Registered WebhookSiteTestAction for webhook_site:test events"
+  Rails.logger.info "💳 Registered StripePaymentIntentAction for stripe payment_intent.* events"
+  Rails.logger.info "🟦 Registered SquareBankAccountAction for square bank_account.* events"
 end
 

@@ -1,21 +1,27 @@
 # frozen_string_literal: true
 
 require_relative "hooks"
-require_relative "handler_registry"
+require_relative "action_registry"
 require_relative "provider_config"
 
 module CaptainHook
   class Configuration
     attr_accessor :admin_parent_controller, :admin_layout, :retention_days
-    attr_reader :hooks, :handler_registry, :providers
+    attr_reader :hooks, :action_registry, :providers
 
     def initialize
       @admin_parent_controller = "ApplicationController"
       @admin_layout = "application"
       @retention_days = 90 # Default retention period
       @hooks = Hooks.new
-      @handler_registry = HandlerRegistry.new
+      @action_registry = ActionRegistry.new
       @providers = {}
+    end
+
+    # Deprecated: Backward compatibility for handler_registry
+    def handler_registry
+      warn "[DEPRECATION] `handler_registry` is deprecated. Use `action_registry` instead."
+      @action_registry
     end
 
     # Register a provider configuration (for backward compatibility)

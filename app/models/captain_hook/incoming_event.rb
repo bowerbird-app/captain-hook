@@ -23,7 +23,10 @@ module CaptainHook
     }, prefix: true
 
     # Associations
-    has_many :incoming_event_handlers, dependent: :destroy
+    has_many :incoming_event_actions, dependent: :destroy
+
+    # Deprecated: Backward compatibility alias
+    has_many :incoming_event_handlers, class_name: "IncomingEventAction", foreign_key: :incoming_event_id
 
     # Validations
     validates :provider, presence: true
@@ -79,7 +82,7 @@ module CaptainHook
       update!(status: :processed)
     end
 
-    # Mark as partially processed (some handlers succeeded, some failed)
+    # Mark as partially processed (some actions succeeded, some failed)
     def mark_partially_processed!
       update!(status: :partially_processed)
     end
@@ -89,13 +92,13 @@ module CaptainHook
       update!(status: :failed)
     end
 
-    # Calculate overall status based on handler states
+    # Calculate overall status based on action states
     def recalculate_status!
-      return if incoming_event_handlers.empty?
+      return if incoming_event_actions.empty?
 
-      all_processed = incoming_event_handlers.all?(&:status_processed?)
-      any_failed = incoming_event_handlers.any?(&:status_failed?)
-      all_failed = incoming_event_handlers.all?(&:status_failed?)
+      all_processed = incoming_event_actions.all?(&:status_processed?)
+      any_failed = incoming_event_actions.any?(&:status_failed?)
+      all_failed = incoming_event_actions.all?(&:status_failed?)
 
       new_status = if all_processed
                      :processed

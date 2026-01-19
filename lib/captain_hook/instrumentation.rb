@@ -9,12 +9,17 @@ module CaptainHook
     INCOMING_PROCESSING = "incoming_event.processing.captain_hook"
     INCOMING_PROCESSED = "incoming_event.processed.captain_hook"
     INCOMING_FAILED = "incoming_event.failed.captain_hook"
-    HANDLER_STARTED = "handler.started.captain_hook"
-    HANDLER_COMPLETED = "handler.completed.captain_hook"
-    HANDLER_FAILED = "handler.failed.captain_hook"
+    ACTION_STARTED = "action.started.captain_hook"
+    ACTION_COMPLETED = "action.completed.captain_hook"
+    ACTION_FAILED = "action.failed.captain_hook"
     RATE_LIMIT_EXCEEDED = "rate_limit.exceeded.captain_hook"
     SIGNATURE_VERIFIED = "signature.verified.captain_hook"
     SIGNATURE_FAILED = "signature.failed.captain_hook"
+
+    # Deprecated: Backward compatibility
+    HANDLER_STARTED = ACTION_STARTED
+    HANDLER_COMPLETED = ACTION_COMPLETED
+    HANDLER_FAILED = ACTION_FAILED
 
     class << self
       # Instrument incoming event received
@@ -46,7 +51,7 @@ module CaptainHook
           provider: event.provider,
           event_type: event.event_type,
           duration: duration,
-          handlers_count: event.incoming_event_handlers.count
+          actions_count: event.incoming_event_actions.count
         )
       end
 
@@ -62,39 +67,48 @@ module CaptainHook
         )
       end
 
-      # Instrument handler started
-      def handler_started(handler, event:)
+      # Instrument action started
+      def action_started(action, event:)
         ActiveSupport::Notifications.instrument(
-          HANDLER_STARTED,
-          handler_id: handler.id,
-          handler_class: handler.handler_class,
+          ACTION_STARTED,
+          action_id: action.id,
+          action_class: action.action_class,
           event_id: event.id,
           provider: event.provider,
-          attempt: handler.attempt_count + 1
+          attempt: action.attempt_count + 1
         )
       end
 
-      # Instrument handler completed
-      def handler_completed(handler, duration:)
+      # Deprecated: Backward compatibility
+      alias handler_started action_started
+
+      # Instrument action completed
+      def action_completed(action, duration:)
         ActiveSupport::Notifications.instrument(
-          HANDLER_COMPLETED,
-          handler_id: handler.id,
-          handler_class: handler.handler_class,
+          ACTION_COMPLETED,
+          action_id: action.id,
+          action_class: action.action_class,
           duration: duration
         )
       end
 
-      # Instrument handler failed
-      def handler_failed(handler, error:)
+      # Deprecated: Backward compatibility
+      alias handler_completed action_completed
+
+      # Instrument action failed
+      def action_failed(action, error:)
         ActiveSupport::Notifications.instrument(
-          HANDLER_FAILED,
-          handler_id: handler.id,
-          handler_class: handler.handler_class,
+          ACTION_FAILED,
+          action_id: action.id,
+          action_class: action.action_class,
           error: error.class.name,
           error_message: error.message,
-          attempt: handler.attempt_count
+          attempt: action.attempt_count
         )
       end
+
+      # Deprecated: Backward compatibility
+      alias handler_failed action_failed
 
       # Instrument rate limit exceeded
       def rate_limit_exceeded(provider:, current_count:, limit:)

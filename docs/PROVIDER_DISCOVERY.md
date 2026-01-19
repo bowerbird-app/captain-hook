@@ -53,7 +53,7 @@ your_rails_app/
 │   ├── stripe/                          # Provider directory
 │   │   ├── stripe.yml                   # Provider config
 │   │   ├── stripe.rb                    # (Optional) Custom verifier
-│   │   └── actions/                     # Handler files for this provider
+│   │   └── actions/                     # Action files for this provider
 │   │       └── payment_intent_succeeded_handler.rb
 │   ├── square/
 │   │   ├── square.yml
@@ -70,7 +70,7 @@ your_gem/
     └── my_service/
         ├── my_service.yml               # Provider config
         ├── my_service.rb                # Custom verifier
-        └── actions/                     # Handler files
+        └── actions/                     # Action files
             └── my_service_event_handler.rb
 ```
 
@@ -79,7 +79,7 @@ your_gem/
 - **Centralized Location**: All webhook-related code in one `captain_hook/` directory
 - **Provider-Specific Structure**: Each provider has its own folder with config, optional verifier, and actions
 - **Gem Support**: Any gem can ship providers by including a `captain_hook/<provider>/` directory
-- **Handler Co-location**: Handlers live in the provider's `actions/` folder for better organization
+- **Action Co-location**: Actions live in the provider's `actions/` folder for better organization
 
 ### 3. Provider Discovery Service
 
@@ -91,7 +91,7 @@ your_gem/
 1. Scan `Rails.root/captain_hook/<provider>/<provider>.{yml,yaml}`
 2. Scan all loaded gems for `<gem_root>/captain_hook/<provider>/<provider>.{yml,yaml}`
 3. Auto-load custom verifiers from `<provider>/<provider>.rb` if present
-4. Auto-load handlers from `<provider>/actions/*.rb`
+4. Auto-load actions from `<provider>/actions/*.rb`
 5. Parse each YAML file
 6. Add metadata (source_file, source) to each definition
 7. Handle errors gracefully (log and skip malformed files)
@@ -180,15 +180,15 @@ end
 
 <!-- After: Discover New and Full Sync buttons -->
 <div class="d-flex gap-2">
-  <span data-bs-toggle="tooltip" data-bs-title="Add new providers/handlers only">
+  <span data-bs-toggle="tooltip" data-bs-title="Add new providers/actions only">
     <%= button_to "Discover New", discover_new_admin_providers_path, method: :post, 
         class: "btn btn-outline-primary",
-        data: { confirm: "This will scan for NEW providers/handlers only. Continue?" } %>
+        data: { confirm: "This will scan for NEW providers/actions only. Continue?" } %>
   </span>
   <span data-bs-toggle="tooltip" data-bs-title="Update all from YAML files">
     <%= button_to "Full Sync", sync_all_admin_providers_path, method: :post,
         class: "btn btn-primary",
-        data: { confirm: "This will update ALL providers/handlers from YAML. Continue?" } %>
+        data: { confirm: "This will update ALL providers/actions from YAML. Continue?" } %>
   </span>
 </div>
 ```
@@ -207,14 +207,14 @@ end
 
 ```ruby
 config.autoload_paths += [
-  Rails.root.join("captain_hook", "handlers"),
+  Rails.root.join("captain_hook", "actions"),
   Rails.root.join("captain_hook", "verifiers")
 ]
 ```
 
 **Key Design Decisions:**
 
-- **Automatic Loading**: Handlers and verifiers are automatically loaded by Rails
+- **Automatic Loading**: Actions and verifiers are automatically loaded by Rails
 - **No Manual Requires**: Developers don't need to manually require files
 - **Zeitwerk Compatible**: Works with Rails' Zeitwerk autoloader
 
@@ -275,7 +275,7 @@ If you have existing providers created via the UI:
 2. **Add YAML Files**: Define providers in `captain_hook/<provider>/<provider>.yml`
 3. **Set ENV Variables**: Add signing secrets to your environment
 4. **Run Discover New**: Click "Discover New" to create providers
-5. **Add Handlers**: Place handler files in `captain_hook/<provider>/actions/`
+5. **Add Actions**: Place action files in `captain_hook/<provider>/actions/`
 
 ## Testing
 
@@ -316,9 +316,9 @@ assert_equal "test_value", provider.signing_secret
 
 ## Future Enhancements
 
-### 1. Handler Auto-Loading
+### 1. Action Auto-Loading
 
-Handlers are now automatically loaded from the provider's `actions/` folder:
+Actions are now automatically loaded from the provider's `actions/` folder:
 
 ```yaml
 # captain_hook/stripe/stripe.yml
@@ -326,7 +326,7 @@ name: stripe
 verifier_file: stripe.rb
 ```
 
-Handlers in `captain_hook/stripe/actions/*.rb` are automatically loaded and available for registration.
+Actions in `captain_hook/stripe/actions/*.rb` are automatically loaded and available for registration.
 
 ### 2. Verifier Auto-Loading
 
@@ -378,11 +378,11 @@ Add a "Edit as YAML" button in the UI that:
 **Check**: Does a provider with that name already exist?
 **Check**: Is the verifier_file valid and does the verifier class exist in the file?
 
-### Handlers Not Loading
+### Actions Not Loading
 
-**Check**: Are handlers in the provider's `actions/` folder? E.g., `captain_hook/stripe/actions/`
-**Check**: Is the handler class name correct? Should match file name (CamelCase vs snake_case)
-**Check**: Are handlers registered in `config/initializers/captain_hook.rb`?
+**Check**: Are actions in the provider's `actions/` folder? E.g., `captain_hook/stripe/actions/`
+**Check**: Is the action class name correct? Should match file name (CamelCase vs snake_case)
+**Check**: Are actions registered in `config/initializers/captain_hook.rb`?
 
 ## Summary
 
@@ -392,6 +392,6 @@ The Provider Discovery System provides a modern, developer-friendly approach to 
 - **Automated**: One-click scanning and sync
 - **Secure**: Environment variables for secrets, encryption at rest
 - **Flexible**: Works with monoliths and gems
-- **Maintainable**: Clear separation of providers, handlers, and verifiers
+- **Maintainable**: Clear separation of providers, actions, and verifiers
 
 This implementation follows Rails conventions, uses modern Ruby features, and provides a solid foundation for webhook management at scale.

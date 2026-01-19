@@ -11,12 +11,12 @@ This document provides a deep technical explanation of how CaptainHook's provide
 5. [Verifier Verification Methods](#verifier-verification-methods)
 6. [Why YAML + Ruby Files](#why-yaml--ruby-files)
 7. [Scenarios & Limitations (Providers)](#scenarios--limitations-providers)
-8. [Handlers: Business Logic Execution](#handlers-business-logic-execution)
-9. [Handler Registration](#handler-registration)
-10. [Handler Discovery & Sync](#handler-discovery--sync)
-11. [Handler Table Schema](#handler-table-schema)
-12. [Handler Execution Flow](#handler-execution-flow)
-13. [Handler Scenarios & Limitations](#handler-scenarios--limitations)
+8. [Actions: Business Logic Execution](#actions-business-logic-execution)
+9. [Action Registration](#action-registration)
+10. [Action Discovery & Sync](#action-discovery--sync)
+11. [Action Table Schema](#action-table-schema)
+12. [Action Execution Flow](#action-execution-flow)
+13. [Action Scenarios & Limitations](#action-scenarios--limitations)
 
 ---
 
@@ -353,7 +353,7 @@ CREATE INDEX ON captain_hook_providers(active);
 - Enable/disable webhook reception without deleting provider
 - Inactive providers return HTTP 403 Forbidden
 - Useful for temporarily pausing webhooks
-- Handlers are not deleted when deactivating
+- Actions are not deleted when deactivating
 
 **`metadata`** (JSONB, DEFAULT '{}')
 - Flexible storage for provider-specific data
@@ -371,7 +371,7 @@ CREATE INDEX ON captain_hook_providers(active);
 ### Complete Request Lifecycle
 
 ```
-External Provider → POST → IncomingController → Verification → Event Storage → Handler Dispatch
+External Provider → POST → IncomingController → Verification → Event Storage → Action Dispatch
 ```
 
 Here's the detailed flow when a webhook arrives at `/captain_hook/stripe/abc123token`:
@@ -573,13 +573,13 @@ CREATE UNIQUE INDEX idx_captain_hook_incoming_events_idempotency
 If the same `(provider, external_id)` arrives twice:
 - First time: Creates event, returns HTTP 201 Created
 - Second time: Finds existing event, marks as duplicate, returns HTTP 200 OK
-- **No re-processing happens** (handlers are not re-queued)
+- **No re-processing happens** (actions are not re-queued)
 
-### 11. Handler Dispatch
+### 11. Action Dispatch
 
 ```ruby
 if event.previously_new_record?
-  # New event - create handler records
+  # New event - create action records
   create_handlers_for_event(event)
   
   render json: { id: event.id, status: "received" }, status: :created
@@ -590,7 +590,7 @@ else
 end
 ```
 
-**Note:** For complete details on handler creation, registration, and execution flow, see [Handlers: Business Logic Execution](#handlers-business-logic-execution) below.
+**Note:** For complete details on action creation, registration, and execution flow, see [Actions: Business Logic Execution](#actions-business-logic-execution) below.
 
 ---
 
@@ -1263,19 +1263,19 @@ max_payload_size_bytes: 10485760  # 10MB
 
 ---
 
-## Handlers: Business Logic Execution
+## Actions: Business Logic Execution
 
-### What Are Handlers?
+### What Are Actions?
 
-Handlers are **Ruby classes that contain your business logic** for processing webhooks. While providers and verifiers handle the security and verification of incoming webhooks, handlers contain the actual application-specific code that runs in response to webhook events.
+Actions are **Ruby classes that contain your business logic** for processing webhooks. While providers and verifiers handle the security and verification of incoming webhooks, actions contain the actual application-specific code that runs in response to webhook events.
 
 **Key Concepts:**
 
-- **Separation of Concerns**: Security (verifiers) vs. Business Logic (handlers)
-- **Event-Driven**: Handlers react to specific event types
+- **Separation of Concerns**: Security (verifiers) vs. Business Logic (actions)
+- **Event-Driven**: Actions react to specific event types
 - **Asynchronous by Default**: Execute in background jobs for reliability
 - **Retryable**: Automatic retry with exponential backoff on failures
-- **Priority-Based**: Multiple handlers can process the same event in order
+- **Priority-Based**: Multiple actions can process the same event in order
 
 **Example Use Cases:**
 - Update payment status when Stripe sends `payment_intent.succeeded`
@@ -1284,9 +1284,9 @@ Handlers are **Ruby classes that contain your business logic** for processing we
 - Log analytics events for any webhook
 - Trigger internal workflows based on external events
 
-### Handler Anatomy
+### Action Anatomy
 
-A handler is a simple Ruby class with a single required method: `handle`
+A action is a simple Ruby class with a single required method: `handle`
 
 ```ruby
 # captain_hook/stripe/actions/payment_succeeded_handler.rb
@@ -1333,13 +1333,13 @@ end
    - `metadata[:headers]` - HTTP headers (optional)
    - Custom fields you might add
 
-**Handler Responsibilities:**
+**Action Responsibilities:**
 - Execute business logic quickly (or enqueue more jobs)
 - Raise exceptions on errors (triggers automatic retry)
 - Be idempotent (same event might be processed multiple times)
 - Log important actions for debugging
 
-**Handler Don'ts:**
+**Action Don'ts:**
 - Don't do signature verification (already done)
 - Don't parse JSON (already parsed)
 - Don't handle retries manually (automatic)
@@ -1347,11 +1347,11 @@ end
 
 ---
 
-## Handler Registration
+## Action Registration
 
-### Where to Register Handlers
+### Where to Register Actions
 
-Handlers must be registered in your application's initializer:
+Actions must be registered in your application's initializer:
 
 ```ruby
 # config/initializers/captain_hook.rb
@@ -1362,12 +1362,12 @@ end
 
 # IMPORTANT: Must be inside after_initialize block
 Rails.application.config.after_initialize do
-  # Register handlers here
+  # Register actions here
   
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentSucceededHandler",
+    action_class: "StripePaymentSucceededHandler",
     priority: 100,
     async: true,
     max_attempts: 3,
@@ -1379,17 +1379,17 @@ end
 **Why `after_initialize`?**
 - Ensures CaptainHook engine is fully loaded
 - Prevents circular dependency issues
-- Guarantees handler registry is available
+- Guarantees action registry is available
 - Required for proper initialization order
 
 ### Registration Options
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   # REQUIRED FIELDS
   provider: "stripe",                          # Provider name (must match provider)
   event_type: "payment_intent.succeeded",     # Exact event type or wildcard
-  handler_class: "StripePaymentSucceededHandler",  # Class name as string
+  action_class: "StripePaymentSucceededHandler",  # Class name as string
   
   # OPTIONAL FIELDS (with defaults)
   priority: 100,                               # Execution order (lower = higher priority)
@@ -1412,29 +1412,29 @@ CaptainHook.register_handler(
 - Wildcards use glob matching patterns
 - Note: Wildcard matching is currently planned but not fully implemented
 
-**`handler_class`** (String, required)
+**`action_class`** (String, required)
 - Class name as a string (not the actual class)
 - Must be loadable via `constantize`
 - Example: `"StripePaymentSucceededHandler"`
 - Can include namespaces: `"Webhooks::Stripe::PaymentHandler"`
 
 **`priority`** (Integer, default: 100)
-- Determines execution order when multiple handlers exist
+- Determines execution order when multiple actions exist
 - Lower numbers = higher priority (execute first)
 - Example: priority 10 runs before priority 100
-- Handlers with same priority are sorted by class name (alphabetically)
+- Actions with same priority are sorted by class name (alphabetically)
 
 **`async`** (Boolean, default: true)
 - `true`: Execute in background job (recommended)
 - `false`: Execute synchronously (blocks webhook response)
-- Synchronous handlers should be fast (<100ms)
-- Async handlers can take minutes (with retries)
+- Synchronous actions should be fast (<100ms)
+- Async actions can take minutes (with retries)
 
 **`max_attempts`** (Integer, default: 5)
 - Maximum number of execution attempts
 - Includes initial attempt + retries
 - Example: max_attempts=3 means 1 initial + 2 retries
-- After max attempts, handler is marked as "failed"
+- After max attempts, action is marked as "failed"
 
 **`retry_delays`** (Array of Integers, default: [30, 60, 300, 900, 3600])
 - Delays in seconds between retry attempts
@@ -1445,32 +1445,32 @@ CaptainHook.register_handler(
   - After 3rd failure: wait 300 seconds
 - If more attempts than delays, uses last delay value
 
-### Multiple Handlers for One Event
+### Multiple Actions for One Event
 
-You can register multiple handlers for the same event:
+You can register multiple actions for the same event:
 
 ```ruby
 # High priority: Update database (runs first)
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "UpdatePaymentHandler",
+  action_class: "UpdatePaymentHandler",
   priority: 10
 )
 
 # Medium priority: Send notification
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "PaymentNotificationHandler",
+  action_class: "PaymentNotificationHandler",
   priority: 50
 )
 
 # Low priority: Analytics (runs last)
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "PaymentAnalyticsHandler",
+  action_class: "PaymentAnalyticsHandler",
   priority: 100
 )
 ```
@@ -1481,32 +1481,32 @@ CaptainHook.register_handler(
 3. `PaymentAnalyticsHandler` (priority 100)
 
 **Independence:**
-- Each handler runs independently
+- Each action runs independently
 - If one fails, others still execute
 - Each has its own retry logic
 - Failures don't cascade
 
 ### Wildcard Event Types
 
-Register a single handler for multiple event types:
+Register a single action for multiple event types:
 
 ```ruby
 # Handle all payment_intent events
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",
-  handler_class: "StripePaymentIntentHandler"
+  action_class: "StripePaymentIntentHandler"
 )
 
 # Handle all Square bank account events
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "square",
   event_type: "bank_account.*",
-  handler_class: "SquareBankAccountHandler"
+  action_class: "SquareBankAccountHandler"
 )
 ```
 
-**Handler Implementation:**
+**Action Implementation:**
 
 ```ruby
 class StripePaymentIntentHandler
@@ -1538,24 +1538,24 @@ class StripePaymentIntentHandler
 end
 ```
 
-**Note:** Wildcard matching is registered in the HandlerRegistry but full glob-pattern matching in event lookups is not yet fully implemented. Currently, exact matches work reliably.
+**Note:** Wildcard matching is registered in the ActionRegistry but full glob-pattern matching in event lookups is not yet fully implemented. Currently, exact matches work reliably.
 
 ---
 
-## Handler Discovery & Sync
+## Action Discovery & Sync
 
 ### The Two-Phase System
 
-CaptainHook uses a **hybrid approach** for handler management:
+CaptainHook uses a **hybrid approach** for action management:
 
-1. **In-Memory Registry** (`HandlerRegistry`)
-   - Handlers registered at application startup
+1. **In-Memory Registry** (`ActionRegistry`)
+   - Actions registered at application startup
    - Stored in memory (RAM)
    - Fast lookups during webhook processing
    - Cleared on application restart
 
-2. **Database Storage** (`captain_hook_handlers` table)
-   - Persistent storage of handler configurations
+2. **Database Storage** (`captain_hook_actions` table)
+   - Persistent storage of action configurations
    - Synced from registry during provider scans
    - Visible in admin UI
    - Editable via admin interface
@@ -1567,16 +1567,16 @@ CaptainHook uses a **hybrid approach** for handler management:
 - **Database** = Persistent configuration + Admin UI
 - **Sync Process** = Keeps them in sync
 
-### Handler Discovery Process
+### Action Discovery Process
 
-Discovery happens when you click "Scan for Providers" or "Scan Handlers" in admin UI:
+Discovery happens when you click "Scan for Providers" or "Scan Actions" in admin UI:
 
 #### Step 1: Registry Inspection
 
 ```ruby
-# lib/captain_hook/services/handler_discovery.rb
+# lib/captain_hook/services/action_discovery.rb
 
-registry = CaptainHook.handler_registry
+registry = CaptainHook.action_registry
 
 # Access internal registry structure
 registry.instance_variable_get(:@registry).each do |key, configs|
@@ -1586,7 +1586,7 @@ registry.instance_variable_get(:@registry).each do |key, configs|
     discovered_handlers << {
       "provider" => provider,
       "event_type" => event_type,
-      "handler_class" => config.handler_class.to_s,
+      "action_class" => config.action_class.to_s,
       "async" => config.async,
       "max_attempts" => config.max_attempts,
       "priority" => config.priority,
@@ -1597,18 +1597,18 @@ end
 ```
 
 **What's Discovered:**
-- All handlers registered via `CaptainHook.register_handler`
+- All actions registered via `CaptainHook.register_action`
 - From main application's initializer
-- From gems' initializers (if they register handlers)
+- From gems' initializers (if they register actions)
 
 **Not Discovered:**
-- Handlers in the database but not in registry
-- Handlers that were registered after initialization
-- Commented-out handler registrations
+- Actions in the database but not in registry
+- Actions that were registered after initialization
+- Commented-out action registrations
 
 #### Step 2: Provider Matching
 
-For each discovered handler:
+For each discovered action:
 
 ```ruby
 provider = definition["provider"]
@@ -1617,7 +1617,7 @@ provider = definition["provider"]
 db_provider = CaptainHook::Provider.find_by(name: provider)
 
 if db_provider.nil?
-  # Handler registered for non-existent provider
+  # Action registered for non-existent provider
   # Skipped or error logged
 end
 ```
@@ -1634,32 +1634,32 @@ Gem 1:        captain_hook/providers/stripe/stripe.yml
 **What Happens:**
 1. Both YAML files are discovered (different `source` values)
 2. Only ONE provider record is created (database unique constraint on `name`)
-3. **Handlers are registered to whichever provider exists in the database**
+3. **Actions are registered to whichever provider exists in the database**
 4. Admin UI shows warning about duplicate provider definitions
 
 **Example Scenario:**
 
 ```ruby
 # In your app initializer
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",          # Matches provider name
   event_type: "payment_intent.succeeded",
-  handler_class: "AppPaymentHandler"
+  action_class: "AppPaymentHandler"
 )
 
 # In gem initializer (e.g., example-stripe)
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",          # Same provider name
   event_type: "charge.succeeded",
-  handler_class: "Example::ChargeHandler"
+  action_class: "Example::ChargeHandler"
 )
 ```
 
 **Result:**
-- Both handlers registered to the same `stripe` provider
+- Both actions registered to the same `stripe` provider
 - Provider settings come from whichever was created first
-- All handlers for "stripe" will work
-- No conflicts, handlers are independent
+- All actions for "stripe" will work
+- No conflicts, actions are independent
 
 **Best Practice:**
 - Use unique provider names if you need separate configurations
@@ -1669,31 +1669,31 @@ CaptainHook.register_handler(
 #### Step 3: Database Synchronization
 
 ```ruby
-# lib/captain_hook/services/handler_sync.rb
+# lib/captain_hook/services/action_sync.rb
 
 handler_definitions.each do |definition|
   provider = definition["provider"]
   event_type = definition["event_type"]
-  handler_class = definition["handler_class"]
+  action_class = definition["action_class"]
   
-  # Find existing handler by unique key
-  handler = Handler.find_by(
+  # Find existing action by unique key
+  action = Action.find_by(
     provider: provider,
     event_type: event_type,
-    handler_class: handler_class
+    action_class: action_class
   )
   
   # Check if soft-deleted
-  if handler&.deleted?
-    # SKIP - User manually deleted this handler
+  if action&.deleted?
+    # SKIP - User manually deleted this action
     next
   end
   
-  # Create or update handler
-  if handler
-    handler.update!(definition)  # Update if changed
+  # Create or update action
+  if action
+    action.update!(definition)  # Update if changed
   else
-    Handler.create!(definition)   # Create new
+    Action.create!(definition)   # Create new
   end
 end
 ```
@@ -1701,48 +1701,48 @@ end
 **Sync Modes:**
 
 1. **Discover New** (default):
-   - Creates handlers that don't exist
-   - Skips existing handlers (doesn't update)
-   - Safe for adding new handlers
+   - Creates actions that don't exist
+   - Skips existing actions (doesn't update)
+   - Safe for adding new actions
 
 2. **Full Sync**:
-   - Creates new handlers
-   - Updates existing handlers with registry values
+   - Creates new actions
+   - Updates existing actions with registry values
    - Overwrites database configuration
 
 **Soft Delete Protection:**
 
-If a handler has `deleted_at` timestamp:
+If a action has `deleted_at` timestamp:
 - It's skipped during sync
 - Won't be re-created automatically
 - User must manually restore via admin UI or delete the timestamp
 
 This prevents:
-- Unwanted handler re-addition
+- Unwanted action re-addition
 - Sync overriding manual deletions
 - Forcing users to comment out code
 
-### Where Handlers Live
+### Where Actions Live
 
-Handlers can exist in two locations:
+Actions can exist in two locations:
 
 #### Option 1: Host Application
 
 ```
 your-rails-app/
 ├── captain_hook/
-│   └── handlers/
+│   └── actions/
 │       ├── stripe_payment_succeeded_handler.rb
 │       ├── square_order_created_handler.rb
 │       └── paypal_payment_captured_handler.rb
 └── config/
     └── initializers/
-        └── captain_hook.rb    # Register handlers here
+        └── captain_hook.rb    # Register actions here
 ```
 
 **Recommended structure:**
-- Handlers in `captain_hook/<provider>/actions/` (keeps webhook code together with provider config)
-- Can also use `app/handlers/` (standard Rails location)
+- Actions in `captain_hook/<provider>/actions/` (keeps webhook code together with provider config)
+- Can also use `app/actions/` (standard Rails location)
 
 #### Option 2: Third-Party Gems
 
@@ -1752,13 +1752,13 @@ example-stripe/
 │   └── stripe/
 │       ├── stripe.yml
 │       ├── stripe.rb        # (Optional) Custom verifier if not built-in
-│       └── actions/         # Handlers auto-loaded from here
+│       └── actions/         # Actions auto-loaded from here
 │           ├── charge_handler.rb
 │           └── payment_intent_handler.rb
 └── lib/
     └── example/
         └── stripe/
-            └── engine.rb    # Register handlers in initializer
+            └── engine.rb    # Register actions in initializer
 ```
 
 **Gem Registration:**
@@ -1771,10 +1771,10 @@ module Example
     class Engine < ::Rails::Engine
       initializer "example.stripe.register_handlers" do
         Rails.application.config.after_initialize do
-          CaptainHook.register_handler(
+          CaptainHook.register_action(
             provider: "stripe",
             event_type: "charge.succeeded",
-            handler_class: "Example::Stripe::ChargeHandler"
+            action_class: "Example::Stripe::ChargeHandler"
           )
         end
       end
@@ -1783,13 +1783,13 @@ module Example
 end
 ```
 
-**Loading Handlers from Gems:**
+**Loading Actions from Gems:**
 
-Handler classes must be autoloadable:
+Action classes must be autoloadable:
 
 ```ruby
 # Option 1: Standard autoload paths
-# example-stripe/app/handlers/example/stripe/charge_handler.rb
+# example-stripe/app/actions/example/stripe/charge_handler.rb
 module Example
   module Stripe
     class ChargeHandler
@@ -1802,19 +1802,19 @@ end
 
 # Option 2: Manual require in gem
 # example-stripe/lib/example/stripe.rb
-require "example/stripe/handlers/charge_handler"
+require "example/stripe/actions/charge_handler"
 ```
 
-### Handler Discovery from Gems
+### Action Discovery from Gems
 
 **How It Works:**
 
-1. Gem defines initializer with `register_handler` calls
+1. Gem defines initializer with `register_action` calls
 2. Initializer runs during Rails startup
-3. Handlers added to in-memory registry
-4. User clicks "Scan Handlers" in admin UI
+3. Actions added to in-memory registry
+4. User clicks "Scan Actions" in admin UI
 5. Discovery service reads from registry
-6. Handlers synced to database
+6. Actions synced to database
 
 **Example: Full Gem Integration**
 
@@ -1828,16 +1828,16 @@ module Example
       
       initializer "example.stripe.register_handlers", after: :load_config_initializers do
         Rails.application.config.after_initialize do
-          # Register multiple handlers
+          # Register multiple actions
           [
-            { event: "charge.succeeded", handler: "Example::Stripe::ChargeSucceededHandler" },
-            { event: "charge.failed", handler: "Example::Stripe::ChargeFailedHandler" },
-            { event: "payment_intent.*", handler: "Example::Stripe::PaymentIntentHandler" }
+            { event: "charge.succeeded", action: "Example::Stripe::ChargeSucceededHandler" },
+            { event: "charge.failed", action: "Example::Stripe::ChargeFailedHandler" },
+            { event: "payment_intent.*", action: "Example::Stripe::PaymentIntentHandler" }
           ].each do |config|
-            CaptainHook.register_handler(
+            CaptainHook.register_action(
               provider: "stripe",
               event_type: config[:event],
-              handler_class: config[:handler],
+              action_class: config[:action],
               priority: 100,
               async: true
             )
@@ -1851,38 +1851,38 @@ end
 
 **Host Application Override:**
 
-App can override gem handler behavior:
+App can override gem action behavior:
 
 ```ruby
 # config/initializers/captain_hook.rb
 
 Rails.application.config.after_initialize do
-  # Override gem's handler with your own
-  CaptainHook.register_handler(
+  # Override gem's action with your own
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "charge.succeeded",
-    handler_class: "CustomChargeHandler",  # Your custom handler
-    priority: 10  # Higher priority than gem's handler
+    action_class: "CustomChargeHandler",  # Your custom action
+    priority: 10  # Higher priority than gem's action
   )
 end
 ```
 
-Both handlers will execute (gem's and yours), prioritized by priority value.
+Both actions will execute (gem's and yours), prioritized by priority value.
 
 ---
 
-## Handler Table Schema
+## Action Table Schema
 
-### Table: `captain_hook_handlers`
+### Table: `captain_hook_actions`
 
 ```sql
-CREATE TABLE captain_hook_handlers (
+CREATE TABLE captain_hook_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
-  -- Handler identification (unique together)
+  -- Action identification (unique together)
   provider VARCHAR NOT NULL,              -- Provider name (matches providers.name)
   event_type VARCHAR NOT NULL,            -- Event type (exact or wildcard pattern)
-  handler_class VARCHAR NOT NULL,         -- Handler class name
+  action_class VARCHAR NOT NULL,         -- Action class name
   
   -- Execution configuration
   async BOOLEAN NOT NULL DEFAULT true,    -- Background job (true) or synchronous (false)
@@ -1901,12 +1901,12 @@ CREATE TABLE captain_hook_handlers (
   
   -- Unique constraint
   CONSTRAINT idx_captain_hook_handlers_unique 
-    UNIQUE (provider, event_type, handler_class)
+    UNIQUE (provider, event_type, action_class)
 );
 
 -- Indexes
-CREATE INDEX idx_captain_hook_handlers_provider ON captain_hook_handlers(provider);
-CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_handlers(deleted_at);
+CREATE INDEX idx_captain_hook_handlers_provider ON captain_hook_actions(provider);
+CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_actions(deleted_at);
 ```
 
 ### Column Explanations
@@ -1914,35 +1914,35 @@ CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_handlers(delet
 #### Identification Columns
 
 **`provider`** (VARCHAR, NOT NULL)
-- Provider name this handler responds to
+- Provider name this action responds to
 - Must match an existing provider's `name` field
 - Example: `"stripe"`, `"square"`, `"paypal"`
 - Case-sensitive
 - Part of unique constraint
 
 **`event_type`** (VARCHAR, NOT NULL)
-- Event type this handler processes
+- Event type this action processes
 - Exact match: `"payment_intent.succeeded"`
 - Wildcard pattern: `"payment_intent.*"` (planned feature)
 - Provider-specific format
 - Part of unique constraint
 
-**`handler_class`** (VARCHAR, NOT NULL)
+**`action_class`** (VARCHAR, NOT NULL)
 - Fully-qualified class name as string
 - Must be loadable via `"ClassName".constantize`
 - Example: `"StripePaymentSucceededHandler"`
 - Can include modules: `"Webhooks::StripePaymentHandler"`
 - Part of unique constraint
 
-**Unique Constraint**: `(provider, event_type, handler_class)`
-- Prevents duplicate handler registrations
-- Same handler can't be registered twice for same provider+event
-- Different handlers can process same event (multi-handler support)
+**Unique Constraint**: `(provider, event_type, action_class)`
+- Prevents duplicate action registrations
+- Same action can't be registered twice for same provider+event
+- Different actions can process same event (multi-action support)
 
 #### Configuration Columns
 
 **`async`** (BOOLEAN, NOT NULL, DEFAULT true)
-- **true**: Execute in background job (via `IncomingHandlerJob`)
+- **true**: Execute in background job (via `IncomingActionJob`)
 - **false**: Execute synchronously (blocks webhook response)
 
 **When to use sync (false):**
@@ -1956,24 +1956,24 @@ CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_handlers(delet
 - External API calls
 - Email sending
 - Any operation >50ms
-- Most production handlers
+- Most production actions
 
 **`priority`** (INTEGER, NOT NULL, DEFAULT 100)
-- Determines execution order among multiple handlers
+- Determines execution order among multiple actions
 - Lower number = higher priority (executes first)
 - Range: typically 1-1000
 - Default: 100 (medium priority)
 
 **Example priorities:**
-- `1-10`: Critical handlers (payment updates, order creation)
-- `50-100`: Normal handlers (notifications, logging)
+- `1-10`: Critical actions (payment updates, order creation)
+- `50-100`: Normal actions (notifications, logging)
 - `500-1000`: Low priority (analytics, cleanup)
 
 **`max_attempts`** (INTEGER, NOT NULL, DEFAULT 5)
 - Maximum execution attempts (initial + retries)
 - Must be > 0
 - Example: `max_attempts: 3` = 1 try + 2 retries
-- After exhaustion, handler marked as "failed"
+- After exhaustion, action marked as "failed"
 
 **`retry_delays`** (JSONB, NOT NULL, DEFAULT [30, 60, 300, 900, 3600])
 - Array of integers representing seconds between retries
@@ -1996,29 +1996,29 @@ CREATE INDEX idx_captain_hook_handlers_deleted_at ON captain_hook_handlers(delet
 
 **`deleted_at`** (TIMESTAMP, NULLABLE)
 - Soft delete timestamp
-- `NULL` = active handler
-- `NOT NULL` = soft-deleted handler
-- Soft-deleted handlers:
+- `NULL` = active action
+- `NOT NULL` = soft-deleted action
+- Soft-deleted actions:
   - Not visible in admin UI by default
-  - Skipped during handler sync
+  - Skipped during action sync
   - Won't be auto-recreated
   - Can be restored by setting to `NULL`
 
 **Why soft delete?**
 - Prevents unwanted re-creation during sync
-- Preserves handler history
+- Preserves action history
 - Allows restoration if needed
 - User intent is preserved
 
 ---
 
-## Handler Execution Flow
+## Action Execution Flow
 
-### Complete Handler Lifecycle
+### Complete Action Lifecycle
 
-When a webhook arrives and creates an `IncomingEvent`, here's the handler execution process:
+When a webhook arrives and creates an `IncomingEvent`, here's the action execution process:
 
-### 1. Handler Record Creation
+### 1. Action Record Creation
 
 After event is saved to database:
 
@@ -2026,21 +2026,21 @@ After event is saved to database:
 # app/controllers/captain_hook/incoming_controller.rb
 
 if event.previously_new_record?
-  # New event - create handler execution records
+  # New event - create action execution records
   create_handlers_for_event(event)
 end
 
 def create_handlers_for_event(event)
-  # Lookup handlers from in-memory registry
-  handler_configs = CaptainHook.handler_registry.handlers_for(
+  # Lookup actions from in-memory registry
+  handler_configs = CaptainHook.action_registry.actions_for(
     provider: event.provider,
     event_type: event.event_type
   )
   
-  # Create execution record for each handler
+  # Create execution record for each action
   handler_configs.each do |config|
-    handler = event.incoming_event_handlers.create!(
-      handler_class: config.handler_class.to_s,
+    action = event.incoming_event_actions.create!(
+      action_class: config.action_class.to_s,
       status: :pending,
       priority: config.priority,
       attempt_count: 0
@@ -2048,9 +2048,9 @@ def create_handlers_for_event(event)
     
     # Enqueue job
     if config.async
-      CaptainHook::IncomingHandlerJob.perform_later(handler.id)
+      CaptainHook::IncomingActionJob.perform_later(action.id)
     else
-      CaptainHook::IncomingHandlerJob.new.perform(handler.id)
+      CaptainHook::IncomingActionJob.new.perform(action.id)
     end
   end
 end
@@ -2058,20 +2058,20 @@ end
 
 **Key points:**
 - Uses in-memory registry for fast lookup
-- Creates one `IncomingEventHandler` record per handler
-- Immediate job enqueue for async handlers
-- Synchronous execution for sync handlers
+- Creates one `IncomingEventAction` record per action
+- Immediate job enqueue for async actions
+- Synchronous execution for sync actions
 
 ### 2. Job Enqueueing
 
 ```ruby
-# Async handler
-CaptainHook::IncomingHandlerJob.perform_later(handler.id)
+# Async action
+CaptainHook::IncomingActionJob.perform_later(action.id)
 # => Queued to :captain_hook_incoming queue
 # => Processed by background job worker (Sidekiq, Delayed Job, etc.)
 
-# Sync handler
-CaptainHook::IncomingHandlerJob.new.perform(handler.id)
+# Sync action
+CaptainHook::IncomingActionJob.new.perform(action.id)
 # => Executes immediately in web process
 # => Blocks webhook response until complete
 ```
@@ -2083,16 +2083,16 @@ CaptainHook::IncomingHandlerJob.new.perform(handler.id)
 
 ### 3. Lock Acquisition (Optimistic Locking)
 
-Job attempts to acquire lock on handler record:
+Job attempts to acquire lock on action record:
 
 ```ruby
 # app/jobs/captain_hook/incoming_handler_job.rb
 
 def perform(handler_id, worker_id: SecureRandom.uuid)
-  handler = IncomingEventHandler.find(handler_id)
+  action = IncomingEventAction.find(handler_id)
   
   # Try to acquire lock
-  return unless handler.acquire_lock!(worker_id)
+  return unless action.acquire_lock!(worker_id)
   
   # Continue processing...
 end
@@ -2123,33 +2123,33 @@ end
 - Ensures exactly-once execution
 - Race condition protection
 
-### 4. Handler Lookup
+### 4. Action Lookup
 
-Retrieve handler configuration from registry:
+Retrieve action configuration from registry:
 
 ```ruby
-handler_config = CaptainHook.handler_registry.find_handler_config(
+handler_config = CaptainHook.action_registry.find_action_config(
   provider: event.provider,
   event_type: event.event_type,
-  handler_class: handler.handler_class
+  action_class: action.action_class
 )
 ```
 
 **Fallback behavior:**
 - If not in registry: Job exits silently
-- Handler might have been unregistered
+- Action might have been unregistered
 - Or application restarted without re-registering
 
-### 5. Handler Execution
+### 5. Action Execution
 
 ```ruby
 begin
   # Increment attempt counter
-  handler.increment_attempts!
+  action.increment_attempts!
   
-  # Load and instantiate handler class
-  handler_class = handler.handler_class.constantize
-  handler_instance = handler_class.new
+  # Load and instantiate action class
+  action_class = action.action_class.constantize
+  handler_instance = action_class.new
   
   # Execute handle method
   handler_instance.handle(
@@ -2159,7 +2159,7 @@ begin
   )
   
   # Mark as successful
-  handler.mark_processed!
+  action.mark_processed!
   
   # Update event status
   event.recalculate_status!
@@ -2178,17 +2178,17 @@ end
 
 ```ruby
 rescue StandardError => e
-  # Mark handler as failed
-  handler.mark_failed!(e)
+  # Mark action as failed
+  action.mark_failed!(e)
   
   # Check if retries exhausted
-  if handler.max_attempts_reached?(handler_config.max_attempts)
+  if action.max_attempts_reached?(handler_config.max_attempts)
     # No more retries
     event.recalculate_status!
   else
     # Schedule retry
-    delay = handler_config.delay_for_attempt(handler.attempt_count)
-    handler.reset_for_retry!
+    delay = handler_config.delay_for_attempt(action.attempt_count)
+    action.reset_for_retry!
     
     # Enqueue retry job
     self.class.set(wait: delay.seconds).perform_later(
@@ -2225,19 +2225,19 @@ Attempt 5: +1290s       -> Fails -> No more retries (max_attempts: 5)
 event.recalculate_status!
 ```
 
-Updates `IncomingEvent.status` based on all handler statuses:
+Updates `IncomingEvent.status` based on all action statuses:
 
 ```ruby
 # app/models/captain_hook/incoming_event.rb
 
 def recalculate_status!
-  return if incoming_event_handlers.empty?
+  return if incoming_event_actions.empty?
   
-  if incoming_event_handlers.all?(&:status_processed?)
+  if incoming_event_actions.all?(&:status_processed?)
     update!(status: :processed)
-  elsif incoming_event_handlers.any?(&:status_failed?)
+  elsif incoming_event_actions.any?(&:status_failed?)
     update!(status: :failed)
-  elsif incoming_event_handlers.any?(&:status_processing?)
+  elsif incoming_event_actions.any?(&:status_processing?)
     update!(status: :processing)
   else
     update!(status: :received)
@@ -2246,10 +2246,10 @@ end
 ```
 
 **Status meanings:**
-- `received`: Event created, handlers not yet started
-- `processing`: At least one handler is running
-- `processed`: All handlers succeeded
-- `failed`: At least one handler exhausted retries
+- `received`: Event created, actions not yet started
+- `processing`: At least one action is running
+- `processed`: All actions succeeded
+- `failed`: At least one action exhausted retries
 
 ### Complete Flow Diagram
 
@@ -2258,10 +2258,10 @@ Webhook Arrives
     ↓
 Event Created (IncomingEvent)
     ↓
-Create Handler Records (IncomingEventHandler)
+Create Action Records (IncomingEventAction)
     ↓
 ┌─────────────────────┬─────────────────────┐
-│  Async Handler      │  Sync Handler       │
+│  Async Action      │  Sync Action       │
 │  Job Enqueued       │  Execute Now        │
 │  Background Worker  │  In Web Process     │
 └──────────┬──────────┴──────────┬──────────┘
@@ -2271,7 +2271,7 @@ Create Handler Records (IncomingEventHandler)
       Got Lock?            Got Lock?
       Yes │   No (Exit)    Yes │   No (Exit)
           ↓                    ↓
-    Load Handler Config   Load Handler Config
+    Load Action Config   Load Action Config
           ↓                    ↓
     Increment Attempts    Increment Attempts
           ↓                    ↓
@@ -2301,125 +2301,125 @@ Lock         Retries   Lock        Retries
 
 ---
 
-## Handler Scenarios & Limitations
+## Action Scenarios & Limitations
 
 ### Supported Scenarios
 
-#### ✅ Multiple Handlers Per Event
+#### ✅ Multiple Actions Per Event
 
 ```ruby
-# All three handlers execute for payment_intent.succeeded
-CaptainHook.register_handler(
+# All three actions execute for payment_intent.succeeded
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "PaymentUpdateHandler",
+  action_class: "PaymentUpdateHandler",
   priority: 10
 )
 
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "NotificationHandler",
+  action_class: "NotificationHandler",
   priority: 50
 )
 
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "AnalyticsHandler",
+  action_class: "AnalyticsHandler",
   priority: 100
 )
 ```
 
 **Works:** All three execute independently in priority order
 
-#### ✅ Handlers in Host Application
+#### ✅ Actions in Host Application
 
 ```
 app/
 └── captain_hook/
-    └── handlers/
+    └── actions/
         └── my_handler.rb
 
 config/initializers/captain_hook.rb:
-  CaptainHook.register_handler(...)
+  CaptainHook.register_action(...)
 ```
 
 **Works:** Standard pattern, fully supported
 
-#### ✅ Handlers in Gems
+#### ✅ Actions in Gems
 
 ```ruby
 # in gem's engine.rb
 Rails.application.config.after_initialize do
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "charge.succeeded",
-    handler_class: "GemNamespace::ChargeHandler"
+    action_class: "GemNamespace::ChargeHandler"
   )
 end
 ```
 
-**Works:** Gem handlers discovered and synced
+**Works:** Gem actions discovered and synced
 
-#### ✅ Mix of Sync and Async Handlers
+#### ✅ Mix of Sync and Async Actions
 
 ```ruby
-# Fast sync handler (updates cache)
-CaptainHook.register_handler(
+# Fast sync action (updates cache)
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "CacheUpdateHandler",
+  action_class: "CacheUpdateHandler",
   async: false  # Synchronous
 )
 
-# Slow async handler (emails)
-CaptainHook.register_handler(
+# Slow async action (emails)
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "EmailHandler",
+  action_class: "EmailHandler",
   async: true  # Asynchronous
 )
 ```
 
 **Works:** Sync executes immediately, async queues to background
 
-#### ✅ Duplicate Provider Names (Handlers Register to Database Provider)
+#### ✅ Duplicate Provider Names (Actions Register to Database Provider)
 
 ```
 Application: captain_hook/providers/stripe/stripe.yml
 Gem:         captain_hook/providers/stripe/stripe.yml
 
 # In app initializer
-CaptainHook.register_handler(provider: "stripe", ...)
+CaptainHook.register_action(provider: "stripe", ...)
 
 # In gem initializer
-CaptainHook.register_handler(provider: "stripe", ...)
+CaptainHook.register_action(provider: "stripe", ...)
 ```
 
 **Works:**
-- Both handlers registered to same provider
+- Both actions registered to same provider
 - Provider configuration from whichever was created first
-- Both handlers execute for stripe webhooks
+- Both actions execute for stripe webhooks
 - No conflicts
 
 #### ✅ Wildcard Event Types (Registered)
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",  # Wildcard
-  handler_class: "PaymentIntentHandler"
+  action_class: "PaymentIntentHandler"
 )
 ```
 
 **Works (Partially):**
-- Handler registered successfully
+- Action registered successfully
 - Stored in registry and database
 - **Note:** Full wildcard matching in event lookups not yet implemented
 - Exact matches work reliably
 
-#### ✅ Idempotent Handlers
+#### ✅ Idempotent Actions
 
 ```ruby
 class IdempotentPaymentHandler
@@ -2433,57 +2433,57 @@ class IdempotentPaymentHandler
 end
 ```
 
-**Works:** Recommended pattern for production handlers
+**Works:** Recommended pattern for production actions
 
-#### ✅ Handler Soft Delete
+#### ✅ Action Soft Delete
 
 ```ruby
 # Via admin UI or directly
-handler = CaptainHook::Handler.find_by(handler_class: "UnwantedHandler")
-handler.soft_delete!
+action = CaptainHook::Action.find_by(action_class: "UnwantedHandler")
+action.soft_delete!
 
-# Later: Scan handlers
-# Handler won't be re-created
+# Later: Scan actions
+# Action won't be re-created
 ```
 
 **Works:** User deletions are respected during sync
 
 ### Unsupported Scenarios
 
-#### ❌ Runtime Handler Registration
+#### ❌ Runtime Action Registration
 
 ```ruby
 # Inside controller or model
 class WebhooksController < ApplicationController
   def create
-    CaptainHook.register_handler(...)  # BAD
+    CaptainHook.register_action(...)  # BAD
   end
 end
 ```
 
-**Limitation:** Handlers must be registered during initialization
+**Limitation:** Actions must be registered during initialization
 
 **Reason:** Registry used for fast lookups, not dynamic
 
-**Workaround:** Use database to enable/disable handlers, not runtime registration
+**Workaround:** Use database to enable/disable actions, not runtime registration
 
-#### ❌ Handler Without Provider
+#### ❌ Action Without Provider
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "nonexistent",  # Provider doesn't exist
   event_type: "some.event",
-  handler_class: "MyHandler"
+  action_class: "MyHandler"
 )
 ```
 
-**Limitation:** Handler appears in registry but won't execute
+**Limitation:** Action appears in registry but won't execute
 
-**Reason:** Provider lookup happens first, webhook rejected before handlers
+**Reason:** Provider lookup happens first, webhook rejected before actions
 
-**Workaround:** Create provider first, then register handler
+**Workaround:** Create provider first, then register action
 
-#### ❌ Handlers Modifying Request/Response
+#### ❌ Actions Modifying Request/Response
 
 ```ruby
 class BadHandler
@@ -2495,13 +2495,13 @@ class BadHandler
 end
 ```
 
-**Limitation:** Handlers run after webhook response sent
+**Limitation:** Actions run after webhook response sent
 
 **Reason:** Async execution, webhook already returned 201 Created
 
 **Workaround:** Use controller hooks if you need request/response access
 
-#### ❌ Handler Return Values
+#### ❌ Action Return Values
 
 ```ruby
 class BadHandler
@@ -2513,25 +2513,25 @@ end
 
 **Limitation:** Return values are ignored
 
-**Reason:** Handlers run asynchronously, no caller to receive values
+**Reason:** Actions run asynchronously, no caller to receive values
 
 **Workaround:** Update database, raise exceptions for failures
 
-#### ❌ Ordered Execution Guarantee Across Async Handlers
+#### ❌ Ordered Execution Guarantee Across Async Actions
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "Handler1",
+  action_class: "Handler1",
   priority: 10,
   async: true  # Background job
 )
 
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.succeeded",
-  handler_class: "Handler2",
+  action_class: "Handler2",
   priority: 20,
   async: true  # Background job
 )
@@ -2542,11 +2542,11 @@ CaptainHook.register_handler(
 **Reason:** Both enqueued immediately, job workers process in parallel
 
 **Workaround:** 
-- Use synchronous handlers for ordering guarantee
-- Or make handlers independent
+- Use synchronous actions for ordering guarantee
+- Or make actions independent
 - Or use job dependencies (Sidekiq Pro, Active Job)
 
-#### ❌ Sharing State Between Handlers
+#### ❌ Sharing State Between Actions
 
 ```ruby
 class Handler1
@@ -2562,9 +2562,9 @@ class Handler2
 end
 ```
 
-**Limitation:** Handlers are separate instances, separate processes
+**Limitation:** Actions are separate instances, separate processes
 
-**Reason:** Each handler instantiated independently
+**Reason:** Each action instantiated independently
 
 **Workaround:** Use database, Redis, or event metadata to share data
 
@@ -2572,51 +2572,51 @@ end
 
 ```ruby
 # Registered
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment_intent.*",
-  handler_class: "WildcardHandler"
+  action_class: "WildcardHandler"
 )
 
 # Incoming webhook
 event_type = "payment_intent.succeeded"
 ```
 
-**Limitation:** Wildcard handler might not match incoming event
+**Limitation:** Wildcard action might not match incoming event
 
 **Reason:** Full glob pattern matching not implemented yet
 
 **Current State:** Exact matches work, wildcards stored but not fully functional
 
-**Workaround:** Register handlers for each specific event type
+**Workaround:** Register actions for each specific event type
 
-#### ❌ Handler Discovery from Database Only
+#### ❌ Action Discovery from Database Only
 
 ```ruby
-# Database has handler
-CaptainHook::Handler.create!(
+# Database has action
+CaptainHook::Action.create!(
   provider: "stripe",
   event_type: "charge.succeeded",
-  handler_class: "ChargeHandler"
+  action_class: "ChargeHandler"
 )
 
 # But not registered in initializer
-# Handler won't execute
+# Action won't execute
 ```
 
-**Limitation:** Handlers must be in registry to execute
+**Limitation:** Actions must be in registry to execute
 
 **Reason:** Lookup uses in-memory registry for performance
 
 **Workaround:** Always register in initializer, database is for admin UI
 
-#### ❌ Conditional Handler Execution
+#### ❌ Conditional Action Execution
 
 ```ruby
 class ConditionalHandler
   def handle(event:, payload:, metadata:)
     # Want: Only execute if certain condition
-    return if some_condition?  # Handler still marked as "processed"
+    return if some_condition?  # Action still marked as "processed"
     
     # Do work...
   end
@@ -2631,26 +2631,26 @@ end
 
 ### Edge Cases
 
-#### Handler Class Not Found
+#### Action Class Not Found
 
 ```ruby
-CaptainHook.register_handler(
+CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment.succeeded",
-  handler_class: "NonExistentHandler"  # Class doesn't exist
+  action_class: "NonExistentHandler"  # Class doesn't exist
 )
 ```
 
 **Behavior:**
 - Registration succeeds (string stored)
-- Handler record created in database
+- Action record created in database
 - Job fails when attempting to constantize
 - Error: `NameError: uninitialized constant NonExistentHandler`
 - Job retries according to retry config
 
-**Solution:** Ensure handler class exists and is loadable
+**Solution:** Ensure action class exists and is loadable
 
-#### Handler Raises Exception
+#### Action Raises Exception
 
 ```ruby
 class FailingHandler
@@ -2662,14 +2662,14 @@ end
 
 **Behavior:**
 - Exception caught by job
-- Handler marked as failed
+- Action marked as failed
 - Error message saved
 - Retry scheduled automatically
 - After max_attempts, stays failed
 
 **Intentional:** Exceptions trigger retry mechanism
 
-#### Very Long Handler Execution
+#### Very Long Action Execution
 
 ```ruby
 class SlowHandler
@@ -2682,14 +2682,14 @@ end
 **Behavior:**
 - Job worker occupied for 10 minutes
 - Might timeout (depends on job backend)
-- Other handlers delayed (if limited workers)
+- Other actions delayed (if limited workers)
 
 **Recommendation:** Break into smaller jobs or use separate queue
 
 #### Database Lock Contention
 
 ```ruby
-# Two handlers updating same record
+# Two actions updating same record
 class Handler1
   def handle(event:, payload:, metadata:)
     order = Order.find(123)
@@ -2712,14 +2712,14 @@ end
 - Might timeout
 - Could cause deadlocks
 
-**Solution:** Design handlers to be lock-independent
+**Solution:** Design actions to be lock-independent
 
-#### Handler Execution Order vs Priority
+#### Action Execution Order vs Priority
 
 ```ruby
-# Both handlers for same event
-CaptainHook.register_handler(..., handler_class: "A", priority: 100)
-CaptainHook.register_handler(..., handler_class: "Z", priority: 100)
+# Both actions for same event
+CaptainHook.register_action(..., action_class: "A", priority: 100)
+CaptainHook.register_action(..., action_class: "Z", priority: 100)
 ```
 
 **Behavior:**
@@ -2727,7 +2727,7 @@ CaptainHook.register_handler(..., handler_class: "Z", priority: 100)
 - "A" executes before "Z" (deterministic)
 - Ensures consistent ordering
 
-#### Memory Leaks in Handlers
+#### Memory Leaks in Actions
 
 ```ruby
 class LeakyHandler
@@ -2750,7 +2750,7 @@ end
 
 ## Summary
 
-### Key Takeaways (Providers & Handlers)
+### Key Takeaways (Providers & Actions)
 
 **Providers:**
 1. **Discovery is file-based**: Providers must exist as YAML files in `captain_hook/providers/`
@@ -2759,35 +2759,35 @@ end
 4. **Verifiers are isolated**: Each provider's verifier is self-contained with verification logic
 5. **Idempotency is automatic**: Same webhook won't be processed twice
 
-**Handlers:**
-1. **Business logic layer**: Handlers contain your application-specific webhook processing code
+**Actions:**
+1. **Business logic layer**: Actions contain your application-specific webhook processing code
 2. **Registry + Database**: Hybrid system for fast lookups and persistent configuration
 3. **Async by default**: Background jobs with retry logic ensure reliability
-4. **Multiple handlers supported**: Same event can trigger multiple independent handlers
-5. **Priority-based execution**: Control handler order with priority values
+4. **Multiple actions supported**: Same event can trigger multiple independent actions
+5. **Priority-based execution**: Control action order with priority values
 6. **Soft delete protection**: User deletions respected during sync
-7. **Gem integration**: Handlers can come from host app or third-party gems
-8. **Duplicate providers**: Handlers register to existing provider, regardless of source
+7. **Gem integration**: Actions can come from host app or third-party gems
+8. **Duplicate providers**: Actions register to existing provider, regardless of source
 
 **Critical Design Decisions:**
 
-- **Why two tables?** `providers` for webhook reception, `handlers` for configuration management
+- **Why two tables?** `providers` for webhook reception, `actions` for configuration management
 - **Why registry + database?** Fast runtime lookups + admin UI management
 - **Why soft delete?** Respect user intent, prevent unwanted re-creation
-- **Why provider matching?** Handlers can't exist without providers
+- **Why provider matching?** Actions can't exist without providers
 - **Why job-based execution?** Reliability, retries, and non-blocking webhook responses
 
-### Why Database Storage for Handlers?
+### Why Database Storage for Actions?
 
 **The Problem:** In-memory registry alone isn't enough
 
 **Reasons for database persistence:**
 
 1. **Admin UI Management**
-   - View all registered handlers
-   - Edit handler configuration (priority, retries, async)
-   - Enable/disable handlers without code changes
-   - See handler execution history
+   - View all registered actions
+   - Edit action configuration (priority, retries, async)
+   - Enable/disable actions without code changes
+   - See action execution history
 
 2. **Configuration Flexibility**
    - Change retry delays without redeploying
@@ -2795,14 +2795,14 @@ end
    - Toggle async/sync per environment
 
 3. **User Control**
-   - Soft delete to remove unwanted handlers
+   - Soft delete to remove unwanted actions
    - Deletions persist across deployments
    - Override gem defaults
 
 4. **Visibility**
-   - See what handlers are active
-   - Track which handlers exist per provider
-   - Audit handler configurations
+   - See what actions are active
+   - Track which actions exist per provider
+   - Audit action configurations
 
 5. **Consistency**
    - Single source of truth after sync
@@ -2823,29 +2823,29 @@ end
 ### Complete Data Flow
 
 ```
-1. Developer writes handler class
+1. Developer writes action class
    ↓
 2. Developer registers in initializer
    ↓
 3. Application starts, registry populated
    ↓
-4. Admin clicks "Scan Handlers"
+4. Admin clicks "Scan Actions"
    ↓
 5. Discovery reads from registry
    ↓
 6. Sync writes to database
    ↓
-7. Admin UI shows handlers
+7. Admin UI shows actions
    ↓
 8. Webhook arrives
    ↓
 9. Registry lookup (fast)
    ↓
-10. Handler execution record created
+10. Action execution record created
    ↓
 11. Job enqueued
    ↓
-12. Handler executes
+12. Action executes
    ↓
 13. Success/failure tracked in database
 ```
@@ -2854,7 +2854,7 @@ end
 
 - [Provider Discovery Documentation](docs/PROVIDER_DISCOVERY.md)
 - [Verifier Implementation Guide](docs/VERIFIERS.md)
-- [Handler Management Guide](docs/HANDLER_MANAGEMENT.md)
+- [Action Management Guide](docs/ACTION_MANAGEMENT.md)
 - [Setting Up Webhooks in Gems](docs/GEM_WEBHOOK_SETUP.md)
 - [Signing Secret Storage](docs/SIGNING_SECRET_STORAGE.md)
 

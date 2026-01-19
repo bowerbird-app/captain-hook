@@ -45,41 +45,41 @@ class CaptainHookModuleTest < Minitest::Test
   def test_handler_registry_returns_registry_from_configuration
     registry = CaptainHook.handler_registry
 
-    assert_instance_of CaptainHook::HandlerRegistry, registry
+    assert_instance_of CaptainHook::ActionRegistry, registry
     assert_same CaptainHook.configuration.handler_registry, registry
   end
 
-  def test_register_handler_delegates_to_handler_registry
-    CaptainHook.register_handler(
+  def test_register_action_delegates_to_handler_registry
+    CaptainHook.register_action(
       provider: "test_provider",
       event_type: "test_event",
-      handler_class: "TestHandler"
+      action_class: "TestHandler"
     )
 
-    assert CaptainHook.handler_registry.handlers_registered?(
+    assert CaptainHook.handler_registry.actions_registered?(
       provider: "test_provider",
       event_type: "test_event"
     )
   end
 
-  def test_register_handler_with_all_options
-    CaptainHook.register_handler(
+  def test_register_action_with_all_options
+    CaptainHook.register_action(
       provider: "stripe",
       event_type: "payment.succeeded",
-      handler_class: "PaymentHandler",
+      action_class: "PaymentHandler",
       async: true,
       priority: 50,
       max_attempts: 3,
       retry_delays: [30, 60, 120]
     )
 
-    handlers = CaptainHook.handler_registry.handlers_for(
+    handlers = CaptainHook.handler_registry.actions_for(
       provider: "stripe",
       event_type: "payment.succeeded"
     )
 
     assert_equal 1, handlers.size
-    assert_equal "PaymentHandler", handlers.first[:handler_class]
+    assert_equal "PaymentHandler", handlers.first[:action_class]
     assert_equal 50, handlers.first[:priority]
   end
 

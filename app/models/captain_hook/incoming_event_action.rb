@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  # Represents a single handler execution for an incoming event
+  # Represents a single action execution for an incoming event
   # Supports priority-based ordering and optimistic locking for concurrency
-  class IncomingEventHandler < ApplicationRecord
-    self.table_name = "captain_hook_incoming_event_handlers"
+  class IncomingEventAction < ApplicationRecord
+    self.table_name = "captain_hook_incoming_event_actions"
 
     # Status progression: pending -> processing -> processed/failed
     enum :status, {
@@ -18,7 +18,7 @@ module CaptainHook
     belongs_to :incoming_event
 
     # Validations
-    validates :handler_class, presence: true
+    validates :action_class, presence: true
     validates :status, presence: true
     validates :priority, presence: true, numericality: { only_integer: true }
     validates :attempt_count, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
@@ -26,7 +26,7 @@ module CaptainHook
     # Scopes
     scope :pending, -> { where(status: :pending) }
     scope :failed, -> { where(status: :failed) }
-    scope :by_priority, -> { order(priority: :asc, handler_class: :asc) }
+    scope :by_priority, -> { order(priority: :asc, action_class: :asc) }
     scope :locked, -> { where.not(locked_at: nil) }
     scope :unlocked, -> { where(locked_at: nil) }
 

@@ -9,9 +9,9 @@ CaptainHook::Engine.routes.draw do
         post :discover_new
       end
       member do
-        post :scan_handlers
+        post :scan_actions
       end
-      resources :handlers, only: %i[index show edit update destroy]
+      resources :actions, only: %i[index show edit update destroy]
     end
     resources :incoming_events, only: %i[index show]
 

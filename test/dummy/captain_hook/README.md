@@ -10,7 +10,7 @@ captain_hook/
 │   ├── stripe.yml
 │   ├── square.yml
 │   └── webhook_site.yml
-├── handlers/        # Custom webhook event handlers
+├── actions/        # Custom webhook event actions
 │   ├── stripe_payment_intent_handler.rb
 │   └── square_bank_account_handler.rb
 └── verifiers/        # Custom signature verification verifiers (optional)
@@ -66,14 +66,14 @@ signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 
 This will read the value from the `STRIPE_WEBHOOK_SECRET` environment variable at runtime.
 
-## Handlers
+## Actions
 
-Handlers are Ruby classes that process webhook events. Place handler files in the `handlers/` directory.
+Actions are Ruby classes that process webhook events. Place action files in the `actions/` directory.
 
-### Example Handler
+### Example Action
 
 ```ruby
-# handlers/stripe_payment_intent_handler.rb
+# actions/stripe_payment_intent_handler.rb
 class StripePaymentIntentHandler
   def handle(event:, payload:, metadata: {})
     # Process the webhook event
@@ -86,16 +86,16 @@ class StripePaymentIntentHandler
 end
 ```
 
-### Registering Handlers
+### Registering Actions
 
-Register handlers in your `config/initializers/captain_hook.rb`:
+Register actions in your `config/initializers/captain_hook.rb`:
 
 ```ruby
 Rails.application.config.after_initialize do
-  CaptainHook.register_handler(
+  CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    handler_class: "StripePaymentIntentHandler",
+    action_class: "StripePaymentIntentHandler",
     priority: 100,
     async: true,
     max_attempts: 3
@@ -152,7 +152,7 @@ my_gem/
 └── captain_hook/
     ├── providers/
     │   └── my_service.yml
-    ├── handlers/
+    ├── actions/
     │   └── my_service_handler.rb
     └── verifiers/
         └── my_service_verifier.rb
@@ -174,7 +174,7 @@ To discover and create providers from YAML files:
 
 1. **Store secrets in environment variables**: Never commit signing secrets to version control
 2. **Use descriptive names**: Provider names should be clear and unique
-3. **Document your handlers**: Add comments explaining what each handler does
+3. **Document your actions**: Add comments explaining what each action does
 4. **Test your verifiers**: Ensure signature verification works correctly
 5. **Keep YAMLs in sync**: Update YAML files when provider settings change
-6. **Version control**: Commit YAML files and handler/verifier code to your repository
+6. **Version control**: Commit YAML files and action/verifier code to your repository

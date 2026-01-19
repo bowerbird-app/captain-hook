@@ -17,8 +17,8 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 - **`captain_hook_factories.rb`**: FactoryBot definitions for:
   - Providers (with traits for Stripe, Square, PayPal, WebhookSite)
   - Incoming events
-  - Handlers
-  - Incoming event handlers
+  - Actions
+  - Incoming event actions
 
 ### 3. Request Specs (`spec/requests/`)
 
@@ -44,7 +44,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 - **`provider_spec.rb`**: Provider model tests
   - Validations (presence, uniqueness, format, numericality)
   - Callbacks (name normalization, token generation)
-  - Associations (incoming_events, handlers)
+  - Associations (incoming_events, actions)
   - Scopes (active, inactive, by_name)
   - Webhook URL generation
   - Rate limiting checks
@@ -53,9 +53,9 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 
 ### 6. Library Specs (`spec/lib/captain_hook/`)
 
-- **`handler_registry_spec.rb`**: Handler registry tests
-  - Handler registration
-  - Handler lookup by provider and event type
+- **`handler_registry_spec.rb`**: Action registry tests
+  - Action registration
+  - Action lookup by provider and event type
   - Wildcard event type matching
   - Priority-based ordering
   - Thread safety
@@ -65,7 +65,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 - **`complex_webhook_scenarios_spec.rb`**: Complex real-world scenarios
   - Third-party gem + Rails app sharing same webhook (same secret)
   - Separate webhook providers for gem and app
-  - Handler execution outcomes (success/failure)
+  - Action execution outcomes (success/failure)
   - Async vs Sync execution
   - Multiple providers with same verifier but different secrets
 
@@ -76,36 +76,36 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 **Use Case**: A payment gem and your Rails app both need to handle the same Stripe webhooks.
 
 **Tests**:
-- Both handlers execute for the same webhook
-- Handlers execute in priority order
+- Both actions execute for the same webhook
+- Actions execute in priority order
 - Shared signing secret works correctly
-- Event metadata tracks both handler executions
+- Event metadata tracks both action executions
 
 ### Scenario 2: Third-Party Gem + Rails App (Different Webhooks)
 
 **Use Case**: A payment gem handles its Stripe account, your app handles a different Stripe account.
 
 **Tests**:
-- Webhooks route to correct handlers based on provider
+- Webhooks route to correct actions based on provider
 - Separate event histories maintained per provider
 - Different signing secrets verified correctly
 
-### Scenario 3: Handler Execution Outcomes
+### Scenario 3: Action Execution Outcomes
 
-**Use Case**: Testing both successful and failing handlers.
+**Use Case**: Testing both successful and failing actions.
 
 **Tests**:
-- Successful handlers marked as completed
-- Failed handlers marked as failed with error messages
+- Successful actions marked as completed
+- Failed actions marked as failed with error messages
 - Status tracking and metadata updates
 
 ### Scenario 4: Async vs Sync Execution
 
-**Use Case**: Some handlers need immediate execution, others can be async.
+**Use Case**: Some actions need immediate execution, others can be async.
 
 **Tests**:
-- Async handlers enqueued as background jobs
-- Sync handlers executed immediately
+- Async actions enqueued as background jobs
+- Sync actions executed immediately
 - Proper status tracking for both types
 
 ### Scenario 5: Multiple Providers (Same Verifier, Different Secrets)
@@ -212,7 +212,7 @@ The GitHub Actions CI workflow runs RSpec tests automatically:
 ## Best Practices
 
 1. **Test Isolation**: Each test runs in a transaction that's rolled back
-2. **Handler Registry Cleanup**: Registry cleared before each test
+2. **Action Registry Cleanup**: Registry cleared before each test
 3. **Factory Usage**: Use factories for consistent test data
 4. **Descriptive Names**: Test names clearly describe the scenario being tested
 5. **Edge Cases**: Tests cover both happy path and error conditions
@@ -222,7 +222,7 @@ The GitHub Actions CI workflow runs RSpec tests automatically:
 - **11 test files**: Comprehensive coverage of all major components
 - **100+ test cases**: Covering webhooks, verifiers, models, and integration scenarios
 - **4 verifier specs**: All supported providers (Stripe, Square, PayPal, WebhookSite)
-- **Complex scenarios**: Real-world use cases with multiple providers and handlers
+- **Complex scenarios**: Real-world use cases with multiple providers and actions
 
 ## Maintenance
 
@@ -260,7 +260,7 @@ bundle install
 ### Test Failures
 
 1. Check database migrations are up to date
-2. Verify handler registry is cleared between tests
+2. Verify action registry is cleared between tests
 3. Check for any pending migrations in the dummy app
 
 ## Additional Resources

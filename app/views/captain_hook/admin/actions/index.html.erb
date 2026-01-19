@@ -3,48 +3,48 @@
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
       <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
-      <li class="breadcrumb-item active" aria-current="page">Handlers</li>
+      <li class="breadcrumb-item active" aria-current="page">Actions</li>
     </ol>
   </nav>
 
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Event Handlers for <%= @provider.display_name || @provider.name.titleize %></h1>
-    <%= button_to "Scan Handlers", scan_handlers_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered handlers in your application code. Continue?" } %>
+    <h1>Event Actions for <%= @provider.display_name || @provider.name.titleize %></h1>
+    <%= button_to "Scan Actions", scan_actions_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered actions in your application code. Continue?" } %>
   </div>
 
   <div class="card mb-4">
     <div class="card-body">
-      <h5 class="card-title">About Handlers</h5>
+      <h5 class="card-title">About Actions</h5>
       <p class="card-text">
-        Handlers are Ruby classes that process incoming webhook events from this provider.
-        They are registered in your application code using <code>CaptainHook.register_handler</code>.
+        Actions are Ruby classes that process incoming webhook events from this provider.
+        They are registered in your application code using <code>CaptainHook.register_action</code>.
       </p>
       <p class="card-text">
-        Click <strong>"Scan Handlers"</strong> to discover handlers from your application code and sync them to the database.
+        Click <strong>"Scan Actions"</strong> to discover actions from your application code and sync them to the database.
         Once synced, you can configure them here (async/sync, retries, priority, etc.).
       </p>
       <p class="card-text mb-0">
         <strong>Example:</strong>
       </p>
-      <pre class="bg-light p-3 rounded mt-2"><code>CaptainHook.register_handler(
+      <pre class="bg-light p-3 rounded mt-2"><code>CaptainHook.register_action(
   provider: "<%= @provider.name %>",
   event_type: "payment.succeeded",
-  handler_class: "ProcessPaymentHandler",
+  action_class: "ProcessPaymentAction",
   priority: 100,
   async: true
 )</code></pre>
     </div>
   </div>
 
-  <% if @db_handlers.any? %>
+  <% if @db_actions.any? %>
     <div class="card mb-4">
       <div class="card-header">
-        <h5 class="mb-0">Configured Handlers</h5>
+        <h5 class="mb-0">Configured Actions</h5>
       </div>
       <div class="card-body">
-        <p class="text-muted">These handlers have been synced to the database and can be configured.</p>
+        <p class="text-muted">These actions have been synced to the database and can be configured.</p>
         
-        <% @db_handlers.group_by(&:event_type).each do |event_type, handlers| %>
+        <% @db_actions.group_by(&:event_type).each do |event_type, actions| %>
           <div class="mb-4">
             <h6 class="border-bottom pb-2">
               Event Type: <code><%= event_type %></code>
@@ -54,7 +54,7 @@
                 <thead>
                   <tr>
                     <th>Priority</th>
-                    <th>Handler Class</th>
+                    <th>Action Class</th>
                     <th>Execution</th>
                     <th>Max Attempts</th>
                     <th>Retry Delays</th>
@@ -62,22 +62,22 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <% handlers.each do |handler| %>
+                  <% actions.each do |action| %>
                     <tr>
-                      <td><span class="badge bg-secondary"><%= handler.priority %></span></td>
-                      <td><code><%= handler.handler_class %></code></td>
+                      <td><span class="badge bg-secondary"><%= action.priority %></span></td>
+                      <td><code><%= action.action_class %></code></td>
                       <td>
-                        <% if handler.async %>
+                        <% if action.async %>
                           <span class="badge bg-info">Async</span>
                         <% else %>
                           <span class="badge bg-warning">Sync</span>
                         <% end %>
                       </td>
-                      <td><%= handler.max_attempts %></td>
-                      <td><small><%= handler.retry_delays.join(", ") %>s</small></td>
+                      <td><%= action.max_attempts %></td>
+                      <td><small><%= action.retry_delays.join(", ") %>s</small></td>
                       <td>
-                        <%= link_to "Edit", edit_admin_provider_handler_path(@provider, handler), class: "btn btn-sm btn-outline-primary" %>
-                        <%= button_to "Delete", admin_provider_handler_path(@provider, handler), method: :delete, class: "btn btn-sm btn-outline-danger", data: { confirm: "Are you sure? This will soft-delete the handler and it won't be re-added during scans." } %>
+                        <%= link_to "Edit", edit_admin_provider_action_path(@provider, action), class: "btn btn-sm btn-outline-primary" %>
+                        <%= button_to "Delete", admin_provider_action_path(@provider, action), method: :delete, class: "btn btn-sm btn-outline-danger", data: { confirm: "Are you sure? This will soft-delete the action and it won't be re-added during scans." } %>
                       </td>
                     </tr>
                   <% end %>
@@ -91,32 +91,32 @@
   <% end %>
 
   <% 
-    # Find registry handlers that are NOT in the database
-    unsynced_handlers = {}
-    @registry_handlers.each do |event_type, handler_configs|
-      handler_configs.each do |config|
-        # Check if this handler exists in DB
-        db_match = @db_handlers.find { |h| h.event_type == event_type && h.handler_class == config.handler_class }
+    # Find registry actions that are NOT in the database
+    unsynced_actions = {}
+    @registry_actions.each do |event_type, action_configs|
+      action_configs.each do |config|
+        # Check if this action exists in DB
+        db_match = @db_actions.find { |h| h.event_type == event_type && h.action_class == config.action_class }
         unless db_match
-          unsynced_handlers[event_type] ||= []
-          unsynced_handlers[event_type] << config
+          unsynced_actions[event_type] ||= []
+          unsynced_actions[event_type] << config
         end
       end
     end
   %>
   
-  <% if unsynced_handlers.any? %>
+  <% if unsynced_actions.any? %>
     <div class="card mb-4">
       <div class="card-header">
-        <h5 class="mb-0">Registered Handlers (In-Memory Registry)</h5>
+        <h5 class="mb-0">Registered Actions (In-Memory Registry)</h5>
       </div>
       <div class="card-body">
         <p class="text-muted">
-          These handlers are registered in your application code but not yet synced to the database.
-          Click "Scan Handlers" above to sync them.
+          These actions are registered in your application code but not yet synced to the database.
+          Click "Scan Actions" above to sync them.
         </p>
         
-        <% unsynced_handlers.each do |event_type, handler_configs| %>
+        <% unsynced_actions.each do |event_type, action_configs| %>
           <div class="mb-4">
             <h6 class="border-bottom pb-2">
               Event Type: <code><%= event_type %></code>
@@ -126,17 +126,17 @@
                 <thead>
                   <tr>
                     <th>Priority</th>
-                    <th>Handler Class</th>
+                    <th>Action Class</th>
                     <th>Execution</th>
                     <th>Max Attempts</th>
                     <th>Retry Delays</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <% handler_configs.each do |config| %>
+                  <% action_configs.each do |config| %>
                     <tr>
                       <td><span class="badge bg-secondary"><%= config.priority %></span></td>
-                      <td><code><%= config.handler_class %></code></td>
+                      <td><code><%= config.action_class %></code></td>
                       <td>
                         <% if config.async %>
                           <span class="badge bg-info">Async</span>
@@ -157,32 +157,32 @@
     </div>
   <% end %>
 
-  <% if @db_handlers.empty? && @registry_handlers.empty? %>
+  <% if @db_actions.empty? && @registry_actions.empty? %>
     <div class="alert alert-info">
-      <h5>No handlers registered</h5>
+      <h5>No actions registered</h5>
       <p class="mb-2">
-        You haven't registered any handlers for this provider yet.
-        Handlers are registered in your application code, typically in an initializer.
+        You haven't registered any actions for this provider yet.
+        Actions are registered in your application code, typically in an initializer.
       </p>
       <p class="mb-0">
-        <strong>To register a handler:</strong>
+        <strong>To register an action:</strong>
       </p>
       <ol class="mt-2">
-        <li>Create a handler class (e.g., <code>app/handlers/my_handler.rb</code>)</li>
+        <li>Create an action class (e.g., <code>app/actions/my_action.rb</code>)</li>
         <li>Register it in <code>config/initializers/captain_hook.rb</code></li>
         <li>Restart your application</li>
-        <li>Click "Scan Handlers" to sync them to the database</li>
+        <li>Click "Scan Actions" to sync them to the database</li>
       </ol>
     </div>
   <% end %>
 
   <div class="card mt-4">
     <div class="card-header">
-      <h5 class="mb-0">Handler Implementation Guide</h5>
+      <h5 class="mb-0">Action Implementation Guide</h5>
     </div>
     <div class="card-body">
-      <p><strong>1. Create a handler class:</strong></p>
-      <pre class="bg-light p-3 rounded"><code>class ProcessPaymentHandler
+      <p><strong>1. Create an action class:</strong></p>
+      <pre class="bg-light p-3 rounded"><code>class ProcessPaymentAction
   def handle(event:, payload:, metadata:)
     # Your processing logic here
     payment_id = payload.dig("data", "object", "id")
@@ -190,18 +190,18 @@
   end
 end</code></pre>
 
-      <p class="mt-3"><strong>2. Register the handler:</strong></p>
-      <pre class="bg-light p-3 rounded"><code>CaptainHook.register_handler(
+      <p class="mt-3"><strong>2. Register the action:</strong></p>
+      <pre class="bg-light p-3 rounded"><code>CaptainHook.register_action(
   provider: "<%= @provider.name %>",
   event_type: "payment.succeeded",
-  handler_class: "ProcessPaymentHandler",
+  action_class: "ProcessPaymentAction",
   priority: 100,        # Lower numbers execute first
   async: true,          # Run in background job
   max_attempts: 5,      # Number of retry attempts
   retry_delays: [30, 60, 300, 900, 3600]  # Delay between retries (seconds)
 )</code></pre>
 
-      <p class="mt-3"><strong>3. Handler requirements:</strong></p>
+      <p class="mt-3"><strong>3. Action requirements:</strong></p>
       <ul>
         <li>Must implement a <code>handle(event:, payload:, metadata:)</code> method</li>
         <li>Should be idempotent (safe to run multiple times)</li>
