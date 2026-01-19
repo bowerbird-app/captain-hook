@@ -10,17 +10,17 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     let(:provider) { create(:captain_hook_provider, :stripe, signing_secret: shared_secret) }
 
     # Simulate an action from a third-party gem
-    class GemWebhookHandler
+    class GemWebhookAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "GemWebhookHandler executed for event #{event.external_id}"
+        Rails.logger.info "GemWebhookAction executed for event #{event.external_id}"
         event.update(metadata: event.metadata.merge(gem_action_executed: true))
       end
     end
 
     # Simulate an action from the Rails app
-    class AppWebhookHandler
+    class AppWebhookAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "AppWebhookHandler executed for event #{event.external_id}"
+        Rails.logger.info "AppWebhookAction executed for event #{event.external_id}"
         event.update(metadata: event.metadata.merge(app_action_executed: true))
       end
     end
@@ -30,7 +30,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "payment_intent.succeeded",
-        action_class: "GemWebhookHandler",
+        action_class: "GemWebhookAction",
         priority: 100,
         async: false # Sync for easier testing
       )
@@ -38,7 +38,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "payment_intent.succeeded",
-        action_class: "AppWebhookHandler",
+        action_class: "AppWebhookAction",
         priority: 200,
         async: false # Sync for easier testing
       )
@@ -73,21 +73,21 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       # Verify both actions were created
       expect(event.incoming_event_actions.count).to eq(2)
       expect(event.incoming_event_actions.pluck(:action_class)).to contain_exactly(
-        "GemWebhookHandler",
-        "AppWebhookHandler"
+        "GemWebhookAction",
+        "AppWebhookAction"
       )
     end
 
     it "executes actions in priority order" do
       execution_order = []
 
-      allow(GemWebhookHandler).to receive(:handle) do |**args|
-        execution_order << "GemWebhookHandler"
+      allow(GemWebhookAction).to receive(:handle) do |**args|
+        execution_order << "GemWebhookAction"
         args[:event].update(metadata: args[:event].metadata.merge(gem_action_executed: true))
       end
 
-      allow(AppWebhookHandler).to receive(:handle) do |**args|
-        execution_order << "AppWebhookHandler"
+      allow(AppWebhookAction).to receive(:handle) do |**args|
+        execution_order << "AppWebhookAction"
         args[:event].update(metadata: args[:event].metadata.merge(app_action_executed: true))
       end
 
@@ -109,7 +109,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
              "Stripe-Signature" => signature_header
            }
 
-      expect(execution_order).to eq(%w[GemWebhookHandler AppWebhookHandler])
+      expect(execution_order).to eq(%w[GemWebhookAction AppWebhookAction])
     end
   end
 
@@ -251,17 +251,17 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
   xdescribe "Action execution outcomes" do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
-    class SuccessfulHandler
+    class SuccessfulAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "SuccessfulHandler executed successfully"
+        Rails.logger.info "SuccessfulAction executed successfully"
         # Simulate successful processing
         true
       end
     end
 
-    class FailingHandler
+    class FailingAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.error "FailingHandler encountered an error"
+        Rails.logger.error "FailingAction encountered an error"
         raise StandardError, "Simulated action failure"
       end
     end
@@ -270,14 +270,14 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "payment_intent.succeeded",
-        action_class: "SuccessfulHandler",
+        action_class: "SuccessfulAction",
         async: false
       )
 
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "payment_intent.failed",
-        action_class: "FailingHandler",
+        action_class: "FailingAction",
         async: false,
         max_attempts: 3
       )
@@ -344,16 +344,16 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
   xdescribe "Async and Sync action execution" do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
-    class AsyncTestHandler
+    class AsyncTestAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "AsyncTestHandler executed"
+        Rails.logger.info "AsyncTestAction executed"
         event.update(metadata: event.metadata.merge(async_executed: true))
       end
     end
 
-    class SyncTestHandler
+    class SyncTestAction
       def self.handle(event:, payload:, metadata:)
-        Rails.logger.info "SyncTestHandler executed"
+        Rails.logger.info "SyncTestAction executed"
         event.update(metadata: event.metadata.merge(sync_executed: true))
       end
     end
@@ -362,7 +362,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "async.test",
-        action_class: "AsyncTestHandler",
+        action_class: "AsyncTestAction",
         async: true
       )
 
@@ -383,7 +383,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
                "Content-Type" => "application/json",
                "Stripe-Signature" => "t=#{timestamp},v1=#{signature}"
              }
-      end.to have_enqueued_job(CaptainHook::IncomingHandlerJob)
+      end.to have_enqueued_job(CaptainHook::IncomingActionJob)
 
       expect(response).to have_http_status(:created)
     end
@@ -392,7 +392,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       CaptainHook.register_action(
         provider: provider.name,
         event_type: "sync.test",
-        action_class: "SyncTestHandler",
+        action_class: "SyncTestAction",
         async: false
       )
 

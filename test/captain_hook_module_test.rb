@@ -42,21 +42,21 @@ class CaptainHookModuleTest < Minitest::Test
     assert_instance_of CaptainHook::Configuration, CaptainHook.configuration
   end
 
-  def test_handler_registry_returns_registry_from_configuration
-    registry = CaptainHook.handler_registry
+  def test_action_registry_returns_registry_from_configuration
+    registry = CaptainHook.action_registry
 
     assert_instance_of CaptainHook::ActionRegistry, registry
-    assert_same CaptainHook.configuration.handler_registry, registry
+    assert_same CaptainHook.configuration.action_registry, registry
   end
 
-  def test_register_action_delegates_to_handler_registry
+  def test_register_action_delegates_to_action_registry
     CaptainHook.register_action(
       provider: "test_provider",
       event_type: "test_event",
       action_class: ".*Action"
     )
 
-    assert CaptainHook.handler_registry.actions_registered?(
+    assert CaptainHook.action_registry.actions_registered?(
       provider: "test_provider",
       event_type: "test_event"
     )
@@ -73,14 +73,14 @@ class CaptainHookModuleTest < Minitest::Test
       retry_delays: [30, 60, 120]
     )
 
-    handlers = CaptainHook.handler_registry.actions_for(
+    actions = CaptainHook.action_registry.actions_for(
       provider: "stripe",
       event_type: "payment.succeeded"
     )
 
-    assert_equal 1, handlers.size
-    assert_equal "PaymentAction", handlers.first[:action_class]
-    assert_equal 50, handlers.first[:priority]
+    assert_equal 1, actions.size
+    assert_equal "PaymentAction", actions.first[:action_class]
+    assert_equal 50, actions.first[:priority]
   end
 
   def test_multiple_configurations_independent
