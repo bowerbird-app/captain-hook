@@ -4,7 +4,7 @@
 name: paypal
 display_name: PayPal
 description: PayPal payment webhooks
-adapter_file: paypal.rb
+adapter_class: CaptainHook::Adapters::Paypal
 active: true
 
 # Security settings

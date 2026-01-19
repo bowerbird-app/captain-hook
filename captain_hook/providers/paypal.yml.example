@@ -1,12 +1,14 @@
 # PayPal webhook provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
 # Place this file in: captain_hook/providers/paypal/paypal.yml
-# Create adapter in: captain_hook/providers/paypal/paypal.rb
+#
+# CaptainHook includes a built-in PayPal adapter, so you don't need to create paypal.rb
+# Just set adapter_class to use the built-in adapter
 
 name: paypal
 display_name: PayPal
 description: PayPal payment and transaction webhooks
-adapter_file: paypal.rb
+adapter_class: CaptainHook::Adapters::Paypal
 active: true
 
 # Security settings

@@ -98,14 +98,21 @@ module CaptainHook
 
     # Get the adapter instance
     def adapter
+      # Try to constantize the adapter class first (it might be a built-in adapter)
+      begin
+        return @adapter ||= adapter_class.constantize.new
+      rescue NameError
+        # Class doesn't exist yet, try to load from file
+      end
+
       # Try to find and load the adapter file if the class doesn't exist yet
-      load_adapter_file unless Object.const_defined?(adapter_class)
+      load_adapter_file
 
       @adapter ||= adapter_class.constantize.new
     rescue NameError => e
       Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
       raise CaptainHook::AdapterNotFoundError,
-            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory."
+            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory or use a built-in adapter (CaptainHook::Adapters::Base, Stripe, Square, Paypal, WebhookSite)."
     end
 
     # Load the adapter file from the filesystem

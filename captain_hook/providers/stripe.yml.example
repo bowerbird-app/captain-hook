@@ -1,12 +1,14 @@
 # Stripe webhook provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
 # Place this file in: captain_hook/providers/stripe/stripe.yml
-# Create adapter in: captain_hook/providers/stripe/stripe.rb
+#
+# CaptainHook includes a built-in Stripe adapter, so you don't need to create stripe.rb
+# Just set adapter_class to use the built-in adapter
 
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_file: stripe.rb
+adapter_class: CaptainHook::Adapters::Stripe
 active: true
 
 # Security settings
