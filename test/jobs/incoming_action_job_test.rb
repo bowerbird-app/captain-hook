@@ -89,7 +89,7 @@ module CaptainHook
       # Create failing action
       Object.const_set(:FailingAction, Class.new do
         def handle(event:, payload:, metadata:)
-          raise StandardError, "Handler failed"
+          raise StandardError, "Action failed"
         end
       end)
 
@@ -111,20 +111,20 @@ module CaptainHook
       end
 
       @action_record.reload
-      # Handler should be marked as failed or retry scheduled
+      # Action should be marked as failed or retry scheduled
       assert(@action_record.status_failed? || @action_record.status_pending?)
-      assert_includes @action_record.error_message, "Handler failed" if @action_record.error_message
+      assert_includes @action_record.error_message, "Action failed" if @action_record.error_message
 
       Object.send(:remove_const, :FailingAction)
     end
 
-    test "job does not process when handler config not found" do
+    test "job does not process when action config not found" do
       CaptainHook.action_registry.clear!
 
       IncomingActionJob.perform_now(@action_record.id)
 
       @action_record.reload
-      # Handler remains locked but won't be processed without config
+      # Action remains locked but won't be processed without config
       # The job returns early so status may remain unchanged
       assert @action_record.locked?
     end
@@ -145,7 +145,7 @@ module CaptainHook
       assert_not_nil IncomingActionJob.new.queue_name
     end
 
-    test "job passes event and payload to handler" do
+    test "job passes event and payload to action" do
       received_args = {}
 
       Object.const_set(:TrackingAction, Class.new do

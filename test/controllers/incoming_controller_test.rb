@@ -13,8 +13,8 @@ module CaptainHook
     end
 
     setup do
-      # Clear handler registry before each test
-      CaptainHook.handler_registry.clear!
+      # Clear action registry before each test
+      CaptainHook.action_registry.clear!
 
       @provider = CaptainHook::Provider.create!(
         name: "stripe",
@@ -28,7 +28,7 @@ module CaptainHook
         rate_limit_period: 60
       )
 
-      # Register a test handler
+      # Register a test action
       CaptainHook.register_action(
         provider: "stripe",
         event_type: "charge.succeeded",
@@ -248,7 +248,7 @@ module CaptainHook
       assert event.headers["Content-Type"].present?
     end
 
-    test "should handle events with no registered handlers" do
+    test "should handle events with no registered actions" do
       payload_no_action = {
         id: "evt_no_action",
         type: "no.action.event",

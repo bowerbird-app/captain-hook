@@ -58,7 +58,7 @@ module CaptainHook
       test "should show message when no actions found" do
         payload = {
           id: "evt_test",
-          type: "no.handler.event",
+          type: "no.action.event",
           data: { object: { id: "ch_test" } }
         }.to_json
 
@@ -96,7 +96,7 @@ module CaptainHook
       end
 
       test "should include action details in response" do
-        CaptainHook.handler_registry.clear!
+        CaptainHook.action_registry.clear!
 
         CaptainHook.register_action(
           provider: "stripe",
@@ -117,12 +117,12 @@ module CaptainHook
 
         assert_response :success
         json = JSON.parse(response.body)
-        assert json["handlers"].is_a?(Array)
-        assert json["handlers"].any?
-        action_item = json["handlers"].first
-        assert_equal "TestAction", handler["class"]
-        assert_equal 100, handler["priority"]
-        assert handler["async"]
+        assert json["actions"].is_a?(Array)
+        assert json["actions"].any?
+        action_item = json["actions"].first
+        assert_equal "TestAction", action_item["class"]
+        assert_equal 100, action_item["priority"]
+        assert action_item["async"]
       end
 
       test "should handle exceptions gracefully" do

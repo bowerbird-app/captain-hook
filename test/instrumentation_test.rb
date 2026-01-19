@@ -49,7 +49,7 @@ module CaptainHook
         id: 789,
         provider: "paypal",
         event_type: "payment.completed",
-        incoming_event_actions: handlers
+        incoming_event_actions: actions_list
       )
 
       Instrumentation.incoming_processed(event, duration: 150.5)
@@ -78,7 +78,7 @@ module CaptainHook
 
     test "action_started instruments with correct data" do
       event = OpenStruct.new(id: 202, provider: "webhook_site")
-      handler = OpenStruct.new(
+      action_item = OpenStruct.new(
         id: 303,
         action_class: ".*Action",
         attempt_count: 2
@@ -96,7 +96,7 @@ module CaptainHook
     end
 
     test "action_completed instruments with duration" do
-      handler = OpenStruct.new(
+      action_item = OpenStruct.new(
         id: 404,
         action_class: ".*Action"
       )
@@ -111,7 +111,7 @@ module CaptainHook
     end
 
     test "action_failed instruments with error information" do
-      handler = OpenStruct.new(
+      action_item = OpenStruct.new(
         id: 505,
         action_class: ".*Action",
         attempt_count: 1
@@ -168,9 +168,9 @@ module CaptainHook
       assert_equal "incoming_event.processing.captain_hook", Instrumentation::INCOMING_PROCESSING
       assert_equal "incoming_event.processed.captain_hook", Instrumentation::INCOMING_PROCESSED
       assert_equal "incoming_event.failed.captain_hook", Instrumentation::INCOMING_FAILED
-      assert_equal "handler.started.captain_hook", Instrumentation::ACTION_STARTED
-      assert_equal "handler.completed.captain_hook", Instrumentation::ACTION_COMPLETED
-      assert_equal "handler.failed.captain_hook", Instrumentation::ACTION_FAILED
+      assert_equal "action.started.captain_hook", Instrumentation::ACTION_STARTED
+      assert_equal "action.completed.captain_hook", Instrumentation::ACTION_COMPLETED
+      assert_equal "action.failed.captain_hook", Instrumentation::ACTION_FAILED
       assert_equal "rate_limit.exceeded.captain_hook", Instrumentation::RATE_LIMIT_EXCEEDED
       assert_equal "signature.verified.captain_hook", Instrumentation::SIGNATURE_VERIFIED
       assert_equal "signature.failed.captain_hook", Instrumentation::SIGNATURE_FAILED

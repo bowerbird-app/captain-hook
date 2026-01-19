@@ -70,7 +70,7 @@ module CaptainHook
       end
 
       test "skips deleted actions" do
-        # Create and soft-delete a handler
+        # Create and soft-delete an action
         action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "payment.succeeded",

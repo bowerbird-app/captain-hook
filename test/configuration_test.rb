@@ -8,17 +8,17 @@ module CaptainHook
       @config = Configuration.new
     end
 
-    def test_has_handler_registry
-      assert_instance_of ActionRegistry, @config.handler_registry
+    def test_has_action_registry
+      assert_instance_of ActionRegistry, @config.action_registry
     end
 
     def test_has_hooks
       assert_instance_of CaptainHook::Hooks, @config.hooks
     end
 
-    def test_handler_registry_is_memoized
-      registry1 = @config.handler_registry
-      registry2 = @config.handler_registry
+    def test_action_registry_is_memoized
+      registry1 = @config.action_registry
+      registry2 = @config.action_registry
       assert_same registry1, registry2
     end
 
@@ -32,15 +32,15 @@ module CaptainHook
       config1 = Configuration.new
       config2 = Configuration.new
 
-      config1.handler_registry.register(
+      config1.action_registry.register(
         provider: "stripe",
         event_type: "test",
         action_class: "TestAction"
       )
 
-      refute_same config1.handler_registry, config2.handler_registry
-      assert config1.handler_registry.actions_registered?(provider: "stripe", event_type: "test")
-      refute config2.handler_registry.actions_registered?(provider: "stripe", event_type: "test")
+      refute_same config1.action_registry, config2.action_registry
+      assert config1.action_registry.actions_registered?(provider: "stripe", event_type: "test")
+      refute config2.action_registry.actions_registered?(provider: "stripe", event_type: "test")
     end
 
     def test_to_h_returns_configuration_summary
@@ -177,8 +177,8 @@ module CaptainHook
       assert_instance_of CaptainHook::Hooks, @config.hooks
     end
 
-    def test_handler_registry_returns_registry_instance
-      assert_instance_of CaptainHook::ActionRegistry, @config.handler_registry
+    def test_action_registry_returns_registry_instance
+      assert_instance_of CaptainHook::ActionRegistry, @config.action_registry
     end
   end
 end
