@@ -33,10 +33,10 @@ module CaptainHook
       def actions_for(provider:, event_type:)
         # First, try to get active actions from database
         db_actions = CaptainHook::Action
-                      .active
-                      .for_provider(provider)
-                      .for_event_type(event_type)
-                      .by_priority
+                     .active
+                     .for_provider(provider)
+                     .for_event_type(event_type)
+                     .by_priority
 
         if db_actions.any?
           Rails.logger.info "🔍 [ActionLookup] Found #{db_actions.count} active action(s) in DB for #{provider}:#{event_type}"
@@ -46,9 +46,9 @@ module CaptainHook
         # Check if there are soft-deleted actions for this provider/event_type
         # If yes, respect the deletion and don't fall back to registry
         deleted_actions = CaptainHook::Action
-                           .deleted
-                           .for_provider(provider)
-                           .for_event_type(event_type)
+                          .deleted
+                          .for_provider(provider)
+                          .for_event_type(event_type)
 
         if deleted_actions.any?
           Rails.logger.info "🗑️  [ActionLookup] Found #{deleted_actions.count} deleted action(s) in DB for #{provider}:#{event_type}, not falling back to registry"
@@ -72,10 +72,10 @@ module CaptainHook
       def find_action_config(provider:, event_type:, action_class:)
         # First, try to find active action in database
         db_action = CaptainHook::Action
-                     .active
-                     .for_provider(provider)
-                     .for_event_type(event_type)
-                     .find_by(action_class: action_class.to_s)
+                    .active
+                    .for_provider(provider)
+                    .for_event_type(event_type)
+                    .find_by(action_class: action_class.to_s)
 
         if db_action
           Rails.logger.info "🔍 [ActionLookup] Found action #{action_class} in DB (active)"
@@ -85,10 +85,10 @@ module CaptainHook
         # Check if this specific action was soft-deleted
         # If yes, respect the deletion and don't fall back to registry
         deleted_action = CaptainHook::Action
-                          .deleted
-                          .for_provider(provider)
-                          .for_event_type(event_type)
-                          .find_by(action_class: action_class.to_s)
+                         .deleted
+                         .for_provider(provider)
+                         .for_event_type(event_type)
+                         .find_by(action_class: action_class.to_s)
 
         if deleted_action
           Rails.logger.info "🗑️  [ActionLookup] Action #{action_class} is soft-deleted in DB, not falling back to registry"
@@ -103,7 +103,7 @@ module CaptainHook
           action_class: action_class
         )
 
-        config.define_singleton_method(:config_source) { :registry } if config
+        config&.define_singleton_method(:config_source) { :registry }
 
         config
       end

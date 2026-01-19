@@ -318,7 +318,7 @@ module CaptainHook
 
     test "locked scope returns locked actions" do
       @action.save!
-      locked_action_under_test = @event.incoming_event_actions.create!(
+      @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
@@ -331,7 +331,7 @@ module CaptainHook
 
     test "unlocked scope returns unlocked actions" do
       @action.save!
-      locked_action_under_test = @event.incoming_event_actions.create!(
+      @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,

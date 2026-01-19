@@ -65,5 +65,92 @@ module CaptainHook
         # via the extend_controller hook in configuration
       end
     end
+
+    # Auto-scan providers and actions on boot
+    # This runs after all initializers have completed, ensuring action registrations are loaded
+    initializer "captain_hook.auto_scan", after: :load_config_initializers do
+      config.after_initialize do
+        # Only run in server/console contexts, skip for rake tasks and migrations
+        next if !defined?(Rails::Console) && File.basename($PROGRAM_NAME) == "rake"
+
+        CaptainHook::Engine.perform_auto_scan
+      end
+    end
+
+    # Auto-scan providers and actions on Rails boot
+    def self.perform_auto_scan
+      Rails.logger.info "🔍 CaptainHook: Auto-scanning providers and actions..."
+
+      # Discover and sync providers
+      sync_providers
+
+      # Discover and sync actions
+      sync_actions
+
+      Rails.logger.info "🎣 CaptainHook: Auto-scan complete"
+    end
+
+    def self.sync_providers
+      provider_definitions = CaptainHook::Services::ProviderDiscovery.new.call
+
+      if provider_definitions.any?
+        Rails.logger.info "🔍 CaptainHook: Found #{provider_definitions.length} provider(s)"
+
+        # Sync providers to database (always overwrite existing with update_existing: true)
+        sync = CaptainHook::Services::ProviderSync.new(provider_definitions, update_existing: true)
+        results = sync.call
+
+        log_provider_sync_results(results)
+      else
+        Rails.logger.info "🔍 CaptainHook: No provider YAML files found"
+      end
+    end
+
+    def self.log_provider_sync_results(results)
+      created = results[:created].length
+      updated = results[:updated].length
+      skipped = results[:skipped].length
+      Rails.logger.info "✅ CaptainHook: Synced providers - Created: #{created}, Updated: #{updated}, " \
+                        "Skipped: #{skipped}"
+
+      # Log warnings if any
+      results[:warnings]&.each do |warning|
+        Rails.logger.warn "⚠️  CaptainHook: #{warning[:message]}"
+      end
+
+      # Log errors if any
+      results[:errors]&.each do |error|
+        Rails.logger.error "❌ CaptainHook: #{error[:name]} - #{error[:error]}"
+      end
+    end
+
+    def self.sync_actions
+      action_definitions = CaptainHook::Services::ActionDiscovery.new.call
+
+      if action_definitions.any?
+        Rails.logger.info "🔍 CaptainHook: Found #{action_definitions.length} registered action(s)"
+
+        # Sync actions to database (always overwrite existing with update_existing: true)
+        action_sync = CaptainHook::Services::ActionSync.new(action_definitions, update_existing: true)
+        action_results = action_sync.call
+
+        log_action_sync_results(action_results)
+      else
+        Rails.logger.info "🔍 CaptainHook: No actions registered"
+      end
+    end
+
+    def self.log_action_sync_results(action_results)
+      created = action_results[:created].length
+      updated = action_results[:updated].length
+      skipped = action_results[:skipped].length
+      Rails.logger.info "✅ CaptainHook: Synced actions - Created: #{created}, Updated: #{updated}, " \
+                        "Skipped: #{skipped}"
+
+      # Log errors if any
+      action_results[:errors]&.each do |error|
+        Rails.logger.error "❌ CaptainHook: Action #{error[:action]} - #{error[:error]}"
+      end
+    end
   end
 end

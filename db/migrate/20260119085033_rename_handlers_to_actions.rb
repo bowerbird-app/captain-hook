@@ -16,6 +16,7 @@ class RenameHandlersToActions < ActiveRecord::Migration[8.1]
 
     # Rename the unique index
     remove_index :captain_hook_actions, name: "idx_captain_hook_handlers_unique"
-    add_index :captain_hook_actions, %i[provider event_type action_class], unique: true, name: "idx_captain_hook_actions_unique"
+    add_index :captain_hook_actions, %i[provider event_type action_class], unique: true,
+                                                                           name: "idx_captain_hook_actions_unique"
   end
 end

@@ -2,7 +2,7 @@
 
 ## High-Level Overview
 
-The Provider Discovery System transforms CaptainHook from a manual UI-based provider configuration system to an automated, file-based discovery system. Instead of manually creating providers through the admin interface, developers now define providers in YAML configuration files which are automatically discovered and synced to the database.
+The Provider Discovery System provides an automated, file-based provider configuration system. Instead of manually creating providers through the admin interface, developers define providers in YAML configuration files which are automatically discovered and synced to the database on application boot.
 
 ### Key Benefits
 
@@ -10,7 +10,7 @@ The Provider Discovery System transforms CaptainHook from a manual UI-based prov
 2. **Consistency**: Same provider configurations across environments (dev, staging, production)
 3. **Security**: Signing secrets are referenced via environment variables, never committed to version control
 4. **Scalability**: Works with monoliths and gems - any gem can ship its own webhook providers
-5. **Automation**: "Discover New" adds new providers, "Full Sync" updates all from YAML
+5. **Automation**: Providers and actions are automatically discovered and synced on every Rails boot
 6. **Duplicate Detection**: Warns when the same provider exists in multiple sources
 
 ## Technical Implementation
@@ -157,49 +157,51 @@ end
 - **Error Collection**: Errors don't stop the entire sync, they're collected and reported
 - **Secret Handling**: Only updates signing_secret if it's a new record or value changed
 
-### 5. Admin UI Changes
+### 5. Auto-Scan on Boot
 
-**Controller**: `CaptainHook::Admin::ProvidersController`
+**Initializer**: `lib/captain_hook/engine.rb`
 
-**New Actions**: 
-- `discover_new` (POST /captain_hook/admin/providers/discover_new) - Add new only
-- `sync_all` (POST /captain_hook/admin/providers/sync_all) - Update all
+**Purpose**: Automatically discover and sync providers/actions when Rails application starts.
 
 **Algorithm**:
-1. Call ProviderDiscovery service
-2. If no providers found, show alert and exit
-3. Call ProviderSync service with discovered providers
-4. Build flash message from sync results
-5. Redirect to provider index with results
+1. Triggered by `after_initialize` hook in Rails Engine
+2. Call ProviderDiscovery service to find all provider YAML files
+3. Call ProviderSync service to create/update database records (always with `update_existing: true`)
+4. Call ActionDiscovery service to find all registered actions
+5. Call ActionSync service to create/update action records (always with `update_existing: true`)
+6. Log results to Rails logger
 
-**View Changes**:
+**Key Code**:
 
-```erb
-<!-- Before: Add Provider button -->
-<%= link_to "Add Provider", new_admin_provider_path, class: "btn btn-primary" %>
+```ruby
+initializer "captain_hook.auto_scan", after: :load_config_initializers do
+  config.after_initialize do
+    # Skip for rake tasks and migrations
+    next if defined?(Rails::Console).nil? && File.basename($PROGRAM_NAME) == "rake"
 
-<!-- After: Discover New and Full Sync buttons -->
-<div class="d-flex gap-2">
-  <span data-bs-toggle="tooltip" data-bs-title="Add new providers/actions only">
-    <%= button_to "Discover New", discover_new_admin_providers_path, method: :post, 
-        class: "btn btn-outline-primary",
-        data: { confirm: "This will scan for NEW providers/actions only. Continue?" } %>
-  </span>
-  <span data-bs-toggle="tooltip" data-bs-title="Update all from YAML files">
-    <%= button_to "Full Sync", sync_all_admin_providers_path, method: :post,
-        class: "btn btn-primary",
-        data: { confirm: "This will update ALL providers/actions from YAML. Continue?" } %>
-  </span>
-</div>
+    # Discover and sync providers
+    provider_definitions = CaptainHook::Services::ProviderDiscovery.new.call
+    if provider_definitions.any?
+      sync = CaptainHook::Services::ProviderSync.new(provider_definitions, update_existing: true)
+      sync.call
+    end
+
+    # Discover and sync actions
+    action_definitions = CaptainHook::Services::ActionDiscovery.new.call
+    if action_definitions.any?
+      action_sync = CaptainHook::Services::ActionSync.new(action_definitions, update_existing: true)
+      action_sync.call
+    end
+  end
+end
 ```
 
 **Key Design Decisions:**
 
-- **Two Scanning Modes**: "Discover New" (safe, no updates) vs "Full Sync" (updates everything)
-- **Confirmation Dialogs**: Prevent accidental scans with clear descriptions
-- **Detailed Feedback**: Shows count of created/updated/skipped/errored providers
-- **Non-destructive Discovery**: "Discover New" doesn't modify existing providers
-- **Duplicate Warnings**: Alerts when same provider exists in multiple sources
+- **Automatic on Boot**: No manual scanning required - just restart Rails
+- **Always Overwrite**: Registry is source of truth, database updates are overwritten on each boot
+- **Skip for Rake**: Doesn't run during rake tasks or migrations to avoid side effects
+- **Comprehensive Logging**: Detailed logs show what was discovered and synced
 
 ### 6. Autoloading Configuration
 

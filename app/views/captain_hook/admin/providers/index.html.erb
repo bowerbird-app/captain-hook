@@ -1,13 +1,8 @@
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-start mb-4">
     <h1>Webhook Providers</h1>
-    <div class="d-flex gap-2">
-      <span data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Add new providers/actions only, don't update existing ones">
-        <%= button_to "Discover New", discover_new_admin_providers_path, method: :post, class: "btn btn-outline-primary", data: { confirm: "This will scan for NEW providers/actions only. Existing providers will not be updated. Continue?" } %>
-      </span>
-      <span data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Update all providers/actions from YAML files">
-        <%= button_to "Full Sync", sync_all_admin_providers_path, method: :post, class: "btn btn-primary", data: { confirm: "This will update ALL providers/actions from YAML files. Any manual changes will be overwritten. Continue?" } %>
-      </span>
+    <div class="alert alert-info mb-0" style="max-width: 500px;">
+      <small><strong>Auto-Discovery:</strong> Providers and actions are automatically discovered and synced on application boot.</small>
     </div>
   </div>
 
@@ -68,7 +63,7 @@
       <% else %>
         <div class="alert alert-info">
           <p class="mb-2"><strong>No providers configured yet.</strong></p>
-          <p class="mb-0">Providers are discovered from YAML files in the <code>captain_hook/providers/</code> directory. <%= button_to "Discover providers", discover_new_admin_providers_path, method: :post, class: "btn btn-sm btn-primary d-inline-block", data: { confirm: "This will scan for NEW provider YAML files. Continue?" } %> to discover and create them.</p>
+          <p class="mb-0">Providers are automatically discovered from YAML files in the <code>captain_hook/<provider>/<provider>.yml</code> directory on application boot. Create a provider YAML file and restart the server to add providers.</p>
         </div>
       <% end %>
     </div>
@@ -83,9 +78,9 @@
         Each provider has a unique webhook URL that you can share with the service.
       </p>
       <p class="card-text">
-        <strong>Provider Discovery:</strong> CaptainHook automatically discovers providers from YAML files.
-        Create provider configuration files in <code>captain_hook/providers/</code> directory in your Rails app
-        or in any gem. Click "Scan for Providers" to discover and create them.
+        <strong>Provider Discovery:</strong> CaptainHook automatically discovers providers from YAML files
+        on application boot. Create provider configuration files in <code>captain_hook/<provider>/<provider>.yml</code> 
+        directory in your Rails app or in any gem, then restart the server to discover them.
       </p>
       <ul>
         <li><strong>Name:</strong> Unique identifier for the provider (lowercase, underscores only)</li>

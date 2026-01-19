@@ -20,7 +20,7 @@ RSpec.describe CaptainHook::Provider, type: :model do
 
     # Uniqueness validations exist but can't be tested with shoulda-matchers due to encryption
     it "validates uniqueness of name" do
-      provider1 = create(:captain_hook_provider, name: "test_provider")
+      create(:captain_hook_provider, name: "test_provider")
       provider2 = build(:captain_hook_provider, name: "test_provider")
       expect(provider2).not_to be_valid
       expect(provider2.errors[:name]).to be_present

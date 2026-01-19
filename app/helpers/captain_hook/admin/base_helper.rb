@@ -38,10 +38,8 @@ module CaptainHook
 
       # Get available verifier classes for dropdown
       def available_verifier_classes
-        verifiers = []
-
         # Scan multiple locations for verifiers
-        scan_paths = [
+        [
           # Application verifiers (Rails app)
           Rails.root.join("app", "verifiers", "captain_hook", "verifiers"),
           # Loaded gems with verifiers

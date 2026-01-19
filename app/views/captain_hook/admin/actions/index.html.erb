@@ -9,7 +9,9 @@
 
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Event Actions for <%= @provider.display_name || @provider.name.titleize %></h1>
-    <%= button_to "Scan Actions", scan_actions_admin_provider_path(@provider), method: :post, class: "btn btn-primary", data: { confirm: "This will scan for registered actions in your application code. Continue?" } %>
+    <div class="alert alert-info mb-0" style="max-width: 500px;">
+      <small><strong>Auto-Discovery:</strong> Actions are automatically synced on application boot.</small>
+    </div>
   </div>
 
   <div class="card mb-4">
@@ -20,7 +22,7 @@
         They are registered in your application code using <code>CaptainHook.register_action</code>.
       </p>
       <p class="card-text">
-        Click <strong>"Scan Actions"</strong> to discover actions from your application code and sync them to the database.
+        Actions are automatically discovered and synced to the database on application boot.
         Once synced, you can configure them here (async/sync, retries, priority, etc.).
       </p>
       <p class="card-text mb-0">
@@ -113,7 +115,7 @@
       <div class="card-body">
         <p class="text-muted">
           These actions are registered in your application code but not yet synced to the database.
-          Click "Scan Actions" above to sync them.
+          They will be automatically synced on the next application restart.
         </p>
         
         <% unsynced_actions.each do |event_type, action_configs| %>
@@ -170,8 +172,7 @@
       <ol class="mt-2">
         <li>Create an action class (e.g., <code>app/actions/my_action.rb</code>)</li>
         <li>Register it in <code>config/initializers/captain_hook.rb</code></li>
-        <li>Restart your application</li>
-        <li>Click "Scan Actions" to sync them to the database</li>
+        <li>Restart your application to trigger auto-discovery</li>
       </ol>
     </div>
   <% end %>
