@@ -4,7 +4,7 @@
 name: webhook_site
 display_name: Webhook.site
 description: Test webhook provider for development
-adapter_class: CaptainHook::Adapters::WebhookSite
+adapter_file: webhook_site.rb
 active: true
 
 # Security settings

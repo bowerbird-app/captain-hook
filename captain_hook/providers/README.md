@@ -4,30 +4,35 @@ This directory contains example provider configuration files that ship with Capt
 
 ## How It Works
 
-### Built-in Adapters (Recommended)
+### Built-in Adapters (Automatic Discovery)
 
 **CaptainHook now includes built-in adapters for common providers!**
 
-For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need the YAML file**. No Ruby adapter file required!
+For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need the YAML file**. CaptainHook will automatically find and use the built-in adapter.
 
 ```
 captain_hook/providers/
 ├── stripe/
-│   └── stripe.yml       # Configuration only - adapter built into CaptainHook
+│   └── stripe.yml       # adapter_file: stripe.rb will use built-in adapter
 ├── square/
 │   └── square.yml
 └── paypal/
     └── paypal.yml
 ```
 
+When you specify `adapter_file: stripe.rb` in your YAML, CaptainHook will:
+1. First check your app's `captain_hook/providers/` directory
+2. Then check in loaded gems
+3. Finally check CaptainHook's built-in adapters
+
 ### Custom Adapters (When Needed)
 
-For providers not included in CaptainHook, you can still create custom adapters:
+For providers not included in CaptainHook, create custom adapters:
 
 ```
 captain_hook/providers/
 └── custom_provider/
-    ├── custom_provider.yml       # Configuration
+    ├── custom_provider.yml       # Configuration with adapter_file: custom_provider.rb
     └── custom_provider.rb        # Your custom adapter logic
 ```
 
@@ -48,7 +53,7 @@ See `docs/GEM_WEBHOOK_SETUP.md` for detailed guidance on when to share vs. creat
 
 ### For Host Applications
 
-To use a built-in provider in your Rails application:
+To use a provider in your Rails application:
 
 1. **Create a provider folder** in your application's `captain_hook/providers/` directory:
    ```bash
@@ -60,11 +65,11 @@ To use a built-in provider in your Rails application:
    cp gem_path/captain_hook/providers/stripe.yml.example captain_hook/providers/stripe/stripe.yml
    ```
 
-3. **Edit the configuration** to use the built-in adapter:
+3. **Edit the configuration**:
    ```yaml
    name: stripe
    display_name: Stripe
-   adapter_class: CaptainHook::Adapters::Stripe  # Use built-in adapter!
+   adapter_file: stripe.rb  # CaptainHook will find the built-in adapter automatically!
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    ```
 
@@ -76,7 +81,7 @@ To use a built-in provider in your Rails application:
 
 5. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
 
-**Note:** For custom providers not included in CaptainHook, you can still create a custom adapter file (e.g., `custom_provider.rb`) and reference it with `adapter_file: custom_provider.rb` in the YAML.
+**Note:** You don't need to create `stripe.rb` - CaptainHook includes built-in adapters. For custom providers, create the `.rb` file alongside the YAML.
 
 ### For Other Gems
 
@@ -84,13 +89,13 @@ If you're building a gem that integrates with a webhook provider:
 
 1. **Use built-in adapters when available** - No need to ship your own adapter for Stripe, Square, PayPal, or WebhookSite
 
-2. **Include only the YAML** - Add `captain_hook/providers/your_provider.yml` to your gem with `adapter_class: CaptainHook::Adapters::Stripe`
+2. **Include only the YAML** - Add `captain_hook/providers/your_provider.yml` to your gem with `adapter_file: stripe.rb`
 
-3. **For custom providers** - Ship both the YAML and adapter class if CaptainHook doesn't have a built-in adapter
+3. **For custom providers** - Ship both the YAML and adapter file if CaptainHook doesn't have a built-in adapter
 
 4. **Include handlers** - Add `captain_hook/handlers/*.rb` to process specific events
 
-4. **Register handlers** - In your gem's engine.rb, register which handlers process which events
+5. **Register handlers** - In your gem's engine.rb, register which handlers process which events
 
 See `docs/GEM_WEBHOOK_SETUP.md` for detailed instructions.
 
@@ -144,15 +149,15 @@ CaptainHook.register_handler(
 
 ## Available Built-in Adapters
 
-CaptainHook ships with these adapters built-in - **no adapter files needed**:
+CaptainHook ships with these adapters built-in - **automatically discovered**:
 
-- **Stripe** - `CaptainHook::Adapters::Stripe` - Full signature verification with HMAC-SHA256
-- **Square** - `CaptainHook::Adapters::Square` - HMAC-SHA256 with Base64 encoding
-- **PayPal** - `CaptainHook::Adapters::Paypal` - Certificate-based verification (simplified)
-- **WebhookSite** - `CaptainHook::Adapters::WebhookSite` - No verification (testing only)
-- **Base** - `CaptainHook::Adapters::Base` - No-op adapter (for custom implementations)
+- **Stripe** - `stripe.rb` - Full signature verification with HMAC-SHA256
+- **Square** - `square.rb` - HMAC-SHA256 with Base64 encoding
+- **PayPal** - `paypal.rb` - Certificate-based verification (simplified)
+- **WebhookSite** - `webhook_site.rb` - No verification (testing only)
+- **Base** - `base.rb` - No-op adapter (for custom implementations)
 
-Simply use `adapter_class: CaptainHook::Adapters::Stripe` in your YAML configuration!
+Simply use `adapter_file: stripe.rb` in your YAML - CaptainHook will find the built-in adapter automatically!
 
 ### Need a Custom Provider?
 

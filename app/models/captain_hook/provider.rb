@@ -86,28 +86,37 @@ module CaptainHook
 
     # Load the adapter file from the filesystem
     def load_adapter_file
+      return if adapter_file.blank?
+
       # Try to find the adapter file in common locations
       possible_paths = [
         # Application providers directory (nested structure)
-        Rails.root.join("captain_hook", "providers", name, "#{name}.rb"),
+        Rails.root.join("captain_hook", "providers", name, adapter_file),
         # Application providers directory (flat structure)
-        Rails.root.join("captain_hook", "providers", "#{name}.rb")
+        Rails.root.join("captain_hook", "providers", adapter_file)
       ]
 
-      # Also check in loaded gems
+      # Check in CaptainHook gem's built-in adapters
+      # Use __dir__ to get the directory of this file, then navigate to lib/captain_hook/adapters
+      gem_adapters_path = File.expand_path("../../lib/captain_hook/adapters", __dir__)
+      if Dir.exist?(gem_adapters_path)
+        possible_paths << File.join(gem_adapters_path, adapter_file)
+      end
+
+      # Also check in other loaded gems
       Bundler.load.specs.each do |spec|
         gem_providers_path = File.join(spec.full_gem_path, "captain_hook", "providers")
         next unless Dir.exist?(gem_providers_path)
 
-        possible_paths << File.join(gem_providers_path, name, "#{name}.rb")
-        possible_paths << File.join(gem_providers_path, "#{name}.rb")
+        possible_paths << File.join(gem_providers_path, name, adapter_file)
+        possible_paths << File.join(gem_providers_path, adapter_file)
       end
 
-      adapter_file = possible_paths.find { |path| File.exist?(path) }
+      file_path = possible_paths.find { |path| File.exist?(path) }
 
-      if adapter_file
-        load adapter_file
-        Rails.logger.debug("Loaded adapter from #{adapter_file}")
+      if file_path
+        load file_path
+        Rails.logger.debug("Loaded adapter from #{file_path}")
       else
         Rails.logger.warn("Adapter file not found for #{name}, tried: #{possible_paths.inspect}")
       end

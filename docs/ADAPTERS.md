@@ -7,13 +7,13 @@ Adapters are the first line of defense in the webhook processing pipeline. They 
 Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Adapters encapsulate this provider-specific logic so your application can process webhooks securely.
 
 **Latest Architecture:** CaptainHook now ships with **built-in adapters** for common providers:
-- **Stripe** - `CaptainHook::Adapters::Stripe`
-- **Square** - `CaptainHook::Adapters::Square`  
-- **PayPal** - `CaptainHook::Adapters::Paypal`
-- **WebhookSite** - `CaptainHook::Adapters::WebhookSite` (testing only)
-- **Base** - `CaptainHook::Adapters::Base` (no-op for custom implementations)
+- **Stripe** - `stripe.rb`
+- **Square** - `square.rb`  
+- **PayPal** - `paypal.rb`
+- **WebhookSite** - `webhook_site.rb` (testing only)
+- **Base** - `base.rb` (no-op for custom implementations)
 
-For these providers, **you only need a YAML file** - no adapter code required! Just use `adapter_class: CaptainHook::Adapters::Stripe` in your configuration.
+For these providers, **you only need a YAML file** - no adapter code required! Just use `adapter_file: stripe.rb` in your configuration, and CaptainHook will automatically find and use the built-in adapter.
 
 For custom providers not included in CaptainHook, you can still create custom adapters that live alongside your provider configuration.
 
@@ -28,18 +28,18 @@ An adapter must implement these methods:
 
 ## Using Built-in Adapters
 
-For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the built-in adapter in your YAML:
+For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the adapter file in your YAML:
 
 ```yaml
 # captain_hook/providers/stripe/stripe.yml
 name: stripe
 display_name: Stripe
-adapter_class: CaptainHook::Adapters::Stripe  # Built-in adapter!
+adapter_file: stripe.rb  # CaptainHook will find the built-in adapter!
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 active: true
 ```
 
-No adapter file needed!
+No need to create the adapter file - CaptainHook includes it!
 
 ## Creating Custom Adapters
 

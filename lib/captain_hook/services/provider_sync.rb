@@ -63,11 +63,8 @@ module CaptainHook
         provider.adapter_file = definition["adapter_file"]
         provider.active = definition.fetch("active", true)
 
-        # Set adapter_class from YAML if provided (built-in adapters)
-        if definition["adapter_class"].present?
-          provider.adapter_class = definition["adapter_class"]
         # Extract adapter_class from file if adapter_file is provided
-        elsif definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
+        if definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
           adapter_class = extract_adapter_class(definition)
           provider.adapter_class = adapter_class if adapter_class.present?
         end
@@ -168,7 +165,13 @@ module CaptainHook
           Rails.root.join("captain_hook", "providers", adapter_file)
         ]
 
-        # Also check in gems
+        # Check in CaptainHook gem's built-in adapters
+        gem_adapters_path = File.expand_path("../../adapters", __dir__)
+        if Dir.exist?(gem_adapters_path)
+          possible_paths << File.join(gem_adapters_path, adapter_file)
+        end
+
+        # Also check in other gems
         Bundler.load.specs.each do |spec|
           gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
           next unless File.directory?(gem_providers_path)

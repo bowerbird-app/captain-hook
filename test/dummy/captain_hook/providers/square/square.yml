@@ -4,7 +4,7 @@
 name: square
 display_name: Square
 description: Square payment and order webhooks
-adapter_class: CaptainHook::Adapters::Square
+adapter_file: square.rb
 active: true
 
 # Security settings
