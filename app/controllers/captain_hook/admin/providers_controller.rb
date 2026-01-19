@@ -113,7 +113,7 @@ module CaptainHook
         if provider_definitions.empty?
           redirect_to admin_providers_url,
                       alert: "No provider configuration files found. " \
-                             "Add YAML files to captain_hook/providers/ directory."
+                             "Add YAML files to captain_hook/<provider>/<provider>.yml directories."
           return
         end
 

@@ -142,24 +142,15 @@ See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to crea
 **Create the directory structure:**
 
 ```bash
-mkdir -p captain_hook/providers
-mkdir -p captain_hook/handlers
+mkdir -p captain_hook/stripe/actions
 ```
 
-**Create a provider YAML file** (e.g., `captain_hook/providers/stripe.yml`):
+**Create a provider YAML file** (e.g., `captain_hook/stripe/stripe.yml`):
 
-You can copy from the example templates shipped with CaptainHook:
-
-```bash
-# Example templates are in the gem at captain_hook/providers/*.yml.example
-# Copy and customize for your needs
-cp captain_hook/providers/stripe.yml.example captain_hook/providers/stripe.yml
-```
-
-Or create from scratch:
+You can copy from the example templates shipped with CaptainHook and customize:
 
 ```yaml
-# captain_hook/providers/stripe/stripe.yml
+# captain_hook/stripe/stripe.yml
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
@@ -178,7 +169,7 @@ rate_limit_period: 60
 max_payload_size_bytes: 1048576
 ```
 
-**Create the adapter file** (`captain_hook/providers/stripe/stripe.rb`):
+**Create the adapter file** (if needed - Stripe has a built-in adapter) (`captain_hook/stripe/stripe.rb`):
 
 ```ruby
 # frozen_string_literal: true
@@ -239,8 +230,11 @@ STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
 3. CaptainHook will automatically create provider records from your YAML files
 
 Providers are automatically discovered from:
-- Your Rails app: `Rails.root/captain_hook/providers/` (both flat `*.yml` and nested `provider_name/provider_name.yml`)
-- Loaded gems: `<gem_root>/captain_hook/providers/` (both flat and nested structures)
+- Your Rails app: `Rails.root/captain_hook/<provider_name>/<provider_name>.yml`
+- Loaded gems: `<gem_root>/captain_hook/<provider_name>/<provider_name>.yml`
+
+Handlers are automatically loaded from:
+- Provider's `actions/` folder: `captain_hook/<provider_name>/actions/*.rb`
 
 The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
 
@@ -249,13 +243,13 @@ The `signing_secret` will be automatically encrypted in the database using AES-2
 You can have multiple instances of the same provider type (e.g., multiple Stripe accounts). Each needs its own directory with YAML config and adapter file:
 
 ```yaml
-# captain_hook/providers/stripe_account_a/stripe_account_a.yml
+# captain_hook/stripe_account_a/stripe_account_a.yml
 name: stripe_account_a
 display_name: Stripe (Account A)
 adapter_file: stripe_account_a.rb
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
 
-# captain_hook/providers/stripe_account_b/stripe_account_b.yml
+# captain_hook/stripe_account_b/stripe_account_b.yml
 name: stripe_account_b
 display_name: Stripe (Account B)  
 adapter_file: stripe_account_b.rb
@@ -263,13 +257,13 @@ signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
 ```
 
 ```ruby
-# captain_hook/providers/stripe_account_a/stripe_account_a.rb
+# captain_hook/stripe_account_a/stripe_account_a.rb
 class StripeAccountAAdapter
   include CaptainHook::AdapterHelpers
   # Same Stripe verification logic
 end
 
-# captain_hook/providers/stripe_account_b/stripe_account_b.rb
+# captain_hook/stripe_account_b/stripe_account_b.rb
 class StripeAccountBAdapter
   include CaptainHook::AdapterHelpers
   # Same Stripe verification logic
@@ -295,10 +289,10 @@ Share this URL with your provider (e.g., in Stripe's webhook settings). The toke
 
 ### 4. Create a Handler
 
-Create a handler class in `captain_hook/handlers/`:
+Create a handler class in the provider's `actions/` folder:
 
 ```ruby
-# captain_hook/handlers/stripe_payment_succeeded_handler.rb
+# captain_hook/stripe/actions/payment_succeeded_handler.rb
 class StripePaymentSucceededHandler
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
@@ -312,7 +306,7 @@ Handler method signature:
 - `payload`: The parsed JSON payload (Hash)
 - `metadata`: Additional metadata (Hash with `:timestamp`, `:headers`, etc.)
 
-**Note**: While handlers can also be placed in `app/handlers/`, the recommended location is `captain_hook/handlers/` to keep all webhook-related code organized together.
+**Note**: Handlers are automatically loaded from the provider's `actions/` folder. You can also place handlers elsewhere and register them manually, but the recommended location is `captain_hook/<provider>/actions/` to keep all webhook-related code organized together.
 
 ### 5. Register the Handler
 

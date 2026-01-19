@@ -1289,7 +1289,7 @@ Handlers are **Ruby classes that contain your business logic** for processing we
 A handler is a simple Ruby class with a single required method: `handle`
 
 ```ruby
-# captain_hook/handlers/stripe_payment_succeeded_handler.rb
+# captain_hook/stripe/actions/payment_succeeded_handler.rb
 class StripePaymentSucceededHandler
   # Required method signature
   # @param event [CaptainHook::IncomingEvent] Database record of the webhook
@@ -1741,24 +1741,20 @@ your-rails-app/
 ```
 
 **Recommended structure:**
-- Handlers in `captain_hook/handlers/` (keeps webhook code together)
+- Handlers in `captain_hook/<provider>/actions/` (keeps webhook code together with provider config)
 - Can also use `app/handlers/` (standard Rails location)
 
 #### Option 2: Third-Party Gems
 
 ```
 example-stripe/
-├── lib/
-│   └── example/
-│       └── stripe/
-│           └── handlers/
-│               ├── charge_handler.rb
-│               └── payment_intent_handler.rb
 ├── captain_hook/
-│   └── providers/
-│       └── stripe/
-│           ├── stripe.yml
-│           └── stripe.rb
+│   └── stripe/
+│       ├── stripe.yml
+│       ├── stripe.rb        # (Optional) Custom adapter if not built-in
+│       └── actions/         # Handlers auto-loaded from here
+│           ├── charge_handler.rb
+│           └── payment_intent_handler.rb
 └── lib/
     └── example/
         └── stripe/

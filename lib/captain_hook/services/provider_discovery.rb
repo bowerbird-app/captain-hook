@@ -3,7 +3,7 @@
 module CaptainHook
   module Services
     # Service for discovering provider configuration files in the application and loaded gems
-    # Scans for YAML files in captain_hook/providers/ directories
+    # Scans for YAML files in captain_hook/<provider>/ directories
     class ProviderDiscovery < BaseService
       def initialize
         @discovered_providers = []
@@ -22,10 +22,10 @@ module CaptainHook
 
       # Scan the main Rails application for provider configs
       def scan_application_providers
-        app_providers_path = Rails.root.join("captain_hook", "providers")
-        return unless File.directory?(app_providers_path)
+        app_captain_hook_path = Rails.root.join("captain_hook")
+        return unless File.directory?(app_captain_hook_path)
 
-        scan_directory(app_providers_path, source: "application")
+        scan_directory(app_captain_hook_path, source: "application")
       end
 
       # Scan loaded gems for provider configs
@@ -33,34 +33,31 @@ module CaptainHook
         # Use Bundler to get all gems from Gemfile, not just loaded ones
         if defined?(Bundler)
           Bundler.load.specs.each do |spec|
-            gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
-            next unless File.directory?(gem_providers_path)
+            gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+            next unless File.directory?(gem_captain_hook_path)
 
-            scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+            scan_directory(gem_captain_hook_path, source: "gem:#{spec.name}")
           end
         else
           # Fallback to Gem.loaded_specs if Bundler isn't available
           Gem.loaded_specs.each_value do |spec|
-            gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
-            next unless File.directory?(gem_providers_path)
+            gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+            next unless File.directory?(gem_captain_hook_path)
 
-            scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+            scan_directory(gem_captain_hook_path, source: "gem:#{spec.name}")
           end
         end
       end
 
       # Scan a directory for YAML provider configuration files
-      # Supports both flat structure (*.yml in providers/) and nested structure (provider_name/provider_name.yml)
+      # Supports provider-specific structure: <provider>/<provider>.yml with optional actions/ folder for handlers
       def scan_directory(directory_path, source:)
-        # First, scan for any direct YAML files in the providers directory
-        Dir.glob(File.join(directory_path, "*.{yml,yaml}")).each do |file_path|
-          provider_def = load_provider_file(file_path, source: source)
-          @discovered_providers << provider_def if provider_def
-        end
-
-        # Then, scan subdirectories for provider-specific YAML files
+        # Scan subdirectories for provider-specific YAML files
         Dir.glob(File.join(directory_path, "*")).select { |f| File.directory?(f) }.each do |subdir|
           provider_name = File.basename(subdir)
+
+          # Skip special directories
+          next if provider_name.start_with?(".")
 
           # Look for YAML file matching the provider name or any YAML file
           yaml_file = Dir.glob(File.join(subdir, "#{provider_name}.{yml,yaml}")).first ||
@@ -82,7 +79,25 @@ module CaptainHook
             end
           end
 
+          # Autoload handlers from actions folder if it exists
+          actions_dir = File.join(subdir, "actions")
+          if File.directory?(actions_dir)
+            load_handlers_from_directory(actions_dir)
+          end
+
           @discovered_providers << provider_def
+        end
+      end
+
+      # Load all handler files from a directory
+      def load_handlers_from_directory(directory)
+        Dir.glob(File.join(directory, "**", "*.rb")).each do |handler_file|
+          begin
+            load handler_file
+            Rails.logger.debug("Loaded handler from #{handler_file}")
+          rescue StandardError => e
+            Rails.logger.error("Failed to load handler #{handler_file}: #{e.message}")
+          end
         end
       end
 

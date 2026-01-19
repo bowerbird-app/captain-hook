@@ -1,6 +1,26 @@
-# Provider Templates
+# Provider Configuration
 
-This directory contains example provider configuration files that ship with CaptainHook.
+This directory contains provider configuration files for webhook integrations with CaptainHook.
+
+## Directory Structure
+
+Each provider has its own folder with the following structure:
+
+```
+captain_hook/
+├── stripe/
+│   ├── stripe.yml           # Provider configuration
+│   ├── stripe.rb            # (Optional) Custom adapter if not built-in
+│   └── actions/             # Handler files for this provider
+│       ├── payment_intent_succeeded_handler.rb
+│       └── charge_refunded_handler.rb
+├── paypal/
+│   ├── paypal.yml
+│   └── actions/
+└── square/
+    ├── square.yml
+    └── actions/
+```
 
 ## How It Works
 
@@ -11,17 +31,20 @@ This directory contains example provider configuration files that ship with Capt
 For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need the YAML file**. CaptainHook will automatically find and use the built-in adapter.
 
 ```
-captain_hook/providers/
+captain_hook/
 ├── stripe/
-│   └── stripe.yml       # adapter_file: stripe.rb will use built-in adapter
+│   ├── stripe.yml       # adapter_file: stripe.rb will use built-in adapter
+│   └── actions/         # Your handlers go here
 ├── square/
-│   └── square.yml
+│   ├── square.yml
+│   └── actions/
 └── paypal/
-    └── paypal.yml
+    ├── paypal.yml
+    └── actions/
 ```
 
 When you specify `adapter_file: stripe.rb` in your YAML, CaptainHook will:
-1. First check your app's `captain_hook/providers/` directory
+1. First check your app's provider directory for a custom adapter
 2. Then check in loaded gems
 3. Finally check CaptainHook's built-in adapters
 
@@ -30,42 +53,40 @@ When you specify `adapter_file: stripe.rb` in your YAML, CaptainHook will:
 For providers not included in CaptainHook, create custom adapters:
 
 ```
-captain_hook/providers/
+captain_hook/
 └── custom_provider/
     ├── custom_provider.yml       # Configuration with adapter_file: custom_provider.rb
-    └── custom_provider.rb        # Your custom adapter logic
+    ├── custom_provider.rb        # Your custom adapter logic
+    └── actions/                  # Your handlers
+        └── event_handler.rb
 ```
-
-These `.yml.example` files serve as templates for creating your own provider folders.
 
 ## ⚠️ Important: Check Before Creating
 
 **Before creating a new provider, check if one already exists!**
 
-If your app or a gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Just register your handlers for the existing provider.
+If your app or a gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Just register your handlers in the provider's `actions/` folder.
 
 **One Provider = One Webhook Endpoint**
 - A provider represents a single webhook URL with signature verification
 - Multiple handlers can share the same provider to process different event types
+- Handlers for a provider should be placed in its `actions/` folder
 - Only create separate providers for multi-tenant scenarios (different accounts/secrets)
 
 See `docs/GEM_WEBHOOK_SETUP.md` for detailed guidance on when to share vs. create providers.
+
+## Setting Up a Provider
 
 ### For Host Applications
 
 To use a provider in your Rails application:
 
-1. **Create a provider folder** in your application's `captain_hook/providers/` directory:
+1. **Create a provider folder** in your application's `captain_hook/` directory:
    ```bash
-   mkdir -p captain_hook/providers/stripe
+   mkdir -p captain_hook/stripe/actions
    ```
 
-2. **Copy the template** to the folder as `stripe.yml`:
-   ```bash
-   cp gem_path/captain_hook/providers/stripe.yml.example captain_hook/providers/stripe/stripe.yml
-   ```
-
-3. **Edit the configuration**:
+2. **Create the YAML configuration** as `stripe.yml`:
    ```yaml
    name: stripe
    display_name: Stripe
@@ -73,13 +94,37 @@ To use a provider in your Rails application:
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    ```
 
-4. **Set environment variables** with your actual secrets:
+3. **Set environment variables** with your actual secrets:
    ```bash
    # .env
    STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
    ```
 
-5. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
+4. **Add your handlers** to the `actions/` folder:
+   ```ruby
+   # captain_hook/stripe/actions/payment_intent_succeeded_handler.rb
+   module Stripe
+     class PaymentIntentSucceededHandler
+       def self.call(event)
+         # Process payment.intent.succeeded event
+       end
+     end
+   end
+   ```
+
+5. **Register handlers** in an initializer or engine:
+   ```ruby
+   # config/initializers/captain_hook.rb
+   CaptainHook.configure do |config|
+     config.handler_registry.register(
+       provider: "stripe",
+       event_type: "payment_intent.succeeded",
+       handler_class: Stripe::PaymentIntentSucceededHandler
+     )
+   end
+   ```
+
+6. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
 
 **Note:** You don't need to create `stripe.rb` - CaptainHook includes built-in adapters. For custom providers, create the `.rb` file alongside the YAML.
 
@@ -89,13 +134,18 @@ If you're building a gem that integrates with a webhook provider:
 
 1. **Use built-in adapters when available** - No need to ship your own adapter for Stripe, Square, PayPal, or WebhookSite
 
-2. **Include only the YAML** - Add `captain_hook/providers/your_provider.yml` to your gem with `adapter_file: stripe.rb`
+2. **Include the YAML and handlers** - Add to your gem:
+   ```
+   captain_hook/
+   └── stripe/
+       ├── stripe.yml              # Provider config
+       └── actions/                # Your handlers
+           └── subscription_updated_handler.rb
+   ```
 
 3. **For custom providers** - Ship both the YAML and adapter file if CaptainHook doesn't have a built-in adapter
 
-4. **Include handlers** - Add `captain_hook/handlers/*.rb` to process specific events
-
-5. **Register handlers** - In your gem's engine.rb, register which handlers process which events
+4. **Register handlers** - In your gem's engine.rb, register which handlers process which events
 
 See `docs/GEM_WEBHOOK_SETUP.md` for detailed instructions.
 

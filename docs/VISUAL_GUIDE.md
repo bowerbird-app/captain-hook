@@ -810,7 +810,7 @@ end
 
 ### Handler Class Example
 
-**File**: `captain_hook/handlers/stripe_payment_intent_succeeded_handler.rb`
+**File**: `captain_hook/stripe/actions/payment_intent_succeeded_handler.rb`
 
 ```ruby
 class StripePaymentIntentSucceededHandler
@@ -1102,7 +1102,7 @@ CaptainHook's discovery and management system provides:
 ```
 1. Create Structure
    mkdir -p captain_hook/providers/stripe
-   mkdir -p captain_hook/handlers
+   mkdir -p captain_hook/stripe/actions
 
 2. Add Provider Config & Adapter
    # captain_hook/providers/stripe/stripe.yml
@@ -1119,7 +1119,7 @@ CaptainHook's discovery and management system provides:
    end
 
 3. Create Handler
-   # captain_hook/handlers/payment_succeeded_handler.rb
+   # captain_hook/stripe/actions/payment_succeeded_handler.rb
    class PaymentSucceededHandler
      def handle(event:, payload:, metadata:)
        # Your logic here

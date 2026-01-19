@@ -20,7 +20,7 @@ The Provider Discovery System transforms CaptainHook from a manual UI-based prov
 Provider configurations are defined in YAML files with the following structure:
 
 ```yaml
-# Location: captain_hook/providers/stripe.yml
+# Location: captain_hook/stripe/stripe.yml
 name: stripe                                    # Required: unique identifier
 display_name: Stripe                            # Optional: human-readable name
 description: Stripe payment webhooks            # Optional: description
@@ -50,33 +50,36 @@ max_payload_size_bytes: 1048576                # Optional: max payload size
 ```
 your_rails_app/
 ├── captain_hook/
-│   ├── providers/          # Provider YAML configurations
-│   │   ├── stripe.yml
+│   ├── stripe/                          # Provider directory
+│   │   ├── stripe.yml                   # Provider config
+│   │   ├── stripe.rb                    # (Optional) Custom adapter
+│   │   └── actions/                     # Handler files for this provider
+│   │       └── payment_intent_succeeded_handler.rb
+│   ├── square/
 │   │   ├── square.yml
-│   │   └── webhook_site.yml
-│   ├── handlers/           # Custom webhook event handlers
-│   │   ├── stripe_payment_intent_handler.rb
-│   │   └── square_bank_account_handler.rb
-│   └── adapters/           # Custom signature verification adapters (optional)
-│       └── custom_adapter.rb
+│   │   └── actions/
+│   │       └── bank_account_handler.rb
+│   └── webhook_site/
+│       ├── webhook_site.yml
+│       └── actions/
 └── ...
 
 your_gem/
 ├── lib/
-└── captain_hook/           # Gems can also define providers!
-    ├── providers/
-    │   └── my_service.yml
-    ├── handlers/
-    │   └── my_service_handler.rb
-    └── adapters/
-        └── my_service_adapter.rb
+└── captain_hook/                        # Gems can also define providers!
+    └── my_service/
+        ├── my_service.yml               # Provider config
+        ├── my_service.rb                # Custom adapter
+        └── actions/                     # Handler files
+            └── my_service_event_handler.rb
 ```
 
 **Key Design Decisions:**
 
 - **Centralized Location**: All webhook-related code in one `captain_hook/` directory
-- **Gem Support**: Any gem can ship providers by including a `captain_hook/` directory
-- **Separation of Concerns**: Providers, handlers, and adapters are in separate subdirectories
+- **Provider-Specific Structure**: Each provider has its own folder with config, optional adapter, and actions
+- **Gem Support**: Any gem can ship providers by including a `captain_hook/<provider>/` directory
+- **Handler Co-location**: Handlers live in the provider's `actions/` folder for better organization
 
 ### 3. Provider Discovery Service
 
@@ -85,11 +88,13 @@ your_gem/
 **Purpose**: Scans the filesystem for provider YAML files and returns parsed provider definitions.
 
 **Algorithm**:
-1. Scan `Rails.root/captain_hook/providers/*.{yml,yaml}`
-2. Scan all loaded gems for `<gem_root>/captain_hook/providers/*.{yml,yaml}`
-3. Parse each YAML file
-4. Add metadata (source_file, source) to each definition
-5. Handle errors gracefully (log and skip malformed files)
+1. Scan `Rails.root/captain_hook/<provider>/<provider>.{yml,yaml}`
+2. Scan all loaded gems for `<gem_root>/captain_hook/<provider>/<provider>.{yml,yaml}`
+3. Auto-load custom adapters from `<provider>/<provider>.rb` if present
+4. Auto-load handlers from `<provider>/actions/*.rb`
+5. Parse each YAML file
+6. Add metadata (source_file, source) to each definition
+7. Handle errors gracefully (log and skip malformed files)
 
 **Key Code**:
 
@@ -102,9 +107,9 @@ end
 
 def scan_gem_providers
   Gem.loaded_specs.each_value do |spec|
-    gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
-    next unless File.directory?(gem_providers_path)
-    scan_directory(gem_providers_path, source: "gem:#{spec.name}")
+    gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+    next unless File.directory?(gem_captain_hook_path)
+    scan_directory(gem_captain_hook_path, source: "gem:#{spec.name}")
   end
 end
 ```
@@ -266,10 +271,11 @@ If you have existing providers created via the UI:
 
 ### For New Installations
 
-1. **Create YAML Files**: Define your providers in `captain_hook/providers/`
-2. **Set ENV Variables**: Add signing secrets to your environment
-3. **Run Discover New**: Click "Discover New" to create providers
-4. **Configure Handlers**: Register handlers in `config/initializers/captain_hook.rb`
+1. **Create Provider Directories**: Create `captain_hook/<provider>/actions/` for each provider
+2. **Add YAML Files**: Define providers in `captain_hook/<provider>/<provider>.yml`
+3. **Set ENV Variables**: Add signing secrets to your environment
+4. **Run Discover New**: Click "Discover New" to create providers
+5. **Add Handlers**: Place handler files in `captain_hook/<provider>/actions/`
 
 ## Testing
 
@@ -291,7 +297,7 @@ If you have existing providers created via the UI:
 ### Integration Testing
 
 ```ruby
-# In test/dummy/captain_hook/providers/test.yml
+# In test/dummy/captain_hook/test/test.yml
 name: test_provider
 adapter_file: test.rb
 signing_secret: ENV[TEST_SECRET]
@@ -310,28 +316,25 @@ assert_equal "test_value", provider.signing_secret
 
 ## Future Enhancements
 
-### 1. Handler Discovery
+### 1. Handler Auto-Loading
 
-Currently handlers must be manually registered in initializers. Future enhancement:
+Handlers are now automatically loaded from the provider's `actions/` folder:
 
 ```yaml
-# captain_hook/providers/stripe.yml
-handlers:
-  - event_type: payment_intent.succeeded
-    handler_class: StripePaymentIntentHandler
-    priority: 100
-    async: true
+# captain_hook/stripe/stripe.yml
+name: stripe
+adapter_file: stripe.rb
 ```
 
-The sync service could automatically register handlers from YAML.
+Handlers in `captain_hook/stripe/actions/*.rb` are automatically loaded and available for registration.
 
-### 2. Adapter Discovery
+### 2. Adapter Auto-Loading
 
-Custom adapters are automatically discovered from the specified file:
+Custom adapters are automatically loaded from the provider directory:
 
 ```yaml
-# captain_hook/providers/custom.yml
-adapter_file: my_custom_adapter.rb  # Auto-detected from captain_hook/providers/custom/
+# captain_hook/custom/custom.yml
+adapter_file: custom.rb  # Auto-loaded from captain_hook/custom/custom.rb
 ```
 
 ### 3. Validation Rules
@@ -358,7 +361,7 @@ Add a "Edit as YAML" button in the UI that:
 
 ### Provider Not Discovered
 
-**Check**: Does the YAML file exist in `captain_hook/providers/`?
+**Check**: Does the YAML file exist in `captain_hook/<provider>/<provider>.yml`?
 **Check**: Is the YAML valid? Test with: `ruby -ryaml -e "puts YAML.load_file('path/to/file.yml')"`
 **Check**: Are there any errors in logs when clicking "Discover New" or "Full Sync"?
 **Check**: For gem-provided providers, is the gem loaded in your Gemfile?
@@ -377,7 +380,7 @@ Add a "Edit as YAML" button in the UI that:
 
 ### Handlers Not Loading
 
-**Check**: Is `captain_hook/handlers` in autoload_paths? Check `config/application.rb`
+**Check**: Are handlers in the provider's `actions/` folder? E.g., `captain_hook/stripe/actions/`
 **Check**: Is the handler class name correct? Should match file name (CamelCase vs snake_case)
 **Check**: Are handlers registered in `config/initializers/captain_hook.rb`?
 

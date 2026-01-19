@@ -31,7 +31,7 @@ An adapter must implement these methods:
 For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the adapter file in your YAML:
 
 ```yaml
-# captain_hook/providers/stripe/stripe.yml
+# captain_hook/stripe/stripe.yml
 name: stripe
 display_name: Stripe
 adapter_file: stripe.rb  # CaptainHook will find the built-in adapter!
@@ -47,10 +47,10 @@ For providers not included in CaptainHook, you can create custom adapters that l
 
 ### 1. Create Provider Directory
 
-Create a folder for your provider in `captain_hook/providers/`:
+Create a folder for your provider in `captain_hook/`:
 
 ```bash
-mkdir -p captain_hook/providers/acme_payments
+mkdir -p captain_hook/acme_payments/actions
 ```
 
 ### 2. Create the Adapter Class
@@ -58,7 +58,7 @@ mkdir -p captain_hook/providers/acme_payments
 Create the adapter file (e.g., `acme_payments.rb`) that uses the `CaptainHook::AdapterHelpers` module:
 
 ```ruby
-# captain_hook/providers/acme_payments/acme_payments.rb
+# captain_hook/acme_payments/acme_payments.rb
 class AcmePaymentsAdapter
   include CaptainHook::AdapterHelpers
 
@@ -106,7 +106,7 @@ end
 Create the YAML configuration file:
 
 ```yaml
-# captain_hook/providers/acme_payments/acme_payments.yml
+# captain_hook/acme_payments/acme_payments.yml
 name: acme_payments
 display_name: AcmePayments
 description: AcmePayments webhook provider
@@ -362,25 +362,25 @@ Use the admin sandbox to test with real payloads:
 ## Example Provider Adapters
 
 ### Stripe
-- **File**: `captain_hook/providers/stripe/stripe.rb`
+- **File**: `captain_hook/stripe/stripe.rb`
 - **Signature**: HMAC-SHA256 with timestamp validation
 - **Headers**: `Stripe-Signature` (format: `t=timestamp,v1=signature`)
 - **Documentation**: https://stripe.com/docs/webhooks/signatures
 
 ### Square
-- **File**: `captain_hook/providers/square/square.rb`
+- **File**: `captain_hook/square/square.rb`
 - **Signature**: Base64-encoded HMAC-SHA256 of notification URL + payload
 - **Headers**: `X-Square-Hmacsha256-Signature` or `X-Square-Signature`
 - **Documentation**: https://developer.squareup.com/docs/webhooks
 
 ### PayPal
-- **File**: `captain_hook/providers/paypal/paypal.rb`
+- **File**: `captain_hook/paypal/paypal.rb`
 - **Signature**: Complex certificate-based verification (simplified for testing)
 - **Headers**: Multiple headers including `Paypal-Transmission-Sig`, `Paypal-Transmission-Id`
 - **Documentation**: https://developer.paypal.com/api/rest/webhooks/
 
 ### WebhookSite (Testing Only)
-- **File**: `captain_hook/providers/webhook_site/webhook_site.rb`
+- **File**: `captain_hook/webhook_site/webhook_site.rb`
 - **Signature**: No-op verification (always returns true)
 - **Use**: For development and testing only - **DO NOT USE IN PRODUCTION**
 - **Documentation**: https://webhook.site
@@ -451,7 +451,7 @@ This overrides the database value when set, useful for:
 
 ### Provider not found
 
-1. Ensure YAML file exists in `captain_hook/providers/<provider_name>/`
+1. Ensure YAML file exists in `captain_hook/<provider_name>/`
 2. Ensure .rb file exists in the same directory
 3. Run "Discover New" or "Full Sync" in admin UI
 4. Check `adapter_file` in YAML references the correct .rb file
@@ -462,10 +462,10 @@ Want to contribute an adapter for a popular provider? Great!
 
 ### Steps to Contribute
 
-1. **Create provider folder** in `captain_hook/providers/<provider>/`
+1. **Create provider folder** in `captain_hook/<provider>/actions/`
 2. **Create adapter** file `<provider>.rb` using `CaptainHook::AdapterHelpers`
 3. **Create configuration** file `<provider>.yml` with provider details
-4. **Create example** in `captain_hook/providers/<provider>.yml.example`
+4. **Create example** in `captain_hook/<provider>/<provider>.yml`
 5. **Write tests** to demonstrate signature verification
 6. **Update documentation** with your adapter details
 7. **Submit pull request** with clear description
