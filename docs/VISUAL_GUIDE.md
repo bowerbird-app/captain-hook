@@ -308,7 +308,7 @@ end
 │                                                                │
 │  Provider Details                                              │
 │  • Name: stripe                                                │
-│  • Verifier: StripeAdapter (captain_hook/providers/stripe/stripe.rb) │
+│  • Verifier: StripeVerifier (captain_hook/providers/stripe/stripe.rb) │
 │  • Signing Secret: ✓ Configured                                │
 │  • Timestamp Validation: Enabled (±300s)                       │
 │                                                                │
@@ -1014,7 +1014,7 @@ Click "View" on Stripe →
 │                                                                │
 │  Provider Details                                              │
 │  • Name: stripe                                                │
-│  • Verifier: StripeAdapter (stripe.rb)                          │
+│  • Verifier: StripeVerifier (stripe.rb)                          │
 │  • Signing Secret: ✓ Configured                                │
 │                                                                │
 │  Security Settings                                             │

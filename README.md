@@ -258,13 +258,13 @@ signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
 
 ```ruby
 # captain_hook/stripe_account_a/stripe_account_a.rb
-class StripeAccountAAdapter
+class StripeAccountAVerifier
   include CaptainHook::VerifierHelpers
   # Same Stripe verification logic
 end
 
 # captain_hook/stripe_account_b/stripe_account_b.rb
-class StripeAccountBAdapter
+class StripeAccountBVerifier
   include CaptainHook::VerifierHelpers
   # Same Stripe verification logic
 end

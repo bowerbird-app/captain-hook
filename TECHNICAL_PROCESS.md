@@ -312,7 +312,7 @@ CREATE INDEX ON captain_hook_providers(active);
 **`verifier_class`** (VARCHAR, NULLABLE)
 - **Changed from NOT NULL to NULLABLE in migration 20260117000001**
 - **Auto-extracted from verifier_file during provider sync (migration 20260117000002)**
-- Class name of verifier (e.g., `"StripeAdapter"`)
+- Class name of verifier (e.g., `"StripeVerifier"`)
 - `NULL` means no signature verification (token-only authentication)
 - Class must exist and be loadable when webhook arrives
 - Auto-detected from verifier_file specified in YAML during provider scan
@@ -1113,7 +1113,7 @@ Provider.create!(
 
 ```ruby
 # In gem: lib/example/stripe_verifier.rb
-# Trying to use: verifier_class: "Example::StripeAdapter"
+# Trying to use: verifier_class: "Example::StripeVerifier"
 ```
 
 **Limitation:** Verifier must be in `captain_hook/providers/` directory, not `lib/`
@@ -1195,13 +1195,13 @@ Gem 2:     captain_hook/providers/stripe/stripe.yml
 #### Verifier Class Not Found
 
 ```yaml
-verifier_class: NonExistentAdapter
+verifier_class: NonExistentVerifier
 ```
 
 **Behavior:**
 - YAML loads successfully
 - Provider created in database
-- Error when webhook arrives: `AdapterNotFoundError`
+- Error when webhook arrives: `VerifierNotFoundError`
 
 **Solution:** Ensure Ruby file defines the verifier class
 
@@ -1224,7 +1224,7 @@ signing_secret: ENV[MISSING_VAR]
 # stripe.rb
 class StripeVerifier
   def verify_signature(...)
-    PaypalAdapter.new.verify_signature(...)  # BAD: Circular
+    PaypalVerifier.new.verify_signature(...)  # BAD: Circular
   end
 end
 ```
