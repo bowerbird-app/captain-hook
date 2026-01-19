@@ -33,10 +33,10 @@ module CaptainHook
       def handlers_for(provider:, event_type:)
         # First, try to get active handlers from database
         db_handlers = CaptainHook::Handler
-          .active
-          .for_provider(provider)
-          .for_event_type(event_type)
-          .by_priority
+                      .active
+                      .for_provider(provider)
+                      .for_event_type(event_type)
+                      .by_priority
 
         if db_handlers.any?
           Rails.logger.info "🔍 [HandlerLookup] Found #{db_handlers.count} active handler(s) in DB for #{provider}:#{event_type}"
@@ -46,9 +46,9 @@ module CaptainHook
         # Check if there are soft-deleted handlers for this provider/event_type
         # If yes, respect the deletion and don't fall back to registry
         deleted_handlers = CaptainHook::Handler
-          .deleted
-          .for_provider(provider)
-          .for_event_type(event_type)
+                           .deleted
+                           .for_provider(provider)
+                           .for_event_type(event_type)
 
         if deleted_handlers.any?
           Rails.logger.info "🗑️  [HandlerLookup] Found #{deleted_handlers.count} deleted handler(s) in DB for #{provider}:#{event_type}, not falling back to registry"
