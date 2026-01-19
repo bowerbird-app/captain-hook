@@ -27,10 +27,10 @@ module CaptainHook
         webhook_id = extract_header(headers, WEBHOOK_ID_HEADER)
 
         log_verification("paypal",
-          "Signature" => signature.present? ? "present" : "missing",
-          "Transmission ID" => transmission_id.present? ? "present" : "missing",
-          "Transmission Time" => transmission_time.present? ? "present" : "missing",
-          "Webhook ID" => webhook_id || "not provided")
+                         "Signature" => signature.present? ? "present" : "missing",
+                         "Transmission ID" => transmission_id.present? ? "present" : "missing",
+                         "Transmission Time" => transmission_time.present? ? "present" : "missing",
+                         "Webhook ID" => webhook_id || "not provided")
 
         # Skip verification if signing secret not configured
         if skip_verification?(provider_config.signing_secret)

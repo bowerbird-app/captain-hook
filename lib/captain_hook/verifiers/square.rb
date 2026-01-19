@@ -36,15 +36,15 @@ module CaptainHook
         signed_payload = "#{notification_url}#{payload}"
 
         log_verification("square",
-          "Notification URL" => notification_url,
-          "Payload size" => "#{payload.bytesize} bytes")
+                         "Notification URL" => notification_url,
+                         "Payload size" => "#{payload.bytesize} bytes")
 
         # Square expects Base64-encoded HMAC-SHA256
         expected_signature = generate_hmac_base64(provider_config.signing_secret, signed_payload)
 
         log_verification("square",
-          "Expected" => "#{expected_signature[0..20]}...",
-          "Received" => "#{signature[0..20]}...")
+                         "Expected" => "#{expected_signature[0..20]}...",
+                         "Received" => "#{signature[0..20]}...")
 
         result = secure_compare(signature, expected_signature)
         log_verification("square", "Result" => result ? "✓ Passed" : "✗ Failed")

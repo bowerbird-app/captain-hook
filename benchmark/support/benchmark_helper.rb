@@ -59,7 +59,7 @@ module BenchmarkHelper
 
       x.compare!(order: :baseline)
     end
-    
+
     puts "\nℹ️  Note: 'same-ish' means performance differences are statistically insignificant"
   end
 

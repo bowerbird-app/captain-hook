@@ -48,7 +48,7 @@ module CaptainHook
         payload = {}
         result = @verifier.extract_event_id(payload)
         assert result.is_a?(String), "Should generate a UUID"
-        assert result.length > 0, "UUID should not be empty"
+        assert result.length.positive?, "UUID should not be empty"
       end
 
       def test_extract_event_type_returns_type_from_payload

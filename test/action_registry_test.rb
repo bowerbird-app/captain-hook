@@ -356,7 +356,7 @@ module CaptainHook
     end
 
     def test_action_config_delay_for_attempt_returns_correct_delay
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action",
@@ -369,7 +369,7 @@ module CaptainHook
     end
 
     def test_action_config_delay_for_attempt_returns_last_delay_when_out_of_bounds
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action",
@@ -381,7 +381,7 @@ module CaptainHook
     end
 
     def test_action_config_delay_for_attempt_returns_default_when_empty_delays
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action",
@@ -393,7 +393,7 @@ module CaptainHook
     end
 
     def test_action_config_async_defaults_to_true_when_nil
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action",
@@ -404,7 +404,7 @@ module CaptainHook
     end
 
     def test_action_config_retry_delays_has_default
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action"
@@ -414,7 +414,7 @@ module CaptainHook
     end
 
     def test_action_config_max_attempts_has_default
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action"
@@ -424,7 +424,7 @@ module CaptainHook
     end
 
     def test_action_config_priority_has_default
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action"
@@ -434,7 +434,7 @@ module CaptainHook
     end
 
     def test_action_config_returns_nil_when_no_retry_delays
-      config = CaptainHook::ActionRegistry:: ActionConfig.new(
+      config = CaptainHook::ActionRegistry::ActionConfig.new(
         provider: "test",
         event_type: "test",
         action_class: "Test Action",

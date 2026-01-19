@@ -129,9 +129,7 @@ module CaptainHook
 
       # Check in CaptainHook gem's built-in verifiers
       gem_verifiers_path = File.expand_path("../verifiers", __dir__)
-      if Dir.exist?(gem_verifiers_path)
-        possible_paths << File.join(gem_verifiers_path, verifier_file)
-      end
+      possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
 
       # Also check in other loaded gems
       Bundler.load.specs.each do |spec|

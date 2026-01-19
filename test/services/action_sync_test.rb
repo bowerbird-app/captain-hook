@@ -109,7 +109,7 @@ module CaptainHook
           {
             "provider" => "stripe",
             "event_type" => "payment.failed",
-            ".*Action",
+            "action_class" => "FailedPaymentAction",
             "async" => true,
             "max_attempts" => 3,
             "priority" => 50,

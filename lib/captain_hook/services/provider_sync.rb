@@ -127,7 +127,7 @@ module CaptainHook
         # Check if there are actions registered for this provider
         existing_provider = CaptainHook::Provider.find_by(name: name)
         action_count = existing_provider&.actions&.count || 0
-        action_info = action_count > 0 ? " Note: #{action_count} action(s) are already registered to the '#{name}' provider." : ""
+        action_info = action_count.positive? ? " Note: #{action_count} action(s) are already registered to the '#{name}' provider." : ""
 
         warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
                           "If using the same webhook URL, just register actions for the existing provider. " \
@@ -167,9 +167,7 @@ module CaptainHook
 
         # Check in CaptainHook gem's built-in verifiers
         gem_verifiers_path = File.expand_path("../../verifiers", __dir__)
-        if Dir.exist?(gem_verifiers_path)
-          possible_paths << File.join(gem_verifiers_path, verifier_file)
-        end
+        possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
 
         # Also check in other gems
         Bundler.load.specs.each do |spec|

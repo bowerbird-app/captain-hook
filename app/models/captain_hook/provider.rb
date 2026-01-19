@@ -13,7 +13,7 @@ module CaptainHook
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
     has_many :actions, primary_key: :name, foreign_key: :provider, class_name: "CaptainHook::Action",
-                        dependent: :destroy
+                       dependent: :destroy
 
     # Validations
     validates :name, presence: true, uniqueness: true,
@@ -99,9 +99,7 @@ module CaptainHook
       # Check in CaptainHook gem's built-in verifiers
       # Use __dir__ to get the directory of this file, then navigate to lib/captain_hook/verifiers
       gem_verifiers_path = File.expand_path("../../lib/captain_hook/verifiers", __dir__)
-      if Dir.exist?(gem_verifiers_path)
-        possible_paths << File.join(gem_verifiers_path, verifier_file)
-      end
+      possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
 
       # Also check in other loaded gems
       Bundler.load.specs.each do |spec|
