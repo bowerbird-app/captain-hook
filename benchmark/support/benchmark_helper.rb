@@ -13,7 +13,7 @@ ENV["RAILS_ENV"] = "test"
 require File.expand_path("../../test/dummy/config/environment", __dir__)
 ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_providers")
 ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_events")
-ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_event_handlers")
+ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_event_actions")
 
 module BenchmarkHelper
   # Run a performance benchmark and report iterations per second

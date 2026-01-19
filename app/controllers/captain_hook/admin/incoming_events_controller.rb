@@ -7,7 +7,7 @@ module CaptainHook
       # GET /captain_hook/admin/incoming_events
       def index
         @events = CaptainHook::IncomingEvent
-                  .includes(:incoming_event_handlers)
+                  .includes(:incoming_event_actions)
                   .order(created_at: :desc)
                   .page(params[:page])
                   .per(50)
@@ -21,7 +21,7 @@ module CaptainHook
       # GET /captain_hook/admin/incoming_events/:id
       def show
         @event = CaptainHook::IncomingEvent
-                 .includes(:incoming_event_handlers)
+                 .includes(:incoming_event_actions)
                  .find(params[:id])
       end
     end
