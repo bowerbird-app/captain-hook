@@ -6,16 +6,18 @@ A comprehensive Rails engine for receiving and processing webhooks from external
 
 CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
 
-1. **Provider Setup**: Define providers in YAML files (`captain_hook/providers/*.yml`), use "Discover New" to add new providers or "Full Sync" to update all from YAML
-2. **Action Registration**: Register actions in `config/initializers/captain_hook.rb`, actions are automatically discovered and synced during provider scanning
+1. **Provider Setup**: Define providers in YAML files (`captain_hook/<provider>/<provider>.yml`) - automatically discovered on boot
+2. **Action Registration**: Register actions in `config/initializers/captain_hook.rb` - automatically synced to database on boot
 3. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
 4. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
 5. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
-6. **Action Execution**: Looks up actions from registry, creates execution records, enqueues jobs
+6. **Action Execution**: Looks up actions from database, creates execution records, enqueues jobs
 7. **Background Processing**: `IncomingActionJob` executes actions with retry logic and exponential backoff
 8. **Observability**: ActiveSupport::Notifications events for monitoring
 
 **Key Architecture Points:**
+- **Auto-Discovery on Boot**: Providers and actions are automatically discovered and synced to database when Rails starts
+- **Registry as Source of Truth**: Action registrations define behavior, database updates are overwritten on each boot
 - **File-based Discovery**: Providers and verifiers auto-discovered from YAML files in app or gems
 - **In-Memory Registry**: Actions stored in thread-safe `ActionRegistry` then synced to database
 - **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
@@ -46,8 +48,7 @@ CaptainHook provides a complete webhook management system with automatic discove
   - View incoming events with filtering
   - View registered actions per provider
   - **Edit and configure actions** (async/sync, retries, priority)
-  - **Discover New**: Add new providers/actions without updating existing ones
-  - **Full Sync**: Update all providers/actions from YAML files
+  - **Auto-Discovery**: Providers and actions automatically synced on boot
   - **Duplicate detection**: Warns when same provider exists in multiple sources
   - **Soft-delete actions** to prevent re-addition
   - Monitor event processing status
@@ -128,7 +129,9 @@ $ ruby generate_keys.rb
 
 ### 2. Configure Providers
 
-CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
+CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/<provider>/` directory.
+
+**Providers and actions are automatically discovered and synced to the database when your Rails application starts.** There's no need to manually scan - just define your providers in YAML and register your actions in code, then restart your application.
 
 **Provider verifiers are distributed with individual gems** (like `example-stripe`, `example-square`) or can be created in your host application. Each verifier handles provider-specific signature verification and event extraction.
 
@@ -223,11 +226,15 @@ end
 STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
 ```
 
-**Discover providers:**
+**Restart your application:**
 
-1. Navigate to `/captain_hook/admin/providers`
-2. Click "Scan for Providers"
-3. CaptainHook will automatically create provider records from your YAML files
+When your Rails application starts, CaptainHook will automatically:
+1. Discover providers from YAML files in `captain_hook/<provider>/`
+2. Sync them to the database
+3. Discover registered actions from your code
+4. Sync them to the database
+
+You can view the discovered providers at `/captain_hook/admin/providers`
 
 Providers are automatically discovered from:
 - Your Rails app: `Rails.root/captain_hook/<provider_name>/<provider_name>.yml`
@@ -341,6 +348,11 @@ Rails.application.config.after_initialize do
     async: true
   )
 end
+```
+
+**After registering actions, restart your Rails application.** CaptainHook will automatically discover and sync the actions to the database on boot.
+
+You can view and configure your actions at `/captain_hook/admin/providers/:id/actions`
 ```
 
 **Important**: Action registration must be inside `Rails.application.config.after_initialize` to ensure CaptainHook is fully loaded.
