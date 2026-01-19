@@ -23,14 +23,14 @@ module CaptainHook
           return
         end
 
-        # Get the adapter
-        adapter_class = provider.adapter_class.constantize
-        adapter = adapter_class.new(provider)
+        # Get the verifier
+        verifier_class = provider.verifier_class.constantize
+        verifier = verifier_class.new
 
         # Extract event details (dry run - no database)
-        event_type = adapter.extract_event_type(payload_hash)
-        external_id = adapter.extract_event_id(payload_hash)
-        timestamp = adapter.extract_timestamp({})
+        event_type = verifier.extract_event_type(payload_hash)
+        external_id = verifier.extract_event_id(payload_hash)
+        timestamp = verifier.extract_timestamp({})
 
         # Find matching handlers
         handler_configs = CaptainHook.handler_registry.handlers_for(
@@ -45,7 +45,7 @@ module CaptainHook
           provider: {
             name: provider.name,
             display_name: provider.display_name,
-            adapter: provider.adapter_class
+            verifier: provider.verifier_class
           },
           extracted: {
             event_type: event_type,

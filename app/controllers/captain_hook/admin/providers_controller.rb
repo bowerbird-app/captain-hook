@@ -188,7 +188,7 @@ module CaptainHook
       def provider_params
         params.require(:provider).permit(
           :name, :display_name, :description, :signing_secret,
-          :adapter_class, :timestamp_tolerance_seconds, :max_payload_size_bytes,
+          :verifier_class, :timestamp_tolerance_seconds, :max_payload_size_bytes,
           :rate_limit_requests, :rate_limit_period, :active
         )
       end
