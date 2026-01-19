@@ -9,7 +9,7 @@ require_relative "../support/fixtures"
 require "rails/test_help"
 
 puts "\n🔐 Signature Verification Benchmark"
-puts "Testing adapter performance across different providers"
+puts "Testing verifier performance across different providers"
 
 # Prepare test data
 payload_small = BenchmarkFixtures.stripe_payload(size: :small).to_json
@@ -22,68 +22,68 @@ timestamp = Time.now.to_i
 # Create providers with proper config
 stripe_provider = BenchmarkFixtures.create_test_provider(
   name: "benchmark_stripe",
-  adapter: "CaptainHook::Adapters::Stripe"
+  verifier: "CaptainHook::Verifiers::Stripe"
 )
 stripe_provider.update!(signing_secret: secret)
 
 square_provider = BenchmarkFixtures.create_test_provider(
   name: "benchmark_square",
-  adapter: "CaptainHook::Adapters::Square"
+  verifier: "CaptainHook::Verifiers::Square"
 )
 square_provider.update!(signing_secret: secret)
 
-# Stripe adapter benchmark
-puts "\n📊 Stripe Adapter - Different Payload Sizes"
-stripe_adapter = stripe_provider.adapter
+# Stripe verifier benchmark
+puts "\n📊 Stripe Verifier - Different Payload Sizes"
+stripe_verifier = stripe_provider.verifier
 stripe_sig = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', secret, "#{timestamp}.#{payload_medium}")}"
 
 BenchmarkHelper.compare_benchmarks("Stripe Signature Verification", {
                                      "Small payload (#{payload_small.bytesize} bytes)" => lambda {
-                                       stripe_adapter.verify_signature(
+                                       stripe_verifier.verify_signature(
                                          payload: payload_small,
                                          headers: { "Stripe-Signature" => stripe_sig }
                                        )
                                      },
                                      "Medium payload (#{payload_medium.bytesize} bytes)" => lambda {
-                                       stripe_adapter.verify_signature(
+                                       stripe_verifier.verify_signature(
                                          payload: payload_medium,
                                          headers: { "Stripe-Signature" => stripe_sig }
                                        )
                                      },
                                      "Large payload (#{payload_large.bytesize} bytes)" => lambda {
-                                       stripe_adapter.verify_signature(
+                                       stripe_verifier.verify_signature(
                                          payload: payload_large,
                                          headers: { "Stripe-Signature" => stripe_sig }
                                        )
                                      }
                                    })
 
-# Compare adapters
-puts "\n📊 Adapter Comparison (Medium Payload)"
-square_adapter = square_provider.adapter
+# Compare verifiers
+puts "\n📊 Verifier Comparison (Medium Payload)"
+square_verifier = square_provider.verifier
 square_sig = Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", secret, "https://connect.squareup.com/webhooks#{payload_medium}"))
 
 webhook_site_provider = BenchmarkFixtures.create_test_provider(
   name: "benchmark_webhooksite",
-  adapter: "CaptainHook::Adapters::WebhookSite"
+  verifier: "CaptainHook::Verifiers::WebhookSite"
 )
-webhook_site_adapter = webhook_site_provider.adapter
+webhook_site_verifier = webhook_site_provider.verifier
 
-BenchmarkHelper.compare_benchmarks("Adapter Performance", {
+BenchmarkHelper.compare_benchmarks("Verifier Performance", {
                                      "Stripe" => lambda {
-                                       stripe_adapter.verify_signature(
+                                       stripe_verifier.verify_signature(
                                          payload: payload_medium,
                                          headers: { "Stripe-Signature" => stripe_sig }
                                        )
                                      },
                                      "Square" => lambda {
-                                       square_adapter.verify_signature(
+                                       square_verifier.verify_signature(
                                          payload: payload_medium,
                                          headers: { "X-Square-Hmacsha256-Signature" => square_sig }
                                        )
                                      },
                                      "WebhookSite (no verification)" => lambda {
-                                       webhook_site_adapter.verify_signature(
+                                       webhook_site_verifier.verify_signature(
                                          payload: payload_medium,
                                          headers: {}
                                        )

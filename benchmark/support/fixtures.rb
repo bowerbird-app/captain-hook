@@ -86,9 +86,9 @@ module BenchmarkFixtures
   end
 
   # Create a test provider
-  def self.create_test_provider(name: "benchmark_stripe", adapter: "CaptainHook::Adapters::Stripe")
+  def self.create_test_provider(name: "benchmark_stripe", verifier: "CaptainHook::Verifiers::Stripe")
     CaptainHook::Provider.find_or_create_by!(name: name) do |p|
-      p.adapter_class = adapter
+      p.verifier_class = verifier
       p.signing_secret = "whsec_test_secret_123"
       p.active = true
     end
