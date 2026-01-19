@@ -18,8 +18,8 @@ module CaptainHook
       # Try to acquire lock
       return unless handler.acquire_lock!(worker_id)
 
-      # Get handler configuration from registry
-      handler_config = CaptainHook.handler_registry.find_handler_config(
+      # Get handler configuration from database (falls back to registry)
+      handler_config = CaptainHook::Services::HandlerLookup.find_handler_config(
         provider: event.provider,
         event_type: event.event_type,
         handler_class: handler.handler_class

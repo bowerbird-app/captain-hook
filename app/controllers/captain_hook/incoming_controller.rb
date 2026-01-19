@@ -189,7 +189,7 @@ module CaptainHook
 
     # Create handler records for all registered handlers
     def create_handlers_for_event(event)
-      handler_configs = CaptainHook.handler_registry.handlers_for(
+      handler_configs = CaptainHook::Services::HandlerLookup.handlers_for(
         provider: event.provider,
         event_type: event.event_type
       )
