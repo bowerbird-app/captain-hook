@@ -24,20 +24,20 @@ module CaptainHook
 
     # === Validations ===
 
-    test "valid incoming event handler" do
+    test "valid incoming event action" do
       assert @action.valid?
     end
 
     test "requires action_class" do
-      handler = @event.incoming_event_actions.new(priority: 100)
-      refute handler.valid?
-      assert_includes handler.errors[:action_class], "can't be blank"
+      action_under_test = @event.incoming_event_actions.new(priority: 100)
+      refute action_under_test.valid?
+      assert_includes action_under_test.errors[:action_class], "can't be blank"
     end
 
     test "requires status" do
-      handler = @event.incoming_event_actions.new(action_class: "Test", priority: 100)
-      handler.status = nil
-      refute handler.valid?
+      action_under_test = @event.incoming_event_actions.new(action_class: "Test", priority: 100)
+      action_under_test.status = nil
+      refute action_under_test.valid?
     end
 
     test "priority must be an integer" do
@@ -73,28 +73,28 @@ module CaptainHook
 
     # === Scopes ===
 
-    test "pending scope returns only pending handlers" do
+    test "pending scope returns only pending actions" do
       processing = @event.incoming_event_actions.create!(
         action_class: ".*Action",
         priority: 200,
         status: :processing
       )
 
-      pending_handlers = @event.incoming_event_actions.pending
-      assert_includes pending_handlers, @action
-      refute_includes pending_handlers, processing
+      pending_actions_list = @event.incoming_event_actions.pending
+      assert_includes pending_actions_list, @action
+      refute_includes pending_actions_list, processing
     end
 
-    test "failed scope returns only failed handlers" do
+    test "failed scope returns only failed actions" do
       failed = @event.incoming_event_actions.create!(
         action_class: "FailedAction",
         priority: 200,
         status: :failed
       )
 
-      failed_handlers = @event.incoming_event_actions.failed
-      assert_includes failed_handlers, failed
-      refute_includes failed_handlers, @action
+      failed_actions_list = @event.incoming_event_actions.failed
+      assert_includes failed_actions_list, failed
+      refute_includes failed_actions_list, @action
     end
 
     test "by_priority scope orders by priority then action_class" do
@@ -113,28 +113,28 @@ module CaptainHook
       assert_equal @action.id, ordered.third.id
     end
 
-    test "locked scope returns only locked handlers" do
+    test "locked scope returns only locked actions" do
       @action.update!(locked_at: Time.current, locked_by: "worker1")
       unlocked = @event.incoming_event_actions.create!(
         action_class: "UnlockedAction",
         priority: 200
       )
 
-      locked_handlers = @event.incoming_event_actions.locked
-      assert_includes locked_handlers, @action
-      refute_includes locked_handlers, unlocked
+      locked_actions = @event.incoming_event_actions.locked
+      assert_includes locked_actions, @action
+      refute_includes locked_actions, unlocked
     end
 
-    test "unlocked scope returns only unlocked handlers" do
+    test "unlocked scope returns only unlocked actions" do
       @action.update!(locked_at: Time.current, locked_by: "worker1")
       unlocked = @event.incoming_event_actions.create!(
         action_class: "UnlockedAction",
         priority: 200
       )
 
-      unlocked_handlers = @event.incoming_event_actions.unlocked
-      assert_includes unlocked_handlers, unlocked
-      refute_includes unlocked_handlers, @action
+      unlocked_actions = @event.incoming_event_actions.unlocked
+      assert_includes unlocked_actions, unlocked
+      refute_includes unlocked_actions, @action
     end
 
     # === Locking ===
@@ -153,13 +153,13 @@ module CaptainHook
       # Simulate optimistic locking by acquiring lock twice
       @action.acquire_lock!("worker1")
 
-      # Create new reference to same handler (simulating concurrent access)
-      stale_handler = CaptainHook::IncomingEventAction.find(@action.id)
-      stale_handler.lock_version -= 1 # Make it stale
+      # Create new reference to same action (simulating concurrent access)
+      stale_action = CaptainHook::IncomingEventAction.find(@action.id)
+      stale_action.lock_version -= 1 # Make it stale
 
       # Try to lock stale copy - should raise StaleObjectError
       assert_raises(ActiveRecord::StaleObjectError) do
-        stale_handler.update!(locked_at: Time.current, locked_by: "worker2", status: :processing)
+        stale_action.update!(locked_at: Time.current, locked_by: "worker2", status: :processing)
       end
     end
 
@@ -268,30 +268,30 @@ module CaptainHook
     # === Default Values ===
 
     test "defaults to pending status" do
-      handler = @event.incoming_event_actions.create!(
+      action_under_test = @event.incoming_event_actions.create!(
         action_class: ".*Action",
         priority: 100
       )
 
-      assert handler.status_pending?
+      assert action_under_test.status_pending?
     end
 
     test "defaults to 0 attempt_count" do
-      handler = @event.incoming_event_actions.create!(
+      action_under_test = @event.incoming_event_actions.create!(
         action_class: ".*Action",
         priority: 100
       )
 
-      assert_equal 0, handler.attempt_count
+      assert_equal 0, action_under_test.attempt_count
     end
 
     test "defaults to 0 lock_version for optimistic locking" do
-      handler = @event.incoming_event_actions.create!(
+      action_under_test = @event.incoming_event_actions.create!(
         action_class: ".*Action",
         priority: 100
       )
 
-      assert_equal 0, handler.lock_version
+      assert_equal 0, action_under_test.lock_version
     end
 
     test "reset_for_retry! resets status and clears locks" do
@@ -316,22 +316,22 @@ module CaptainHook
       assert_not_nil @action.last_attempt_at
     end
 
-    test "locked scope returns locked handlers" do
+    test "locked scope returns locked actions" do
       @action.save!
-      locked_handler = @event.incoming_event_actions.create!(
+      locked_action_under_test = @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
         locked_by: "worker_1"
       )
 
-      assert_includes IncomingEventAction.locked, locked_handler
+      assert_includes IncomingEventAction.locked, locked_action
       refute_includes IncomingEventAction.locked, @action
     end
 
-    test "unlocked scope returns unlocked handlers" do
+    test "unlocked scope returns unlocked actions" do
       @action.save!
-      locked_handler = @event.incoming_event_actions.create!(
+      locked_action_under_test = @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
@@ -339,7 +339,7 @@ module CaptainHook
       )
 
       assert_includes IncomingEventAction.unlocked, @action
-      refute_includes IncomingEventAction.unlocked, locked_handler
+      refute_includes IncomingEventAction.unlocked, locked_action
     end
   end
 end

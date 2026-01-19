@@ -90,7 +90,7 @@ module CaptainHook
         assert_equal 1, results[:skipped].size
         assert_equal 0, results[:errors].size
 
-        # Verify handler is still deleted
+        # Verify action is still deleted
         action.reload
         assert action.deleted?
       end

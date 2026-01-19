@@ -117,7 +117,7 @@ module CaptainHook
         assert_equal 2, stripe_payment_actions.size
       end
 
-      test "handler class is converted to string" do
+      test "action class is converted to string" do
         CaptainHook.register_action(
           provider: "test",
           event_type: "test.event",

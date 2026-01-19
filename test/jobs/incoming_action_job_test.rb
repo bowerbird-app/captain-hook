@@ -23,7 +23,7 @@ module CaptainHook
         priority: 100
       )
 
-      # Mock handler class
+      # Mock action class
       unless defined?(MockAction)
         Object.const_set(:MockAction, Class.new do
           def handle(event:, payload:, metadata:)
@@ -32,7 +32,7 @@ module CaptainHook
         end)
       end
 
-      # Register handler
+      # Register action
       CaptainHook.action_registry.register(
         provider: @provider.name,
         event_type: "test.event",
@@ -46,7 +46,7 @@ module CaptainHook
       CaptainHook.action_registry.clear!
     end
 
-    test "job processes handler successfully" do
+    test "job processes action successfully" do
       assert @action_record.status_pending?
 
       IncomingActionJob.perform_now(@action_record.id)
@@ -85,8 +85,8 @@ module CaptainHook
       assert @event.status_processed?
     end
 
-    test "job handles handler errors gracefully" do
-      # Create failing handler
+    test "job handles action errors gracefully" do
+      # Create failing action
       Object.const_set(:FailingAction, Class.new do
         def handle(event:, payload:, metadata:)
           raise StandardError, "Handler failed"
@@ -130,7 +130,7 @@ module CaptainHook
     end
 
     test "job does not process if lock cannot be acquired" do
-      # Lock handler by setting an old lock_version to simulate concurrent update
+      # Lock action by setting an old lock_version to simulate concurrent update
       @action_record.update!(locked_at: Time.current, locked_by: "other_worker", status: :processing)
 
       # This job will try to acquire lock but should fail due to optimistic locking

@@ -11,7 +11,7 @@ captain_hook/
 │   ├── square.yml
 │   └── webhook_site.yml
 ├── actions/        # Custom webhook event actions
-│   ├── stripe_payment_intent_handler.rb
+│   ├── stripe_payment_intent_action.rb
 │   └── square_bank_account_action.rb
 └── verifiers/        # Custom signature verification verifiers (optional)
     └── custom_verifier.rb
@@ -73,7 +73,7 @@ Actions are Ruby classes that process webhook events. Place action files in the 
 ### Example Action
 
 ```ruby
-# actions/stripe_payment_intent_handler.rb
+# actions/stripe_payment_intent_action.rb
 class StripePaymentIntentAction
   def handle(event:, payload:, metadata: {})
     # Process the webhook event

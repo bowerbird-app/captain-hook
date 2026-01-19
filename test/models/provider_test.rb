@@ -272,8 +272,8 @@ module CaptainHook
       assert_respond_to @provider, :incoming_events
     end
 
-    test "has many handlers" do
-      assert_respond_to @provider, :handlers
+    test "has many actions" do
+      assert_respond_to @provider, :actions
     end
 
     test "cannot delete provider with incoming_events" do
@@ -294,7 +294,7 @@ module CaptainHook
       assert CaptainHook::Provider.exists?(@provider.id)
     end
 
-    test "deleting provider deletes associated handlers" do
+    test "deleting provider deletes associated actions" do
       CaptainHook::Action.create!(
         provider: @provider.name,
         event_type: "test.event",

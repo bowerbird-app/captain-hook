@@ -55,7 +55,7 @@ module CaptainHook
         assert_response :success
       end
 
-      test "should include event handlers in show" do
+      test "should include event actions in show" do
         CaptainHook::IncomingEventAction.create!(
           incoming_event: @event1,
           action_class: ".*Action",

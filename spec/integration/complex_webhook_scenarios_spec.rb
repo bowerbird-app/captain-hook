@@ -262,7 +262,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     class FailingHandler
       def self.handle(event:, payload:, metadata:)
         Rails.logger.error "FailingHandler encountered an error"
-        raise StandardError, "Simulated handler failure"
+        raise StandardError, "Simulated action failure"
       end
     end
 
@@ -336,7 +336,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
       expect(action_execution.status).to eq("failed")
       expect(action_execution.failed_at).to be_present
-      expect(action_execution.error_message).to include("Simulated handler failure")
+      expect(action_execution.error_message).to include("Simulated action failure")
     end
   end
 

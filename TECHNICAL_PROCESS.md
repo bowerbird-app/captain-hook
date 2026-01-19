@@ -1789,7 +1789,7 @@ Action classes must be autoloadable:
 
 ```ruby
 # Option 1: Standard autoload paths
-# example-stripe/app/actions/example/stripe/charge_handler.rb
+# example-stripe/app/actions/example/stripe/charge_action.rb
 module Example
   module Stripe
     class ChargeAction
@@ -2086,7 +2086,7 @@ CaptainHook::IncomingActionJob.new.perform(action.id)
 Job attempts to acquire lock on action record:
 
 ```ruby
-# app/jobs/captain_hook/incoming_handler_job.rb
+# app/jobs/captain_hook/incoming_action_job.rb
 
 def perform(action_id, worker_id: SecureRandom.uuid)
   action = IncomingEventAction.find(action_id)
@@ -2097,7 +2097,7 @@ def perform(action_id, worker_id: SecureRandom.uuid)
   # Continue processing...
 end
 
-# app/models/captain_hook/incoming_event_handler.rb
+# app/models/captain_hook/incoming_event_action.rb
 
 def acquire_lock!(worker_id)
   update!(

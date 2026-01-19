@@ -38,7 +38,7 @@ module Dummy
 
     # Add captain_hook directories to autoload paths
     config.autoload_paths += [
-      Rails.root.join("captain_hook", "handlers"),
+      Rails.root.join("captain_hook", "actions"),
       Rails.root.join("captain_hook", "adapters")
     ]
 
