@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  module Adapters
-    # Stripe webhook adapter
+  module Verifiers
+    # Stripe webhook verifier
     # Implements Stripe's webhook signature verification scheme
     # https://stripe.com/docs/webhooks/signatures
     class Stripe < Base

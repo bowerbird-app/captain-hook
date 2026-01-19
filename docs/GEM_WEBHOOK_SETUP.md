@@ -23,26 +23,26 @@ Instead of implementing webhook handling from scratch in every gem, CaptainHook 
 Your gem provides three key components:
 
 1. **Provider Config** - YAML file with webhook endpoint settings (configuration)
-2. **Adapter** - Ruby class that verifies webhook signatures (security)
+2. **Verifier** - Ruby class that verifies webhook signatures (security)
 3. **Handlers** - Job classes that process specific event types (business logic)
 
 When installed in a Rails app, CaptainHook:
-- Discovers your provider configuration and adapter
+- Discovers your provider configuration and verifier
 - Registers your handlers
 - Routes incoming webhooks to your code
 - Manages the entire webhook lifecycle
 
 This keeps your gem focused on **what to do** with webhook data, while CaptainHook handles **how to receive it safely**.
 
-## Example Provider Adapters
+## Example Provider Verifiers
 
-**CaptainHook includes example adapters you can reference or copy:**
+**CaptainHook includes example verifiers you can reference or copy:**
 - Stripe - See test/dummy examples
 - Square - See test/dummy examples
 - PayPal - See test/dummy examples
 - WebhookSite - See test/dummy examples (testing only)
 
-**You can create custom adapters for any provider!** Adapters are now provider-specific and ship with your gem.
+**You can create custom verifiers for any provider!** Verifiers are now provider-specific and ship with your gem.
 
 ## Important: One Provider, Many Handlers
 
@@ -118,7 +118,7 @@ your_gem/
 │   └── providers/
 │       └── your_provider/             # Provider-specific directory
 │           ├── your_provider.yml      # Configuration (e.g., stripe.yml)
-│           └── your_provider.rb       # Adapter implementation (e.g., stripe.rb)
+│           └── your_provider.rb       # Verifier implementation (e.g., stripe.rb)
 ├── lib/
 │   └── your_gem/
 │       └── engine.rb                  # Handler registration (REQUIRED)
@@ -127,9 +127,9 @@ your_gem/
 
 ### Why Each File?
 
-- **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which adapter to use, where to get secrets from environment variables, and security settings.
+- **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which verifier to use, where to get secrets from environment variables, and security settings.
 
-- **Adapter (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::AdapterHelpers` for security methods like HMAC generation and constant-time comparison.
+- **Verifier (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::VerifierHelpers` for security methods like HMAC generation and constant-time comparison.
 
 - **Handlers (`*_handler.rb`)**: Your business logic. Each handler processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
 
@@ -137,22 +137,22 @@ your_gem/
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
-## Step 1: Create Your Provider Adapter
+## Step 1: Create Your Provider Verifier
 
-Create an adapter class that handles webhook signature verification for your provider. CaptainHook provides the `AdapterHelpers` module with all the security utilities you need.
+Create an verifier class that handles webhook signature verification for your provider. CaptainHook provides the `VerifierHelpers` module with all the security utilities you need.
 
-**Example: Stripe Adapter**
+**Example: Stripe Verifier**
 
 Create `captain_hook/providers/stripe/stripe.rb` in your gem:
 
 ```ruby
 # frozen_string_literal: true
 
-# Stripe webhook adapter
+# Stripe webhook verifier
 # Implements Stripe's webhook signature verification scheme
 # https://stripe.com/docs/webhooks/signatures
-class StripeAdapter
-  include CaptainHook::AdapterHelpers
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Stripe-Signature"
   TIMESTAMP_TOLERANCE = 300 # 5 minutes
@@ -205,7 +205,7 @@ class StripeAdapter
 end
 ```
 
-**Available Helper Methods from `CaptainHook::AdapterHelpers`:**
+**Available Helper Methods from `CaptainHook::VerifierHelpers`:**
 - `secure_compare(a, b)` - Constant-time string comparison
 - `generate_hmac(secret, data)` - Hex-encoded HMAC-SHA256
 - `generate_hmac_base64(secret, data)` - Base64-encoded HMAC-SHA256
@@ -215,7 +215,7 @@ end
 - `skip_verification?(secret)` - Check if verification should be skipped
 - `log_verification(provider, details)` - Debug logging
 
-See [docs/ADAPTER_HELPERS.md](ADAPTER_HELPERS.md) for complete helper documentation.
+See [docs/VERIFIER_HELPERS.md](VERIFIER_HELPERS.md) for complete helper documentation.
 
 ## Step 2: Create Provider Configuration
 
@@ -232,8 +232,8 @@ name: stripe                                    # URL-friendly identifier (lower
 display_name: Stripe                            # Human-readable name
 description: Stripe payment processing webhooks # Brief description
 
-# Reference your adapter file (in same directory)
-adapter_file: stripe.rb                         # Your adapter file (class will be auto-detected)
+# Reference your verifier file (in same directory)
+verifier_file: stripe.rb                         # Your verifier file (class will be auto-detected)
 
 # Signing secret from environment variable
 # Set this in your .env file or environment:
@@ -260,13 +260,13 @@ If you need multiple instances of the same provider (e.g., supporting multiple S
 # captain_hook/providers/stripe_primary/stripe_primary.yml
 name: stripe_primary
 display_name: Stripe (Primary Account)
-adapter_file: stripe_primary.rb
+verifier_file: stripe_primary.rb
 signing_secret: ENV[STRIPE_PRIMARY_SECRET]
 
 # captain_hook/providers/stripe_secondary/stripe_secondary.yml
 name: stripe_secondary
 display_name: Stripe (Secondary Account)
-adapter_file: stripe_secondary.rb
+verifier_file: stripe_secondary.rb
 signing_secret: ENV[STRIPE_SECONDARY_SECRET]
 ```
 
@@ -807,7 +807,7 @@ CaptainHook.register_handler(
 2. Verify the environment variable name matches your YAML config
 3. Use test/sandbox secrets when testing locally
 4. Use production secrets for production environment
-5. Check your adapter implementation matches the provider's documentation
+5. Check your verifier implementation matches the provider's documentation
 6. Enable debug logging to see the signature verification process
 
 ### Provider not discovered?
@@ -821,7 +821,7 @@ CaptainHook.register_handler(
 
 1. **Provider sends webhook** → Your Rails app at `/captain_hook/[provider]/[TOKEN]`
    - Example: `/captain_hook/stripe/abc123` or `/captain_hook/paypal/xyz789`
-2. **CaptainHook receives** → Verifies signature using your custom adapter
+2. **CaptainHook receives** → Verifies signature using your custom verifier
 3. **Creates IncomingEvent** → Stores event in database for audit trail
 4. **Finds registered handlers** → Looks up handlers for `provider` + `event_type`
    - Example: `stripe` + `payment_intent.succeeded`

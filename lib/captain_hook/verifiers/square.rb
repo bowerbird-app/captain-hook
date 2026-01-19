@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  module Adapters
-    # Square webhook adapter
+  module Verifiers
+    # Square webhook verifier
     # Implements Square's webhook signature verification
     # https://developer.squareup.com/docs/webhooks/step3validate
     class Square < Base

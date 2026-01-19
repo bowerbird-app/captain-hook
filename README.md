@@ -16,17 +16,17 @@ CaptainHook provides a complete webhook management system with automatic discove
 8. **Observability**: ActiveSupport::Notifications events for monitoring
 
 **Key Architecture Points:**
-- **File-based Discovery**: Providers and adapters auto-discovered from YAML files in app or gems
+- **File-based Discovery**: Providers and verifiers auto-discovered from YAML files in app or gems
 - **In-Memory Registry**: Handlers stored in thread-safe `HandlerRegistry` then synced to database
 - **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
 - **Async by Default**: Handlers run in background jobs with configurable retry delays
-- **Provider Adapters**: Each provider has adapter class for signature verification (Stripe, Square, PayPal, etc.)
+- **Provider Verifiers**: Each provider has verifier class for signature verification (Stripe, Square, PayPal, etc.)
 
 ## Features
 
 - **Incoming Webhooks**
   - Idempotency via unique `(provider, external_id)` index
-  - Provider-specific signature verification adapters
+  - Provider-specific signature verification verifiers
   - Rate limiting per provider
   - Payload size limits
   - Timestamp validation to prevent replay attacks
@@ -39,7 +39,7 @@ CaptainHook provides a complete webhook management system with automatic discove
   - Per-provider security settings
   - Webhook URL generation for sharing with providers
   - Active/inactive status control
-  - Built-in adapters for Stripe, Square, PayPal, WebhookSite
+  - Built-in verifiers for Stripe, Square, PayPal, WebhookSite
 
 - **Admin Interface**
   - View and manage providers
@@ -130,14 +130,14 @@ $ ruby generate_keys.rb
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
-**Provider adapters are distributed with individual gems** (like `example-stripe`, `example-square`) or can be created in your host application. Each adapter handles provider-specific signature verification and event extraction.
+**Provider verifiers are distributed with individual gems** (like `example-stripe`, `example-square`) or can be created in your host application. Each verifier handles provider-specific signature verification and event extraction.
 
-Common providers typically have adapters available:
+Common providers typically have verifiers available:
 - **Stripe** - Check for gems like `example-stripe` or create your own
 - **Square** - Check for gems like `example-square` or create your own
 - **PayPal** - Check for gems like `example-paypal` or create your own
 
-See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to create adapters.
+See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to create verifiers.
 
 **Create the directory structure:**
 
@@ -154,7 +154,7 @@ You can copy from the example templates shipped with CaptainHook and customize:
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
-adapter_file: stripe.rb
+verifier_file: stripe.rb
 active: true
 
 # Security settings
@@ -169,13 +169,13 @@ rate_limit_period: 60
 max_payload_size_bytes: 1048576
 ```
 
-**Create the adapter file** (if needed - Stripe has a built-in adapter) (`captain_hook/stripe/stripe.rb`):
+**Create the verifier file** (if needed - Stripe has a built-in verifier) (`captain_hook/stripe/stripe.rb`):
 
 ```ruby
 # frozen_string_literal: true
 
-class StripeAdapter
-  include CaptainHook::AdapterHelpers
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Stripe-Signature"
 
@@ -240,32 +240,32 @@ The `signing_secret` will be automatically encrypted in the database using AES-2
 
 **Multiple Instances of Same Provider:**
 
-You can have multiple instances of the same provider type (e.g., multiple Stripe accounts). Each needs its own directory with YAML config and adapter file:
+You can have multiple instances of the same provider type (e.g., multiple Stripe accounts). Each needs its own directory with YAML config and verifier file:
 
 ```yaml
 # captain_hook/stripe_account_a/stripe_account_a.yml
 name: stripe_account_a
 display_name: Stripe (Account A)
-adapter_file: stripe_account_a.rb
+verifier_file: stripe_account_a.rb
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
 
 # captain_hook/stripe_account_b/stripe_account_b.yml
 name: stripe_account_b
 display_name: Stripe (Account B)  
-adapter_file: stripe_account_b.rb
+verifier_file: stripe_account_b.rb
 signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
 ```
 
 ```ruby
 # captain_hook/stripe_account_a/stripe_account_a.rb
 class StripeAccountAAdapter
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   # Same Stripe verification logic
 end
 
 # captain_hook/stripe_account_b/stripe_account_b.rb
 class StripeAccountBAdapter
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   # Same Stripe verification logic
 end
 ```
@@ -365,7 +365,7 @@ Each provider can be configured with:
 - **name**: Unique identifier (lowercase, underscores only)
 - **display_name**: Human-readable name
 - **signing_secret**: Secret for HMAC signature verification
-- **adapter_file**: Ruby file containing the adapter class for provider-specific signature verification
+- **verifier_file**: Ruby file containing the verifier class for provider-specific signature verification
 - **timestamp_tolerance_seconds**: Tolerance window for timestamp validation (prevents replay attacks)
 - **max_payload_size_bytes**: Maximum payload size (DoS protection)
 - **rate_limit_requests**: Maximum requests per period
@@ -384,31 +384,31 @@ Handlers can be configured with:
 - **max_attempts**: Maximum retry attempts (default: 5)
 - **retry_delays**: Array of delays between retries in seconds (default: [30, 60, 300, 900, 3600])
 
-## Adapters
+## Verifiers
 
-Adapters handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `example-stripe`, `example-square`) or can be created in your host application.
+Verifiers handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `example-stripe`, `example-square`) or can be created in your host application.
 
-### Using an Adapter
+### Using an Verifier
 
-Adapters are specified in your provider YAML configuration:
+Verifiers are specified in your provider YAML configuration:
 
 ```yaml
 # captain_hook/providers/stripe.yml
 name: stripe
-adapter_file: stripe.rb
+verifier_file: stripe.rb
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 ```
 
 ### Providers Without Signature Verification
 
-For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `adapter_file` field entirely:
+For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `verifier_file` field entirely:
 
 ```yaml
 # captain_hook/providers/internal_service.yml
 name: internal_service
 display_name: Internal Service
 description: Internal webhooks without verification
-# adapter_file: (not specified - no signature verification)
+# verifier_file: (not specified - no signature verification)
 active: true
 ```
 
@@ -417,11 +417,11 @@ active: true
 - Development/testing environments
 - Services that don't provide signature verification mechanisms
 
-For production external webhooks, always use an adapter with proper signature verification.
+For production external webhooks, always use an verifier with proper signature verification.
 
-### Creating a Custom Adapter
+### Creating a Custom Verifier
 
-Adapters can be created in your host application or distributed as separate gems. See [docs/ADAPTERS.md](docs/ADAPTERS.md) for detailed implementation guide, or check out [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for building adapters in gems.
+Verifiers can be created in your host application or distributed as separate gems. See [docs/VERIFIERS.md](docs/VERIFIERS.md) for detailed implementation guide, or check out [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for building verifiers in gems.
 
 ## Security & Encryption
 
@@ -456,7 +456,7 @@ All incoming webhooks are verified:
 
 1. Provider must be active
 2. Token authentication (unique URL per provider)
-3. Provider-specific signature verification (via adapter)
+3. Provider-specific signature verification (via verifier)
 4. Timestamp validation (optional, but recommended)
 5. Rate limiting (optional, but recommended)
 6. Payload size limits (optional, but recommended)
@@ -511,7 +511,7 @@ Most providers offer webhook testing tools:
 
 ### Using webhook.site or similar
 
-Create a provider with the `CaptainHook::Adapters::WebhookSite` adapter for simple testing without signature verification.
+Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for simple testing without signature verification.
 
 ## Handler Examples
 
@@ -581,13 +581,13 @@ CaptainHook.register_handler(
 
 See our comprehensive guide: [**Setting Up Webhooks in Your Gem**](docs/GEM_WEBHOOK_SETUP.md)
 
-This guide shows you how to create provider adapters, handler classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
+This guide shows you how to create provider verifiers, handler classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
 
 ### General Documentation
 
 - **Handler Management**: [docs/HANDLER_MANAGEMENT.md](docs/HANDLER_MANAGEMENT.md) - Managing handlers via admin UI
 - **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](docs/PROVIDER_DISCOVERY.md) - File-based provider configuration
-- **Adapters Reference**: [docs/ADAPTERS.md](docs/ADAPTERS.md) - Detailed adapter implementation guide
+- **Verifiers Reference**: [docs/VERIFIERS.md](docs/VERIFIERS.md) - Detailed verifier implementation guide
 - **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
 - **Visual Guide**: [docs/VISUAL_GUIDE.md](docs/VISUAL_GUIDE.md) - Screenshots and UI walkthrough
 - **Performance Benchmarks**: [benchmark/README.md](benchmark/README.md) - Benchmarking suite and CI integration

@@ -1,19 +1,19 @@
-# Adapter Helpers Guide
+# Verifier Helpers Guide
 
-The `CaptainHook::AdapterHelpers` module provides reusable helper methods for webhook signature verification, header extraction, HMAC generation, and timestamp validation. These helpers can be used in:
+The `CaptainHook::VerifierHelpers` module provides reusable helper methods for webhook signature verification, header extraction, HMAC generation, and timestamp validation. These helpers can be used in:
 
-1. Custom webhook adapters (provider-specific)
+1. Custom webhook verifiers (provider-specific)
 2. Host application code
 3. Other gems that need webhook verification logic
 
-## Usage in Custom Adapters
+## Usage in Custom Verifiers
 
-When creating a custom adapter in your provider directory, include the helpers module:
+When creating a custom verifier in your provider directory, include the helpers module:
 
 ```ruby
 # captain_hook/providers/my_provider/my_provider.rb
-class MyProviderAdapter
-  include CaptainHook::AdapterHelpers
+class MyProviderVerifier
+  include CaptainHook::VerifierHelpers
   
   def verify_signature(payload:, headers:, provider_config:)
     # Extract signature from custom header
@@ -46,7 +46,7 @@ You can use the helpers directly in your Rails application:
 
 ```ruby
 class WebhookVerificationService
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   
   def verify_custom_webhook(request)
     signature = extract_header(request.headers, "X-Custom-Signature")
@@ -72,7 +72,7 @@ require 'captain_hook'
 
 module MyGem
   class WebhookHandler
-    include CaptainHook::AdapterHelpers
+    include CaptainHook::VerifierHelpers
     
     def process_webhook(payload, headers)
       # Use helper methods
@@ -219,11 +219,11 @@ log_verification("stripe",
 
 ## Example: Custom Webhook Provider
 
-Here's a complete example of creating a custom adapter using the helpers:
+Here's a complete example of creating a custom verifier using the helpers:
 
 ```ruby
 module CaptainHook
-  module Adapters
+  module Verifiers
     class Shopify < Base
       SIGNATURE_HEADER = "X-Shopify-Hmac-Sha256"
       
@@ -259,11 +259,11 @@ end
 
 ## Example: Standalone Usage
 
-Use helpers outside of adapters:
+Use helpers outside of verifiers:
 
 ```ruby
 class MyWebhookService
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   
   def verify_github_webhook(request)
     signature = extract_header(request.headers, "X-Hub-Signature-256")
@@ -312,7 +312,7 @@ end
 
 ```ruby
 RSpec.describe MyWebhookService do
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   
   let(:secret) { "test_secret" }
   let(:payload) { '{"event": "test"}' }

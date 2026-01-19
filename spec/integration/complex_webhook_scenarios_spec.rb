@@ -115,8 +115,8 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
   # Test scenario: Third-party gem and Rails app with different webhook needs
   xdescribe "Separate webhook providers for gem and app" do
-    let(:gem_provider) { create(:captain_hook_provider, name: "stripe_gem_account", adapter_class: "CaptainHook::Adapters::Stripe") }
-    let(:app_provider) { create(:captain_hook_provider, name: "stripe_app_account", adapter_class: "CaptainHook::Adapters::Stripe") }
+    let(:gem_provider) { create(:captain_hook_provider, name: "stripe_gem_account", verifier_class: "CaptainHook::Verifiers::Stripe") }
+    let(:app_provider) { create(:captain_hook_provider, name: "stripe_app_account", verifier_class: "CaptainHook::Verifiers::Stripe") }
 
     class GemStripeHandler
       def self.handle(event:, payload:, metadata:)
@@ -423,13 +423,13 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     end
   end
 
-  # Test scenario: Multiple providers with same adapter but different secrets
-  describe "Multiple providers with same adapter type" do
+  # Test scenario: Multiple providers with same verifier but different secrets
+  describe "Multiple providers with same verifier type" do
     let(:stripe_account_a) do
       create(:captain_hook_provider,
              name: "stripe_account_a",
              display_name: "Stripe Account A",
-             adapter_class: "CaptainHook::Adapters::Stripe",
+             verifier_class: "CaptainHook::Verifiers::Stripe",
              signing_secret: "whsec_account_a_secret")
     end
 
@@ -437,7 +437,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
       create(:captain_hook_provider,
              name: "stripe_account_b",
              display_name: "Stripe Account B",
-             adapter_class: "CaptainHook::Adapters::Stripe",
+             verifier_class: "CaptainHook::Verifiers::Stripe",
              signing_secret: "whsec_account_b_secret")
     end
 

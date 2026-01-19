@@ -10,7 +10,7 @@ module CaptainHook
       setup do
         @provider = CaptainHook::Provider.create!(
           name: "stripe",
-          adapter_class: "CaptainHook::Adapters::Stripe",
+          verifier_class: "CaptainHook::Verifiers::Stripe",
           token: "test_token",
           signing_secret: "test_secret"
         )

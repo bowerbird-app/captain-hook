@@ -1,49 +1,49 @@
-# Provider Adapters
+# Provider Verifiers
 
-Adapters are the first line of defense in the webhook processing pipeline. They handle signature verification and metadata extraction specific to each webhook provider.
+Verifiers are the first line of defense in the webhook processing pipeline. They handle signature verification and metadata extraction specific to each webhook provider.
 
 ## Overview
 
-Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Adapters encapsulate this provider-specific logic so your application can process webhooks securely.
+Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Verifiers encapsulate this provider-specific logic so your application can process webhooks securely.
 
-**Latest Architecture:** CaptainHook now ships with **built-in adapters** for common providers:
+**Latest Architecture:** CaptainHook now ships with **built-in verifiers** for common providers:
 - **Stripe** - `stripe.rb`
 - **Square** - `square.rb`  
 - **PayPal** - `paypal.rb`
 - **WebhookSite** - `webhook_site.rb` (testing only)
 - **Base** - `base.rb` (no-op for custom implementations)
 
-For these providers, **you only need a YAML file** - no adapter code required! Just use `adapter_file: stripe.rb` in your configuration, and CaptainHook will automatically find and use the built-in adapter.
+For these providers, **you only need a YAML file** - no verifier code required! Just use `verifier_file: stripe.rb` in your configuration, and CaptainHook will automatically find and use the built-in verifier.
 
-For custom providers not included in CaptainHook, you can still create custom adapters that live alongside your provider configuration.
+For custom providers not included in CaptainHook, you can still create custom verifiers that live alongside your provider configuration.
 
-## Adapter Responsibilities
+## Verifier Responsibilities
 
-An adapter must implement these methods:
+An verifier must implement these methods:
 
 1. **`verify_signature(payload:, headers:, provider_config:)`**: Verify the webhook came from the provider
 2. **`extract_timestamp(headers)`**: Extract event timestamp for replay attack prevention
 3. **`extract_event_id(payload)`**: Get the unique event identifier
 4. **`extract_event_type(payload)`**: Determine what type of event this is
 
-## Using Built-in Adapters
+## Using Built-in Verifiers
 
-For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the adapter file in your YAML:
+For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the verifier file in your YAML:
 
 ```yaml
 # captain_hook/stripe/stripe.yml
 name: stripe
 display_name: Stripe
-adapter_file: stripe.rb  # CaptainHook will find the built-in adapter!
+verifier_file: stripe.rb  # CaptainHook will find the built-in verifier!
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 active: true
 ```
 
-No need to create the adapter file - CaptainHook includes it!
+No need to create the verifier file - CaptainHook includes it!
 
-## Creating Custom Adapters
+## Creating Custom Verifiers
 
-For providers not included in CaptainHook, you can create custom adapters that live alongside your provider configuration:
+For providers not included in CaptainHook, you can create custom verifiers that live alongside your provider configuration:
 
 ### 1. Create Provider Directory
 
@@ -53,14 +53,14 @@ Create a folder for your provider in `captain_hook/`:
 mkdir -p captain_hook/acme_payments/actions
 ```
 
-### 2. Create the Adapter Class
+### 2. Create the Verifier Class
 
-Create the adapter file (e.g., `acme_payments.rb`) that uses the `CaptainHook::AdapterHelpers` module:
+Create the verifier file (e.g., `acme_payments.rb`) that uses the `CaptainHook::VerifierHelpers` module:
 
 ```ruby
 # captain_hook/acme_payments/acme_payments.rb
-class AcmePaymentsAdapter
-  include CaptainHook::AdapterHelpers
+class AcmePaymentsVerifier
+  include CaptainHook::VerifierHelpers
 
   # Define provider-specific header names
   SIGNATURE_HEADER = "X-Acme-Signature"
@@ -110,7 +110,7 @@ Create the YAML configuration file:
 name: acme_payments
 display_name: AcmePayments
 description: AcmePayments webhook provider
-adapter_file: acme_payments.rb
+verifier_file: acme_payments.rb
 signing_secret: ENV[ACME_PAYMENTS_SECRET]
 timestamp_tolerance_seconds: 300
 active: true
@@ -118,11 +118,11 @@ active: true
 
 ### 4. Scan for Providers
 
-Run "Discover New" or "Full Sync" in the admin UI, and your adapter will be automatically discovered and loaded!
+Run "Discover New" or "Full Sync" in the admin UI, and your verifier will be automatically discovered and loaded!
 
 ## Available Helper Methods
 
-All adapters inherit from `Base` and have access to these helpers:
+All verifiers inherit from `Base` and have access to these helpers:
 
 ### `secure_compare(a, b)`
 Constant-time string comparison to prevent timing attacks:
@@ -140,7 +140,7 @@ expected_sig = generate_hmac(provider_config.signing_secret, payload)
 
 ## Available Helper Methods
 
-The `CaptainHook::AdapterHelpers` module provides these helper methods for all adapters:
+The `CaptainHook::VerifierHelpers` module provides these helper methods for all verifiers:
 
 ### Security Helpers
 
@@ -304,22 +304,22 @@ def verify_signature(payload:, headers:, provider_config:)
 end
 ```
 
-## Testing Your Adapter
+## Testing Your Verifier
 
 ### Unit Test Example
 
 ```ruby
-# test/adapters/acme_payments_adapter_test.rb
+# test/verifiers/acme_payments_verifier_test.rb
 require 'test_helper'
 
-class AcmePaymentsAdapterTest < ActiveSupport::TestCase
+class AcmePaymentsVerifierTest < ActiveSupport::TestCase
   def setup
     @config = OpenStruct.new(
       signing_secret: "test-secret",
       timestamp_tolerance_seconds: 300,
       timestamp_validation_enabled?: true
     )
-    @adapter = AcmePaymentsAdapter.new
+    @verifier = AcmePaymentsAdapter.new
   end
 
   test "verifies valid signature" do
@@ -334,7 +334,7 @@ class AcmePaymentsAdapterTest < ActiveSupport::TestCase
       "X-Acme-Timestamp" => timestamp
     }
     
-    assert @adapter.verify_signature(payload: payload, headers: headers, provider_config: @config)
+    assert @verifier.verify_signature(payload: payload, headers: headers, provider_config: @config)
   end
 
   test "rejects invalid signature" do
@@ -344,7 +344,7 @@ class AcmePaymentsAdapterTest < ActiveSupport::TestCase
       "X-Acme-Timestamp" => Time.current.to_i.to_s
     }
     
-    refute @adapter.verify_signature(payload: payload, headers: headers, provider_config: @config)
+    refute @verifier.verify_signature(payload: payload, headers: headers, provider_config: @config)
   end
 end
 ```
@@ -359,7 +359,7 @@ Use the admin sandbox to test with real payloads:
 4. Add required headers
 5. Click "Test Webhook" (dry-run mode)
 
-## Example Provider Adapters
+## Example Provider Verifiers
 
 ### Stripe
 - **File**: `captain_hook/stripe/stripe.rb`
@@ -385,14 +385,14 @@ Use the admin sandbox to test with real payloads:
 - **Use**: For development and testing only - **DO NOT USE IN PRODUCTION**
 - **Documentation**: https://webhook.site
 
-## Using AdapterHelpers in Your Host App
+## Using VerifierHelpers in Your Host App
 
-The `CaptainHook::AdapterHelpers` module is available for use in your host application or other gems. Simply include it in any class:
+The `CaptainHook::VerifierHelpers` module is available for use in your host application or other gems. Simply include it in any class:
 
 ```ruby
 # app/services/custom_webhook_verifier.rb
 class CustomWebhookVerifier
-  include CaptainHook::AdapterHelpers
+  include CaptainHook::VerifierHelpers
   
   def verify_custom_webhook(payload, headers, secret)
     signature = extract_header(headers, "X-Custom-Signature")
@@ -417,7 +417,7 @@ This gives you access to all the security-hardened helper methods for your custo
 
 ## Environment Variable Override
 
-Adapters automatically support ENV variable override for signing secrets:
+Verifiers automatically support ENV variable override for signing secrets:
 
 ```bash
 # .env
@@ -454,18 +454,18 @@ This overrides the database value when set, useful for:
 1. Ensure YAML file exists in `captain_hook/<provider_name>/`
 2. Ensure .rb file exists in the same directory
 3. Run "Discover New" or "Full Sync" in admin UI
-4. Check `adapter_file` in YAML references the correct .rb file
+4. Check `verifier_file` in YAML references the correct .rb file
 
 ## Contributing
 
-Want to contribute an adapter for a popular provider? Great!
+Want to contribute an verifier for a popular provider? Great!
 
 ### Steps to Contribute
 
 1. **Create provider folder** in `captain_hook/<provider>/actions/`
-2. **Create adapter** file `<provider>.rb` using `CaptainHook::AdapterHelpers`
+2. **Create verifier** file `<provider>.rb` using `CaptainHook::VerifierHelpers`
 3. **Create configuration** file `<provider>.yml` with provider details
 4. **Create example** in `captain_hook/<provider>/<provider>.yml`
 5. **Write tests** to demonstrate signature verification
-6. **Update documentation** with your adapter details
+6. **Update documentation** with your verifier details
 7. **Submit pull request** with clear description

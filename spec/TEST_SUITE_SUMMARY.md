@@ -32,12 +32,12 @@ This document provides a high-level summary of the comprehensive RSpec test suit
   - Invalid JSON handling
   - Multiple provider support
 
-### 4. Adapter Specs (`spec/lib/captain_hook/adapters/`)
+### 4. Verifier Specs (`spec/lib/captain_hook/verifiers/`)
 
 - **`stripe_spec.rb`**: Stripe HMAC-SHA256 hex signature verification
 - **`square_spec.rb`**: Square HMAC-SHA256 Base64 signature verification
 - **`paypal_spec.rb`**: PayPal certificate-based verification (simplified)
-- **`webhook_site_spec.rb`**: No-verification testing adapter
+- **`webhook_site_spec.rb`**: No-verification testing verifier
 
 ### 5. Model Specs (`spec/models/`)
 
@@ -49,7 +49,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
   - Webhook URL generation
   - Rate limiting checks
   - Signing secret encryption
-  - Adapter instantiation
+  - Verifier instantiation
 
 ### 6. Library Specs (`spec/lib/captain_hook/`)
 
@@ -67,7 +67,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
   - Separate webhook providers for gem and app
   - Handler execution outcomes (success/failure)
   - Async vs Sync execution
-  - Multiple providers with same adapter but different secrets
+  - Multiple providers with same verifier but different secrets
 
 ## Scenario Coverage
 
@@ -108,7 +108,7 @@ This document provides a high-level summary of the comprehensive RSpec test suit
 - Sync handlers executed immediately
 - Proper status tracking for both types
 
-### Scenario 5: Multiple Providers (Same Adapter, Different Secrets)
+### Scenario 5: Multiple Providers (Same Verifier, Different Secrets)
 
 **Use Case**: Multiple Stripe accounts (personal, business, client accounts).
 
@@ -134,11 +134,11 @@ bundle exec rspec spec/requests/incoming_webhooks_spec.rb
 # Integration specs
 bundle exec rspec spec/integration/complex_webhook_scenarios_spec.rb
 
-# Adapter specs
-bundle exec rspec spec/lib/captain_hook/adapters/stripe_spec.rb
-bundle exec rspec spec/lib/captain_hook/adapters/square_spec.rb
-bundle exec rspec spec/lib/captain_hook/adapters/paypal_spec.rb
-bundle exec rspec spec/lib/captain_hook/adapters/webhook_site_spec.rb
+# Verifier specs
+bundle exec rspec spec/lib/captain_hook/verifiers/stripe_spec.rb
+bundle exec rspec spec/lib/captain_hook/verifiers/square_spec.rb
+bundle exec rspec spec/lib/captain_hook/verifiers/paypal_spec.rb
+bundle exec rspec spec/lib/captain_hook/verifiers/webhook_site_spec.rb
 
 # Model specs
 bundle exec rspec spec/models/provider_spec.rb
@@ -220,8 +220,8 @@ The GitHub Actions CI workflow runs RSpec tests automatically:
 ## Coverage Statistics
 
 - **11 test files**: Comprehensive coverage of all major components
-- **100+ test cases**: Covering webhooks, adapters, models, and integration scenarios
-- **4 adapter specs**: All supported providers (Stripe, Square, PayPal, WebhookSite)
+- **100+ test cases**: Covering webhooks, verifiers, models, and integration scenarios
+- **4 verifier specs**: All supported providers (Stripe, Square, PayPal, WebhookSite)
 - **Complex scenarios**: Real-world use cases with multiple providers and handlers
 
 ## Maintenance
@@ -230,7 +230,7 @@ When adding new features:
 
 1. Add factory definitions if new models are created
 2. Write request specs for new endpoints
-3. Write adapter specs for new webhook providers
+3. Write verifier specs for new webhook providers
 4. Write integration specs for complex multi-component features
 5. Update this summary document
 

@@ -14,7 +14,7 @@ module CaptainHook
             "name" => "test_provider",
             "display_name" => "Test Provider",
             "description" => "A test provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "active" => true,
             "signing_secret" => "test_secret",
             "timestamp_tolerance_seconds" => 300,
@@ -38,7 +38,7 @@ module CaptainHook
         assert_not_nil provider
         assert_equal "Test Provider", provider.display_name
         assert_equal "A test provider", provider.description
-        assert_equal "CaptainHook::Adapters::Base", provider.adapter_class
+        assert_equal "CaptainHook::Verifiers::Base", provider.verifier_class
         assert provider.active?
         assert_equal 300, provider.timestamp_tolerance_seconds
         assert_equal 100, provider.rate_limit_requests
@@ -50,7 +50,7 @@ module CaptainHook
         provider = CaptainHook::Provider.create!(
           name: "test_provider",
           display_name: "Old Name",
-          adapter_class: "CaptainHook::Adapters::Base",
+          verifier_class: "CaptainHook::Verifiers::Base",
           signing_secret: "old_secret"
         )
 
@@ -73,7 +73,7 @@ module CaptainHook
         definitions = [
           {
             "name" => "env_test_provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "ENV[TEST_WEBHOOK_SECRET]",
             "source" => "test"
           }
@@ -94,7 +94,7 @@ module CaptainHook
         definitions = [
           {
             "name" => "missing_env_provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "ENV[NONEXISTENT_VARIABLE]",
             "source" => "test"
           }
@@ -114,7 +114,7 @@ module CaptainHook
         invalid_definitions = [
           {
             "name" => "",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "source" => "test"
           }
         ]
@@ -131,13 +131,13 @@ module CaptainHook
         multi_definitions = [
           {
             "name" => "provider_one",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "secret1",
             "source" => "test"
           },
           {
             "name" => "provider_two",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "secret2",
             "source" => "test"
           }
@@ -155,7 +155,7 @@ module CaptainHook
         definitions = [
           {
             "name" => "default_active_provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "source" => "test"
           }
         ]
@@ -169,14 +169,14 @@ module CaptainHook
 
       test "valid_provider_definition checks for name presence" do
         sync = ProviderSync.new([])
-        result = sync.send(:valid_provider_definition?, { "adapter_class" => "Test" })
+        result = sync.send(:valid_provider_definition?, { "verifier_class" => "Test" })
         refute result, "Should be invalid without name"
       end
 
-      test "valid_provider_definition checks for adapter_class presence" do
+      test "valid_provider_definition checks for verifier_class presence" do
         sync = ProviderSync.new([])
         result = sync.send(:valid_provider_definition?, { "name" => "test" })
-        refute result, "Should be invalid without adapter_class"
+        refute result, "Should be invalid without verifier_class"
       end
 
       test "resolve_signing_secret returns nil for blank value" do
@@ -194,7 +194,7 @@ module CaptainHook
         # Create provider with initial secret
         provider = CaptainHook::Provider.create!(
           name: "test_provider",
-          adapter_class: "CaptainHook::Adapters::Base",
+          verifier_class: "CaptainHook::Verifiers::Base",
           signing_secret: "original_secret"
         )
 
@@ -203,7 +203,7 @@ module CaptainHook
         definitions = [
           {
             "name" => "test_provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "ENV[SAME_SECRET]",
             "source" => "test"
           }
@@ -223,7 +223,7 @@ module CaptainHook
         # Create provider with initial secret
         provider = CaptainHook::Provider.create!(
           name: "test_provider",
-          adapter_class: "CaptainHook::Adapters::Base",
+          verifier_class: "CaptainHook::Verifiers::Base",
           signing_secret: "old_secret"
         )
 
@@ -232,7 +232,7 @@ module CaptainHook
         definitions = [
           {
             "name" => "test_provider",
-            "adapter_class" => "CaptainHook::Adapters::Base",
+            "verifier_class" => "CaptainHook::Verifiers::Base",
             "signing_secret" => "ENV[NEW_SECRET]",
             "source" => "test"
           }

@@ -6,7 +6,7 @@ This directory contains performance benchmarks for CaptainHook's critical code p
 
 The benchmark suite measures:
 
-- **Signature Verification**: Adapter performance across providers
+- **Signature Verification**: Verifier performance across providers
 - **Database Operations**: Event creation and query performance
 - **Handler Execution**: Registry lookups and handler dispatch
 - **Memory Usage**: Memory allocation and retention
@@ -78,7 +78,7 @@ Target benchmarks for CaptainHook:
 | Metric | Target | Notes |
 |--------|--------|-------|
 | Webhook Reception | > 1000/sec | End-to-end throughput |
-| Signature Verification | > 10,000/sec | Per adapter |
+| Signature Verification | > 10,000/sec | Per verifier |
 | Event Creation | > 1000/sec | Including idempotency check |
 | Handler Lookup | > 50,000/sec | Registry performance |
 | Memory per Request | < 5 MB | Allocated memory |

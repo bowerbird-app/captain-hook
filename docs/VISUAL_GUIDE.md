@@ -20,7 +20,7 @@ CaptainHook provides a file-based configuration system with automatic discovery 
 │  └──────────────────────────────────────────────────────┘  │
 │                                                            │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │ Name    │ Display │ Adapter │ Status │ Actions      │   │
+│  │ Name    │ Display │ Verifier │ Status │ Actions      │   │
 │  ├─────────┼─────────┼─────────┼────────┼──────────────┤   │
 │  │ stripe  │ Stripe  │ Stripe  │ Active │ View Edit    │   │
 │  │ square  │ Square  │ Square  │ Active │ View Edit    │   │
@@ -308,7 +308,7 @@ end
 │                                                                │
 │  Provider Details                                              │
 │  • Name: stripe                                                │
-│  • Adapter: StripeAdapter (captain_hook/providers/stripe/stripe.rb) │
+│  • Verifier: StripeAdapter (captain_hook/providers/stripe/stripe.rb) │
 │  • Signing Secret: ✓ Configured                                │
 │  • Timestamp Validation: Enabled (±300s)                       │
 │                                                                │
@@ -594,7 +594,7 @@ end
         │ 4. Rate Limiting        │
         │ 5. Payload Size         │
         │ 6. Signature Verify     │
-        │    (via adapter)        │
+        │    (via verifier)        │
         │ 7. Timestamp Validate   │
         └────────┬────────────────┘
                  │
@@ -603,7 +603,7 @@ end
         │ 8. Parse JSON Payload   │
         │ 9. Extract Event ID     │
         │ 10. Extract Event Type  │
-        │     (via adapter)       │
+        │     (via verifier)       │
         └────────┬────────────────┘
                  │
                  ▼
@@ -694,10 +694,10 @@ your_rails_app/
 │       └── production.rb            # Configuration
 │
 ├── captain_hook/                    # ← Centralized webhook directory
-│   ├── providers/                   # ← Provider configs + adapters
+│   ├── providers/                   # ← Provider configs + verifiers
 │   │   ├── stripe/                 # Provider-specific directory
 │   │   │   ├── stripe.yml         # Config (required)
-│   │   │   └── stripe.rb          # Adapter class (required)
+│   │   │   └── stripe.rb          # Verifier class (required)
 │   │   ├── square/
 │   │   │   ├── square.yml
 │   │   │   └── square.rb
@@ -731,14 +731,14 @@ my_payment_gem/
 │   └── providers/
 │       └── stripe/                 # Provider-specific directory
 │           ├── stripe.yml         # Config
-│           └── stripe.rb          # Adapter class
+│           └── stripe.rb          # Verifier class
 │
 └── lib/
     └── my_gem/
         └── engine.rb               # Register handlers here
 ```
 
-**Note**: Adapters are provider-specific and ship with individual gems or in your host application. Each provider has a YAML config file and a Ruby adapter class in the same directory. See [Setting Up Webhooks in Your Gem](GEM_WEBHOOK_SETUP.md) for creating custom adapters.
+**Note**: Verifiers are provider-specific and ship with individual gems or in your host application. Each provider has a YAML config file and a Ruby verifier class in the same directory. See [Setting Up Webhooks in Your Gem](GEM_WEBHOOK_SETUP.md) for creating custom verifiers.
 
 ## Configuration Examples
 
@@ -752,7 +752,7 @@ my_payment_gem/
 
 # Required Fields
 name: stripe                                    # Unique identifier (lowercase)
-adapter_file: stripe.rb                         # Adapter file (class auto-detected)
+verifier_file: stripe.rb                         # Verifier file (class auto-detected)
 
 # Display Fields
 display_name: Stripe                            # Human-readable name
@@ -971,7 +971,7 @@ Navigate to: /captain_hook/admin/providers
 │  No providers configured yet.                              │
 │                                                            │
 │  Get started:                                              │
-│  1. Create YAML + adapter files in captain_hook/providers/ │
+│  1. Create YAML + verifier files in captain_hook/providers/ │
 │  2. Set environment variables for signing secrets          │
 │  3. Click "Discover New" or "Full Sync" to discover them            │
 │                                                            │
@@ -987,7 +987,7 @@ Navigate to: /captain_hook/admin/providers
 │  ✓ Scan completed! Created 3 providers, 5 handlers             │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ Name    │ Display │ Adapter │ Status │ Events │ Actions  │  │
+│  │ Name    │ Display │ Verifier │ Status │ Events │ Actions  │  │
 │  ├─────────┼─────────┼─────────┼────────┼────────┼──────────┤  │
 │  │ stripe  │ Stripe  │ Stripe  │ ✓ Active│   42  │ View     │  │
 │  │ square  │ Square  │ Square  │ ✓ Active│   18  │ View     │  │
@@ -1014,7 +1014,7 @@ Click "View" on Stripe →
 │                                                                │
 │  Provider Details                                              │
 │  • Name: stripe                                                │
-│  • Adapter: StripeAdapter (stripe.rb)                          │
+│  • Verifier: StripeAdapter (stripe.rb)                          │
 │  • Signing Secret: ✓ Configured                                │
 │                                                                │
 │  Security Settings                                             │
@@ -1081,7 +1081,7 @@ CaptainHook's discovery and management system provides:
 - 🔗 **Database Sync**: Bridge between code and database
 
 ### Webhook Processing
-- ✅ **Signature Verification**: Provider-specific adapters
+- ✅ **Signature Verification**: Provider-specific verifiers
 - ⏱️ **Replay Protection**: Timestamp validation
 - 🚦 **Rate Limiting**: Per-provider request limits
 - 🔁 **Auto Retry**: Exponential backoff for failures
@@ -1104,15 +1104,15 @@ CaptainHook's discovery and management system provides:
    mkdir -p captain_hook/providers/stripe
    mkdir -p captain_hook/stripe/actions
 
-2. Add Provider Config & Adapter
+2. Add Provider Config & Verifier
    # captain_hook/providers/stripe/stripe.yml
    name: stripe
-   adapter_file: stripe.rb
+   verifier_file: stripe.rb
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    
    # captain_hook/providers/stripe/stripe.rb
-   class StripeAdapter
-     include CaptainHook::AdapterHelpers
+   class StripeVerifier
+     include CaptainHook::VerifierHelpers
      def verify_signature(payload:, headers:, provider_config:)
        # Verification logic
      end
@@ -1181,7 +1181,7 @@ app/
   handlers/...                # ← Webhook handler classes
 ```
 
-**Note**: All webhook signature verification adapters are built into the CaptainHook gem. If you need support for a new provider, the CaptainHook gem itself must be updated. Host applications only create handlers (business logic) and provider YAML configs.
+**Note**: All webhook signature verification verifiers are built into the CaptainHook gem. If you need support for a new provider, the CaptainHook gem itself must be updated. Host applications only create handlers (business logic) and provider YAML configs.
 
 ## Troubleshooting
 
@@ -1202,7 +1202,7 @@ app/
 ### Signature Verification Failing?
 1. Check ENV variable is set correctly
 2. Verify variable name matches YAML config
-3. Ensure adapter class is correct
+3. Ensure verifier class is correct
 4. Check provider's signing secret in their dashboard
 5. Use sandbox mode to test without verification
 
@@ -1218,5 +1218,5 @@ app/
 For more detailed information, see:
 - [Handler Management](HANDLER_MANAGEMENT.md) - Handler configuration and management
 - [Provider Discovery](PROVIDER_DISCOVERY.md) - Provider discovery system details
-- [Adapters](ADAPTERS.md) - Built-in signature verification adapters
+- [Verifiers](VERIFIERS.md) - Built-in signature verification verifiers
 - [Gem Webhook Setup](GEM_WEBHOOK_SETUP.md) - Setting up webhooks in gems

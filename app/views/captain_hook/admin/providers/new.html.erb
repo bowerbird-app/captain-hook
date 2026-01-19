@@ -77,11 +77,11 @@
       </div>
       <div class="card-body">
         <div class="mb-3">
-          <%= f.label :adapter_class, class: "form-label" %>
-          <%= f.text_field :adapter_class, 
+          <%= f.label :verifier_class, class: "form-label" %>
+          <%= f.text_field :verifier_class, 
               class: "form-control",
-              placeholder: "e.g., StripeAdapter" %>
-          <small class="form-text text-muted">Adapter class name (must exist in your provider directory)</small>
+              placeholder: "e.g., StripeVerifier" %>
+          <small class="form-text text-muted">Verifier class name (must exist in your provider directory)</small>
         </div>
 
         <div class="mb-3">

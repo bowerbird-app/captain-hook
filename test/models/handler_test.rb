@@ -165,7 +165,7 @@ module CaptainHook
       provider = CaptainHook::Provider.create!(
         name: "stripe",
         display_name: "Stripe",
-        adapter_class: "StripeAdapter",
+        verifier_class: "StripeVerifier",
         signing_secret: "secret",
         active: true
       )

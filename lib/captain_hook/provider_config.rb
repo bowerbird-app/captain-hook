@@ -14,8 +14,8 @@ module CaptainHook
     :max_payload_size_bytes,
     :rate_limit_requests,
     :rate_limit_period,
-    :adapter_class,
-    :adapter_file,
+    :verifier_class,
+    :verifier_file,
     :active,
     :source,
     :source_file,
@@ -47,7 +47,7 @@ module CaptainHook
       self.max_payload_size_bytes ||= 1_048_576 # 1MB default
       self.rate_limit_requests ||= 100 # 100 requests
       self.rate_limit_period ||= 60 # per 60 seconds
-      self.adapter_class ||= "CaptainHook::Adapters::Base"
+      self.verifier_class ||= "CaptainHook::Verifiers::Base"
     end
 
     # Check if provider is active
@@ -96,41 +96,41 @@ module CaptainHook
       max_payload_size_bytes.present? && max_payload_size_bytes.positive?
     end
 
-    # Get the adapter instance
-    def adapter
-      # Try to constantize the adapter class first (it might be a built-in adapter)
+    # Get the verifier instance
+    def verifier
+      # Try to constantize the verifier class first (it might be a built-in verifier)
       begin
-        return @adapter ||= adapter_class.constantize.new
+        return @verifier ||= verifier_class.constantize.new
       rescue NameError
         # Class doesn't exist yet, try to load from file
       end
 
-      # Try to find and load the adapter file if the class doesn't exist yet
-      load_adapter_file
+      # Try to find and load the verifier file if the class doesn't exist yet
+      load_verifier_file
 
-      @adapter ||= adapter_class.constantize.new
+      @verifier ||= verifier_class.constantize.new
     rescue NameError => e
-      Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
-      raise CaptainHook::AdapterNotFoundError,
-            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory or use a built-in adapter (CaptainHook::Adapters::Base, Stripe, Square, Paypal, WebhookSite)."
+      Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
+      raise CaptainHook::VerifierNotFoundError,
+            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use a built-in verifier (CaptainHook::Verifiers::Base, Stripe, Square, Paypal, WebhookSite)."
     end
 
-    # Load the adapter file from the filesystem
-    def load_adapter_file
-      return if adapter_file.blank?
+    # Load the verifier file from the filesystem
+    def load_verifier_file
+      return if verifier_file.blank?
 
-      # Try to find the adapter file in common locations
+      # Try to find the verifier file in common locations
       possible_paths = [
         # Application providers directory (nested structure)
-        Rails.root.join("captain_hook", "providers", name, adapter_file),
+        Rails.root.join("captain_hook", "providers", name, verifier_file),
         # Application providers directory (flat structure)
-        Rails.root.join("captain_hook", "providers", adapter_file)
+        Rails.root.join("captain_hook", "providers", verifier_file)
       ]
 
-      # Check in CaptainHook gem's built-in adapters
-      gem_adapters_path = File.expand_path("../adapters", __dir__)
-      if Dir.exist?(gem_adapters_path)
-        possible_paths << File.join(gem_adapters_path, adapter_file)
+      # Check in CaptainHook gem's built-in verifiers
+      gem_verifiers_path = File.expand_path("../verifiers", __dir__)
+      if Dir.exist?(gem_verifiers_path)
+        possible_paths << File.join(gem_verifiers_path, verifier_file)
       end
 
       # Also check in other loaded gems
@@ -138,20 +138,20 @@ module CaptainHook
         gem_providers_path = File.join(spec.full_gem_path, "captain_hook", "providers")
         next unless Dir.exist?(gem_providers_path)
 
-        possible_paths << File.join(gem_providers_path, name, adapter_file)
-        possible_paths << File.join(gem_providers_path, adapter_file)
+        possible_paths << File.join(gem_providers_path, name, verifier_file)
+        possible_paths << File.join(gem_providers_path, verifier_file)
       end
 
       file_path = possible_paths.find { |path| File.exist?(path) }
 
       if file_path
         load file_path
-        Rails.logger.debug("Loaded adapter from #{file_path}")
+        Rails.logger.debug("Loaded verifier from #{file_path}")
       else
-        Rails.logger.warn("Adapter file not found for #{name}, tried: #{possible_paths.inspect}")
+        Rails.logger.warn("Verifier file not found for #{name}, tried: #{possible_paths.inspect}")
       end
     rescue StandardError => e
-      Rails.logger.error("Failed to load adapter file: #{e.message}")
+      Rails.logger.error("Failed to load verifier file: #{e.message}")
     end
   end
 end

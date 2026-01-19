@@ -7,7 +7,7 @@ module CaptainHook
     setup do
       @provider = CaptainHook::Provider.create!(
         name: "test_provider",
-        adapter_class: "CaptainHook::Adapters::Base"
+        verifier_class: "CaptainHook::Verifiers::Base"
       )
 
       @event = CaptainHook::IncomingEvent.create!(

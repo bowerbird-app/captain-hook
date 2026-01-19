@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Webhook.site adapter for testing webhooks
-# Webhook.site doesn't provide signature verification, so this adapter
+# Webhook.site verifier for testing webhooks
+# Webhook.site doesn't provide signature verification, so this verifier
 # implements a no-op verification that always returns true
-class WebhookSiteAdapter
-  include CaptainHook::AdapterHelpers
+class WebhookSiteVerifier
+  include CaptainHook::VerifierHelpers
 
   # Webhook.site doesn't sign payloads, so verification is a no-op
   # This is intentional for testing purposes

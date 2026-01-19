@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Square webhook adapter
+# Square webhook verifier
 # Implements Square's webhook signature verification
 # https://developer.squareup.com/docs/webhooks/step3validate
-class SquareAdapter
-  include CaptainHook::AdapterHelpers
+class SquareVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "X-Square-Signature"
   SIGNATURE_HMACSHA256_HEADER = "X-Square-Hmacsha256-Signature"

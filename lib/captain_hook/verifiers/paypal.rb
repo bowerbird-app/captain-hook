@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  module Adapters
-    # PayPal webhook adapter
+  module Verifiers
+    # PayPal webhook verifier
     # Implements PayPal's webhook signature verification scheme
     # https://developer.paypal.com/api/rest/webhooks/
     class Paypal < Base

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# PayPal webhook adapter
+# PayPal webhook verifier
 # Implements PayPal's webhook signature verification scheme
 # https://developer.paypal.com/api/rest/webhooks/
-class PaypalAdapter
-  include CaptainHook::AdapterHelpers
+class PaypalVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Paypal-Transmission-Sig"
   CERT_URL_HEADER = "Paypal-Cert-Url"

@@ -27,9 +27,9 @@ end
 puts "\n📊 Signature Verification Memory Usage"
 stripe_provider = BenchmarkFixtures.create_test_provider(
   name: "memory_test_stripe",
-  adapter: "CaptainHook::Adapters::Stripe"
+  verifier: "CaptainHook::Verifiers::Stripe"
 )
-stripe_adapter = stripe_provider.adapter
+stripe_verifier = stripe_provider.verifier
 payload = BenchmarkFixtures.stripe_payload(size: :large).to_json
 timestamp = Time.now.to_i
 signature = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', stripe_provider.signing_secret,
@@ -37,7 +37,7 @@ signature = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', stripe_provid
 
 BenchmarkHelper.memory_benchmark("Signature verification (1000x)") do
   1000.times do
-    stripe_adapter.verify_signature(
+    stripe_verifier.verify_signature(
       payload: payload,
       headers: { "Stripe-Signature" => signature }
     )

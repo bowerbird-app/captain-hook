@@ -10,7 +10,7 @@ module CaptainHook
       setup do
         @provider = CaptainHook::Provider.create!(
           name: "stripe",
-          adapter_class: "CaptainHook::Adapters::Stripe",
+          verifier_class: "CaptainHook::Verifiers::Stripe",
           token: "test_token",
           signing_secret: "test_secret"
         )
@@ -42,7 +42,7 @@ module CaptainHook
                params: {
                  provider: {
                    name: "paypal",
-                   adapter_class: "CaptainHook::Adapters::Paypal",
+                   verifier_class: "CaptainHook::Verifiers::Paypal",
                    token: "paypal_token",
                    signing_secret: "paypal_secret"
                  }
@@ -88,7 +88,7 @@ module CaptainHook
       test "should destroy provider without events" do
         provider_without_events = CaptainHook::Provider.create!(
           name: "test_delete",
-          adapter_class: "CaptainHook::Adapters::Base",
+          verifier_class: "CaptainHook::Verifiers::Base",
           token: "test_delete_token"
         )
 

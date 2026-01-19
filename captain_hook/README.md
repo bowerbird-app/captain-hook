@@ -10,7 +10,7 @@ Each provider has its own folder with the following structure:
 captain_hook/
 ├── stripe/
 │   ├── stripe.yml           # Provider configuration
-│   ├── stripe.rb            # (Optional) Custom adapter if not built-in
+│   ├── stripe.rb            # (Optional) Custom verifier if not built-in
 │   └── actions/             # Handler files for this provider
 │       ├── payment_intent_succeeded_handler.rb
 │       └── charge_refunded_handler.rb
@@ -24,16 +24,16 @@ captain_hook/
 
 ## How It Works
 
-### Built-in Adapters (Automatic Discovery)
+### Built-in Verifiers (Automatic Discovery)
 
-**CaptainHook now includes built-in adapters for common providers!**
+**CaptainHook now includes built-in verifiers for common providers!**
 
-For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need the YAML file**. CaptainHook will automatically find and use the built-in adapter.
+For supported providers (Stripe, Square, PayPal, WebhookSite), you **only need the YAML file**. CaptainHook will automatically find and use the built-in verifier.
 
 ```
 captain_hook/
 ├── stripe/
-│   ├── stripe.yml       # adapter_file: stripe.rb will use built-in adapter
+│   ├── stripe.yml       # verifier_file: stripe.rb will use built-in verifier
 │   └── actions/         # Your handlers go here
 ├── square/
 │   ├── square.yml
@@ -43,20 +43,20 @@ captain_hook/
     └── actions/
 ```
 
-When you specify `adapter_file: stripe.rb` in your YAML, CaptainHook will:
-1. First check your app's provider directory for a custom adapter
+When you specify `verifier_file: stripe.rb` in your YAML, CaptainHook will:
+1. First check your app's provider directory for a custom verifier
 2. Then check in loaded gems
-3. Finally check CaptainHook's built-in adapters
+3. Finally check CaptainHook's built-in verifiers
 
-### Custom Adapters (When Needed)
+### Custom Verifiers (When Needed)
 
-For providers not included in CaptainHook, create custom adapters:
+For providers not included in CaptainHook, create custom verifiers:
 
 ```
 captain_hook/
 └── custom_provider/
-    ├── custom_provider.yml       # Configuration with adapter_file: custom_provider.rb
-    ├── custom_provider.rb        # Your custom adapter logic
+    ├── custom_provider.yml       # Configuration with verifier_file: custom_provider.rb
+    ├── custom_provider.rb        # Your custom verifier logic
     └── actions/                  # Your handlers
         └── event_handler.rb
 ```
@@ -90,7 +90,7 @@ To use a provider in your Rails application:
    ```yaml
    name: stripe
    display_name: Stripe
-   adapter_file: stripe.rb  # CaptainHook will find the built-in adapter automatically!
+   verifier_file: stripe.rb  # CaptainHook will find the built-in verifier automatically!
    signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
    ```
 
@@ -126,13 +126,13 @@ To use a provider in your Rails application:
 
 6. **Scan for providers** in the admin UI at `/captain_hook/admin/providers`
 
-**Note:** You don't need to create `stripe.rb` - CaptainHook includes built-in adapters. For custom providers, create the `.rb` file alongside the YAML.
+**Note:** You don't need to create `stripe.rb` - CaptainHook includes built-in verifiers. For custom providers, create the `.rb` file alongside the YAML.
 
 ### For Other Gems
 
 If you're building a gem that integrates with a webhook provider:
 
-1. **Use built-in adapters when available** - No need to ship your own adapter for Stripe, Square, PayPal, or WebhookSite
+1. **Use built-in verifiers when available** - No need to ship your own verifier for Stripe, Square, PayPal, or WebhookSite
 
 2. **Include the YAML and handlers** - Add to your gem:
    ```
@@ -143,7 +143,7 @@ If you're building a gem that integrates with a webhook provider:
            └── subscription_updated_handler.rb
    ```
 
-3. **For custom providers** - Ship both the YAML and adapter file if CaptainHook doesn't have a built-in adapter
+3. **For custom providers** - Ship both the YAML and verifier file if CaptainHook doesn't have a built-in verifier
 
 4. **Register handlers** - In your gem's engine.rb, register which handlers process which events
 
@@ -161,7 +161,7 @@ CaptainHook supports multiple instances of the same provider with different cred
 name: stripe_gem_a
 display_name: Stripe (Gem A)
 description: Stripe webhooks for Gem A
-adapter_file: stripe_gem_a.rb
+verifier_file: stripe_gem_a.rb
 signing_secret: ENV[GEM_A_STRIPE_SECRET]
 ```
 
@@ -171,11 +171,11 @@ signing_secret: ENV[GEM_A_STRIPE_SECRET]
 name: stripe_gem_b
 display_name: Stripe (Gem B)
 description: Stripe webhooks for Gem B
-adapter_file: stripe_gem_b.rb
+verifier_file: stripe_gem_b.rb
 signing_secret: ENV[GEM_B_STRIPE_SECRET]
 ```
 
-Both use the same `CaptainHook::Adapters::Stripe` adapter but have different:
+Both use the same `CaptainHook::Verifiers::Stripe` verifier but have different:
 - Provider names (`stripe_gem_a` vs `stripe_gem_b`)
 - Signing secrets (different environment variables)
 - Webhook URLs (generated based on provider name)
@@ -197,27 +197,27 @@ CaptainHook.register_handler(
 )
 ```
 
-## Available Built-in Adapters
+## Available Built-in Verifiers
 
-CaptainHook ships with these adapters built-in - **automatically discovered**:
+CaptainHook ships with these verifiers built-in - **automatically discovered**:
 
 - **Stripe** - `stripe.rb` - Full signature verification with HMAC-SHA256
 - **Square** - `square.rb` - HMAC-SHA256 with Base64 encoding
 - **PayPal** - `paypal.rb` - Certificate-based verification (simplified)
 - **WebhookSite** - `webhook_site.rb` - No verification (testing only)
-- **Base** - `base.rb` - No-op adapter (for custom implementations)
+- **Base** - `base.rb` - No-op verifier (for custom implementations)
 
-Simply use `adapter_file: stripe.rb` in your YAML - CaptainHook will find the built-in adapter automatically!
+Simply use `verifier_file: stripe.rb` in your YAML - CaptainHook will find the built-in verifier automatically!
 
 ### Need a Custom Provider?
 
 For providers not listed above:
 
-1. **Create a custom adapter file** (e.g., `captain_hook/providers/myservice/myservice.rb`)
-2. **Implement the adapter interface**:
+1. **Create a custom verifier file** (e.g., `captain_hook/providers/myservice/myservice.rb`)
+2. **Implement the verifier interface**:
    ```ruby
-   class MyServiceAdapter
-     include CaptainHook::AdapterHelpers
+   class MyServiceVerifier
+     include CaptainHook::VerifierHelpers
      
      def verify_signature(payload:, headers:, provider_config:)
        # Your verification logic
@@ -232,6 +232,6 @@ For providers not listed above:
      end
    end
    ```
-3. **Reference the file in your YAML** with `adapter_file: myservice.rb`
+3. **Reference the file in your YAML** with `verifier_file: myservice.rb`
 
-Alternatively, consider submitting a pull request to add your adapter to CaptainHook as a built-in!
+Alternatively, consider submitting a pull request to add your verifier to CaptainHook as a built-in!

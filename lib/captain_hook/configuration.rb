@@ -62,7 +62,7 @@ module CaptainHook
         name: provider.name,
         token: provider.token,
         signing_secret: provider.signing_secret,
-        adapter_class: provider.adapter_class,
+        verifier_class: provider.verifier_class,
         timestamp_tolerance_seconds: provider.timestamp_tolerance_seconds,
         max_payload_size_bytes: provider.max_payload_size_bytes,
         rate_limit_requests: provider.rate_limit_requests,

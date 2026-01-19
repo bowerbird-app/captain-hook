@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-# Stripe webhook adapter
+# Stripe webhook verifier
 # Implements Stripe's webhook signature verification scheme
 # https://stripe.com/docs/webhooks/signatures
-class StripeAdapter
-  include CaptainHook::AdapterHelpers
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Stripe-Signature"
   TIMESTAMP_TOLERANCE = 300 # 5 minutes

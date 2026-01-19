@@ -68,14 +68,14 @@ module CaptainHook
           provider_def = load_provider_file(yaml_file, source: source)
           next unless provider_def
 
-          # Autoload the adapter file if it exists
-          adapter_file = File.join(subdir, "#{provider_name}.rb")
-          if File.exist?(adapter_file)
+          # Autoload the verifier file if it exists
+          verifier_file = File.join(subdir, "#{provider_name}.rb")
+          if File.exist?(verifier_file)
             begin
-              load adapter_file
-              Rails.logger.debug("Loaded adapter from #{adapter_file}")
+              load verifier_file
+              Rails.logger.debug("Loaded verifier from #{verifier_file}")
             rescue StandardError => e
-              Rails.logger.error("Failed to load adapter #{adapter_file}: #{e.message}")
+              Rails.logger.error("Failed to load verifier #{verifier_file}: #{e.message}")
             end
           end
 

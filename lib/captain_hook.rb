@@ -10,21 +10,21 @@ require "captain_hook/time_window_validator"
 require "captain_hook/signature_generator"
 require "captain_hook/instrumentation"
 
-# Load adapter helpers (available to host app and external adapters)
-require "captain_hook/adapter_helpers"
+# Load verifier helpers (available to host app and external verifiers)
+require "captain_hook/verifier_helpers"
 
-# Load default adapters bundled with the gem
-require "captain_hook/adapters/base"
-require "captain_hook/adapters/stripe"
-require "captain_hook/adapters/square"
-require "captain_hook/adapters/paypal"
-require "captain_hook/adapters/webhook_site"
+# Load default verifiers bundled with the gem
+require "captain_hook/verifiers/base"
+require "captain_hook/verifiers/stripe"
+require "captain_hook/verifiers/square"
+require "captain_hook/verifiers/paypal"
+require "captain_hook/verifiers/webhook_site"
 
 # Load services
 require "captain_hook/services/base_service"
 require "captain_hook/services/rate_limiter"
 require "captain_hook/services/example_service"
-require "captain_hook/services/adapter_discovery"
+require "captain_hook/services/verifier_discovery"
 require "captain_hook/services/provider_discovery"
 require "captain_hook/services/provider_sync"
 require "captain_hook/services/handler_discovery"
@@ -32,6 +32,9 @@ require "captain_hook/services/handler_sync"
 require "captain_hook/services/handler_lookup"
 
 module CaptainHook
+  # Custom error classes
+  class VerifierNotFoundError < StandardError; end
+
   class << self
     def configuration
       @configuration ||= Configuration.new

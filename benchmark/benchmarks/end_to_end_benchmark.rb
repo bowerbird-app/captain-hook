@@ -20,17 +20,17 @@ headers = BenchmarkFixtures.stripe_headers
 
 BenchmarkHelper.run_benchmark("Complete webhook reception flow") do
   # Simulate the full flow
-  adapter = provider.adapter
+  verifier = provider.verifier
 
   # 1. Signature verification
-  adapter.verify_signature(payload: payload, headers: headers)
+  verifier.verify_signature(payload: payload, headers: headers)
 
   # 2. Parse payload
   parsed = JSON.parse(payload)
 
   # 3. Extract event details
-  external_id = adapter.extract_event_id(parsed)
-  event_type = adapter.extract_event_type(parsed)
+  external_id = verifier.extract_event_id(parsed)
+  event_type = verifier.extract_event_type(parsed)
 
   # 4. Create event (idempotency check)
   CaptainHook::IncomingEvent.find_or_create_by_external!(

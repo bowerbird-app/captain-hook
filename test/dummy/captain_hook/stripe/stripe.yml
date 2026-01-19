@@ -4,7 +4,7 @@
 name: stripe
 display_name: Stripe
 description: Stripe payment webhooks
-adapter_file: stripe.rb
+verifier_file: stripe.rb
 active: true
 
 # Security settings

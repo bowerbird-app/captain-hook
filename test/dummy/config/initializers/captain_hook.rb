@@ -14,7 +14,7 @@ end
 # CaptainHook::Provider.find_or_create_by!(name: "stripe") do |provider|
 #   provider.display_name = "Stripe"
 #   provider.signing_secret = ENV["STRIPE_WEBHOOK_SECRET"]
-#   provider.adapter_class = "CaptainHook::Adapters::Stripe"
+#   provider.verifier_class = "CaptainHook::Verifiers::Stripe"
 #   provider.timestamp_tolerance_seconds = 300
 #   provider.rate_limit_requests = 100
 #   provider.rate_limit_period = 60
