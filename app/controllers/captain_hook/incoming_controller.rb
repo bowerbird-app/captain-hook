@@ -80,10 +80,10 @@ module CaptainHook
       raw_payload = request.raw_post
       headers = extract_headers(request)
 
-      # Verify signature using adapter
-      adapter = provider_config.adapter
+      # Verify signature using verifier
+      verifier = provider_config.verifier
 
-      unless adapter.verify_signature(payload: raw_payload, headers: headers, provider_config: provider_config)
+      unless verifier.verify_signature(payload: raw_payload, headers: headers, provider_config: provider_config)
         CaptainHook::Instrumentation.signature_failed(provider: provider_name, reason: "Invalid signature")
         render json: { error: "Invalid signature" }, status: :unauthorized
         return
@@ -102,16 +102,16 @@ module CaptainHook
         return
       end
 
-      # Extract event details using adapter
+      # Extract event details using verifier
       Rails.logger.info "🔍 Extracting event metadata..."
-      external_id = adapter.extract_event_id(parsed_payload)
-      event_type = adapter.extract_event_type(parsed_payload)
+      external_id = verifier.extract_event_id(parsed_payload)
+      event_type = verifier.extract_event_type(parsed_payload)
       Rails.logger.info "🔍 Event ID: #{external_id}, Event Type: #{event_type}"
 
       # Check timestamp if provided
       if provider_config.timestamp_validation_enabled?
         Rails.logger.info "🔍 Validating timestamp..."
-        timestamp = adapter.extract_timestamp(headers)
+        timestamp = verifier.extract_timestamp(headers)
         Rails.logger.info "🔍 Extracted timestamp: #{timestamp}"
 
         if timestamp

@@ -60,13 +60,13 @@ module CaptainHook
         # Assign attributes from YAML
         provider.display_name = definition["display_name"]
         provider.description = definition["description"]
-        provider.adapter_file = definition["adapter_file"]
+        provider.verifier_file = definition["verifier_file"]
         provider.active = definition.fetch("active", true)
 
-        # Extract adapter_class from file if adapter_file is provided
-        if definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
-          adapter_class = extract_adapter_class(definition)
-          provider.adapter_class = adapter_class if adapter_class.present?
+        # Extract verifier_class from file if verifier_file is provided
+        if definition["verifier_file"].present? && (is_new || provider.verifier_class.blank?)
+          verifier_class = extract_verifier_class(definition)
+          provider.verifier_class = verifier_class if verifier_class.present?
         end
 
         # Optional attributes
@@ -152,23 +152,23 @@ module CaptainHook
         definition["name"].present?
       end
 
-      # Extract adapter class name from the adapter file
-      def extract_adapter_class(definition)
+      # Extract verifier class name from the verifier file
+      def extract_verifier_class(definition)
         name = definition["name"]
-        adapter_file = definition["adapter_file"]
+        verifier_file = definition["verifier_file"]
 
-        return nil if adapter_file.blank?
+        return nil if verifier_file.blank?
 
         # Find the file in possible locations
         possible_paths = [
-          Rails.root.join("captain_hook", "providers", name, adapter_file),
-          Rails.root.join("captain_hook", "providers", adapter_file)
+          Rails.root.join("captain_hook", "providers", name, verifier_file),
+          Rails.root.join("captain_hook", "providers", verifier_file)
         ]
 
-        # Check in CaptainHook gem's built-in adapters
-        gem_adapters_path = File.expand_path("../../adapters", __dir__)
-        if Dir.exist?(gem_adapters_path)
-          possible_paths << File.join(gem_adapters_path, adapter_file)
+        # Check in CaptainHook gem's built-in verifiers
+        gem_verifiers_path = File.expand_path("../../verifiers", __dir__)
+        if Dir.exist?(gem_verifiers_path)
+          possible_paths << File.join(gem_verifiers_path, verifier_file)
         end
 
         # Also check in other gems
@@ -176,16 +176,16 @@ module CaptainHook
           gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
           next unless File.directory?(gem_providers_path)
 
-          possible_paths << File.join(gem_providers_path, name, adapter_file)
-          possible_paths << File.join(gem_providers_path, adapter_file)
+          possible_paths << File.join(gem_providers_path, name, verifier_file)
+          possible_paths << File.join(gem_providers_path, verifier_file)
         end
 
         file_path = possible_paths.find { |path| File.exist?(path) }
 
         if file_path
-          CaptainHook::Provider.extract_adapter_class_from_file(file_path)
+          CaptainHook::Provider.extract_verifier_class_from_file(file_path)
         else
-          Rails.logger.warn("⚠️  Adapter file '#{adapter_file}' not found for provider '#{name}'")
+          Rails.logger.warn("⚠️  Verifier file '#{verifier_file}' not found for provider '#{name}'")
           nil
         end
       end

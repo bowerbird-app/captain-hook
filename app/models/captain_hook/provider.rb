@@ -19,7 +19,7 @@ module CaptainHook
     validates :name, presence: true, uniqueness: true,
                      format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
     validates :token, presence: true, uniqueness: true
-    validates :adapter_class, presence: true
+    validates :verifier_class, presence: true
     validates :timestamp_tolerance_seconds, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validates :max_payload_size_bytes, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validates :rate_limit_requests, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
@@ -65,42 +65,42 @@ module CaptainHook
       ENV[env_key].presence || super
     end
 
-    # Get the adapter instance
-    def adapter
-      # Try to constantize the adapter class first (it might be a built-in adapter)
+    # Get the verifier instance
+    def verifier
+      # Try to constantize the verifier class first (it might be a built-in verifier)
       begin
-        return adapter_class.constantize.new
+        return verifier_class.constantize.new
       rescue NameError
         # Class doesn't exist yet, try to load from file
       end
 
-      # Try to find and load the adapter file if the class doesn't exist yet
-      load_adapter_file
+      # Try to find and load the verifier file if the class doesn't exist yet
+      load_verifier_file
 
-      adapter_class.constantize.new
+      verifier_class.constantize.new
     rescue NameError => e
-      Rails.logger.error("Failed to load adapter #{adapter_class}: #{e.message}")
-      raise CaptainHook::AdapterNotFoundError,
-            "Adapter #{adapter_class} not found. Ensure the adapter file exists in the provider directory or use a built-in adapter (CaptainHook::Adapters::Base, Stripe, Square, Paypal, WebhookSite)."
+      Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
+      raise CaptainHook::VerifierNotFoundError,
+            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use a built-in verifier (CaptainHook::Verifiers::Base, Stripe, Square, Paypal, WebhookSite)."
     end
 
-    # Load the adapter file from the filesystem
-    def load_adapter_file
-      return if adapter_file.blank?
+    # Load the verifier file from the filesystem
+    def load_verifier_file
+      return if verifier_file.blank?
 
-      # Try to find the adapter file in common locations
+      # Try to find the verifier file in common locations
       possible_paths = [
         # Application providers directory (nested structure)
-        Rails.root.join("captain_hook", "providers", name, adapter_file),
+        Rails.root.join("captain_hook", "providers", name, verifier_file),
         # Application providers directory (flat structure)
-        Rails.root.join("captain_hook", "providers", adapter_file)
+        Rails.root.join("captain_hook", "providers", verifier_file)
       ]
 
-      # Check in CaptainHook gem's built-in adapters
-      # Use __dir__ to get the directory of this file, then navigate to lib/captain_hook/adapters
-      gem_adapters_path = File.expand_path("../../lib/captain_hook/adapters", __dir__)
-      if Dir.exist?(gem_adapters_path)
-        possible_paths << File.join(gem_adapters_path, adapter_file)
+      # Check in CaptainHook gem's built-in verifiers
+      # Use __dir__ to get the directory of this file, then navigate to lib/captain_hook/verifiers
+      gem_verifiers_path = File.expand_path("../../lib/captain_hook/verifiers", __dir__)
+      if Dir.exist?(gem_verifiers_path)
+        possible_paths << File.join(gem_verifiers_path, verifier_file)
       end
 
       # Also check in other loaded gems
@@ -108,20 +108,20 @@ module CaptainHook
         gem_providers_path = File.join(spec.full_gem_path, "captain_hook", "providers")
         next unless Dir.exist?(gem_providers_path)
 
-        possible_paths << File.join(gem_providers_path, name, adapter_file)
-        possible_paths << File.join(gem_providers_path, adapter_file)
+        possible_paths << File.join(gem_providers_path, name, verifier_file)
+        possible_paths << File.join(gem_providers_path, verifier_file)
       end
 
       file_path = possible_paths.find { |path| File.exist?(path) }
 
       if file_path
         load file_path
-        Rails.logger.debug("Loaded adapter from #{file_path}")
+        Rails.logger.debug("Loaded verifier from #{file_path}")
       else
-        Rails.logger.warn("Adapter file not found for #{name}, tried: #{possible_paths.inspect}")
+        Rails.logger.warn("Verifier file not found for #{name}, tried: #{possible_paths.inspect}")
       end
     rescue StandardError => e
-      Rails.logger.error("Failed to load adapter file: #{e.message}")
+      Rails.logger.error("Failed to load verifier file: #{e.message}")
     end
 
     # Activate provider
@@ -134,22 +134,22 @@ module CaptainHook
       update!(active: false)
     end
 
-    # Extract adapter class name from loaded file
-    # Looks for classes that include AdapterHelpers or end with "Adapter"
-    def self.extract_adapter_class_from_file(file_path)
+    # Extract verifier class name from loaded file
+    # Looks for classes that include VerifierHelpers or end with "Verifier"
+    def self.extract_verifier_class_from_file(file_path)
       return nil unless File.exist?(file_path)
 
       # First try to guess the class name from the file name
-      # e.g., stripe.rb -> StripeAdapter
+      # e.g., stripe.rb -> StripeVerifier
       file_name = File.basename(file_path, ".rb")
-      guessed_class_name = "#{file_name.camelize}Adapter"
+      guessed_class_name = "#{file_name.camelize}Verifier"
 
       # Check if this class already exists (file was already loaded)
       if Object.const_defined?(guessed_class_name)
         klass = Object.const_get(guessed_class_name)
         if klass.is_a?(Class) && (
-          klass.included_modules.any? { |m| m.name == "CaptainHook::AdapterHelpers" } ||
-          guessed_class_name.end_with?("Adapter")
+          klass.included_modules.any? { |m| m.name == "CaptainHook::VerifierHelpers" } ||
+          guessed_class_name.end_with?("Verifier")
         )
           return guessed_class_name
         end
@@ -164,19 +164,19 @@ module CaptainHook
       # Find new constants (classes defined in the file)
       new_constants = Object.constants - constants_before
 
-      # Look for adapter classes (contain "Adapter" or include AdapterHelpers)
-      adapter_class = new_constants.find do |const_name|
+      # Look for verifier classes (contain "Verifier" or include VerifierHelpers)
+      verifier_class = new_constants.find do |const_name|
         klass = Object.const_get(const_name)
         next unless klass.is_a?(Class)
 
-        # Check if it's an adapter (includes AdapterHelpers or ends with Adapter)
-        klass.included_modules.any? { |m| m.name == "CaptainHook::AdapterHelpers" } ||
-          const_name.to_s.end_with?("Adapter")
+        # Check if it's a verifier (includes VerifierHelpers or ends with Verifier)
+        klass.included_modules.any? { |m| m.name == "CaptainHook::VerifierHelpers" } ||
+          const_name.to_s.end_with?("Verifier")
       end
 
-      adapter_class&.to_s
+      verifier_class&.to_s
     rescue StandardError => e
-      Rails.logger.error("Failed to extract adapter class from #{file_path}: #{e.message}")
+      Rails.logger.error("Failed to extract verifier class from #{file_path}: #{e.message}")
       nil
     end
 

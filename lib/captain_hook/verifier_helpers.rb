@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 module CaptainHook
-  # Reusable helper methods for webhook adapters
-  # Can be included in any adapter class to get security and utility methods
+  # Reusable helper methods for webhook verifiers
+  # Can be included in any verifier class to get security and utility methods
   #
   # Usage:
-  #   class MyAdapter
-  #     include CaptainHook::AdapterHelpers
+  #   class MyVerifier
+  #     include CaptainHook::VerifierHelpers
   #
   #     def verify_signature(payload:, headers:, provider_config:)
   #       signature = extract_header(headers, "X-Signature")
@@ -14,7 +14,7 @@ module CaptainHook
   #       secure_compare(signature, expected)
   #     end
   #   end
-  module AdapterHelpers
+  module VerifierHelpers
     # Constant-time string comparison to prevent timing attacks
     # Uses Rack::Utils.secure_compare if available, falls back to manual implementation
     def secure_compare(a, b)
