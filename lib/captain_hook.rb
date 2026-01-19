@@ -53,16 +53,5 @@ module CaptainHook
     def register_action(**)
       action_registry.register(**)
     end
-
-    # Deprecated: Backward compatibility aliases
-    def handler_registry
-      warn "[DEPRECATION] `handler_registry` is deprecated. Use `action_registry` instead."
-      action_registry
-    end
-
-    def register_handler(**)
-      warn "[DEPRECATION] `register_handler` is deprecated. Use `register_action` instead."
-      register_action(**)
-    end
   end
 end

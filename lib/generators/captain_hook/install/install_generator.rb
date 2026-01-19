@@ -22,7 +22,7 @@ module CaptainHook
         say "Next steps:", :cyan
         say "  1. Run migrations: rails captain_hook:install:migrations && rails db:migrate", :yellow
         say "  2. Create providers via admin UI: /captain_hook/admin/providers", :yellow
-        say "  3. Register handlers in config/initializers/captain_hook.rb", :yellow
+        say "  3. Register actions in config/initializers/captain_hook.rb", :yellow
         say "\nProviders are now managed via the database (no YAML config needed).", :cyan
       end
 

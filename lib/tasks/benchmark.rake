@@ -19,7 +19,7 @@ namespace :benchmark do
     benchmarks = [
       "signature_verification_benchmark.rb",
       "database_operations_benchmark.rb",
-      "handler_execution_benchmark.rb",
+      "action_execution_benchmark.rb",
       "memory_benchmark.rb",
       "end_to_end_benchmark.rb"
     ]
@@ -49,9 +49,9 @@ namespace :benchmark do
     load CaptainHook::Engine.root.join("benchmark", "benchmarks", "database_operations_benchmark.rb")
   end
 
-  desc "Run handler execution benchmark"
-  task handlers: :environment do
-    load CaptainHook::Engine.root.join("benchmark", "benchmarks", "handler_execution_benchmark.rb")
+  desc "Run action execution benchmark"
+  task actions: :environment do
+    load CaptainHook::Engine.root.join("benchmark", "benchmarks", "action_execution_benchmark.rb")
   end
 
   desc "Run memory profiling benchmark"

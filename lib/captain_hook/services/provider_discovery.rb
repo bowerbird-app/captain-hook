@@ -79,21 +79,21 @@ module CaptainHook
             end
           end
 
-          # Autoload handlers from actions folder if it exists
+          # Autoload actions from actions folder if it exists
           actions_dir = File.join(subdir, "actions")
-          load_handlers_from_directory(actions_dir) if File.directory?(actions_dir)
+          load_actions_from_directory(actions_dir) if File.directory?(actions_dir)
 
           @discovered_providers << provider_def
         end
       end
 
-      # Load all handler files from a directory
-      def load_handlers_from_directory(directory)
-        Dir.glob(File.join(directory, "**", "*.rb")).each do |handler_file|
-          load handler_file
-          Rails.logger.debug("Loaded handler from #{handler_file}")
+      # Load all action files from a directory
+      def load_actions_from_directory(directory)
+        Dir.glob(File.join(directory, "**", "*.rb")).each do |action_file|
+          load action_file
+          Rails.logger.debug("Loaded action from #{action_file}")
         rescue StandardError => e
-          Rails.logger.error("Failed to load handler #{handler_file}: #{e.message}")
+          Rails.logger.error("Failed to load action #{action_file}: #{e.message}")
         end
       end
 

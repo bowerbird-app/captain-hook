@@ -16,11 +16,6 @@ module CaptainHook
     SIGNATURE_VERIFIED = "signature.verified.captain_hook"
     SIGNATURE_FAILED = "signature.failed.captain_hook"
 
-    # Deprecated: Backward compatibility
-    HANDLER_STARTED = ACTION_STARTED
-    HANDLER_COMPLETED = ACTION_COMPLETED
-    HANDLER_FAILED = ACTION_FAILED
-
     class << self
       # Instrument incoming event received
       def incoming_received(event, provider:, event_type:)
@@ -79,9 +74,6 @@ module CaptainHook
         )
       end
 
-      # Deprecated: Backward compatibility
-      alias handler_started action_started
-
       # Instrument action completed
       def action_completed(action, duration:)
         ActiveSupport::Notifications.instrument(
@@ -91,9 +83,6 @@ module CaptainHook
           duration: duration
         )
       end
-
-      # Deprecated: Backward compatibility
-      alias handler_completed action_completed
 
       # Instrument action failed
       def action_failed(action, error:)
@@ -106,9 +95,6 @@ module CaptainHook
           attempt: action.attempt_count
         )
       end
-
-      # Deprecated: Backward compatibility
-      alias handler_failed action_failed
 
       # Instrument rate limit exceeded
       def rate_limit_exceeded(provider:, current_count:, limit:)

@@ -46,13 +46,13 @@ end
 
 stripe_provider.destroy
 
-puts "\n📊 Handler Registry Memory Usage"
-BenchmarkHelper.memory_benchmark("Handler registration (100x)") do
+puts "\n📊 Action Registry Memory Usage"
+BenchmarkHelper.memory_benchmark("Action registration (100x)") do
   100.times do |i|
-    CaptainHook.register_handler(
+    CaptainHook.register_action(
       provider: "memory_test_#{i}",
       event_type: "test.event",
-      handler_class: "TestHandler",
+      action_class: "TestAction",
       priority: 100,
       async: true
     )

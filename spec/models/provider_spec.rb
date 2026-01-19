@@ -78,7 +78,7 @@ RSpec.describe CaptainHook::Provider, type: :model do
 
   describe "associations" do
     it { is_expected.to have_many(:incoming_events).with_primary_key(:name).with_foreign_key(:provider) }
-    it { is_expected.to have_many(:handlers).with_primary_key(:name).with_foreign_key(:provider) }
+    it { is_expected.to have_many(:actions).with_primary_key(:name).with_foreign_key(:provider) }
   end
 
   describe "scopes" do

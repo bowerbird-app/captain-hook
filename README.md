@@ -292,8 +292,8 @@ Share this URL with your provider (e.g., in Stripe's webhook settings). The toke
 Create a action class in the provider's `actions/` folder:
 
 ```ruby
-# captain_hook/stripe/actions/payment_succeeded_handler.rb
-class StripePaymentSucceededHandler
+# captain_hook/stripe/actions/payment_succeeded_action.rb
+class StripePaymentSucceededAction
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
     Payment.find_by(stripe_id: payment_intent_id)&.mark_succeeded!
@@ -326,7 +326,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentSucceededHandler",
+    action_class: "StripePaymentSucceededAction",
     priority: 100,
     async: true,
     max_attempts: 3
@@ -336,7 +336,7 @@ Rails.application.config.after_initialize do
   CaptainHook.register_action(
     provider: "square",
     event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-    action_class: "SquareBankAccountHandler",
+    action_class: "SquareBankAccountAction",
     priority: 100,
     async: true
   )
@@ -518,8 +518,8 @@ Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for si
 ### Basic Action
 
 ```ruby
-# app/actions/stripe_payment_succeeded_handler.rb
-class StripePaymentSucceededHandler
+# app/actions/stripe_payment_succeeded_action.rb
+class StripePaymentSucceededAction
   def handle(event:, payload:, metadata:)
     Rails.logger.info "Payment succeeded: #{payload['id']}"
   end
@@ -529,7 +529,7 @@ end
 ### Action with Error Handling
 
 ```ruby
-class StripePaymentSucceededHandler
+class StripePaymentSucceededAction
   def handle(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
     
@@ -550,7 +550,7 @@ end
 
 ```ruby
 # Handles multiple related events
-class SquareBankAccountHandler
+class SquareBankAccountAction
   def handle(event:, payload:, metadata:)
     event_type = payload["type"]
     bank_account = payload.dig("data", "object")
@@ -568,7 +568,7 @@ end
 CaptainHook.register_action(
   provider: "square",
   event_type: "bank_account.*",
-  action_class: "SquareBankAccountHandler",
+  action_class: "SquareBankAccountAction",
   async: true
 )
 ```

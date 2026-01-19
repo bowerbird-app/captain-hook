@@ -68,9 +68,9 @@ RSpec.configure do |config|
   # Include Factory Bot syntax methods
   config.include FactoryBot::Syntax::Methods
 
-  # Clean up handler registry between tests
+  # Clean up action registry between tests
   config.before(:each) do
-    CaptainHook.handler_registry.clear!
+    CaptainHook.action_registry.clear!
   end
 end
 
