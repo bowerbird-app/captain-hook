@@ -6,11 +6,16 @@ Adapters are the first line of defense in the webhook processing pipeline. They 
 
 Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Adapters encapsulate this provider-specific logic so your application can process webhooks securely.
 
-**Architecture Change:** As of the latest version, adapters are **provider-specific** and live alongside each provider's configuration, rather than being built into the CaptainHook gem. This allows:
-- Host applications to create custom adapters for any provider
-- Other gems to bundle their own adapters
-- Greater flexibility and extensibility
-- Adapters stay close to the providers they support
+**Latest Architecture:** CaptainHook now ships with **built-in adapters** for common providers:
+- **Stripe** - `CaptainHook::Adapters::Stripe`
+- **Square** - `CaptainHook::Adapters::Square`  
+- **PayPal** - `CaptainHook::Adapters::Paypal`
+- **WebhookSite** - `CaptainHook::Adapters::WebhookSite` (testing only)
+- **Base** - `CaptainHook::Adapters::Base` (no-op for custom implementations)
+
+For these providers, **you only need a YAML file** - no adapter code required! Just use `adapter_class: CaptainHook::Adapters::Stripe` in your configuration.
+
+For custom providers not included in CaptainHook, you can still create custom adapters that live alongside your provider configuration.
 
 ## Adapter Responsibilities
 
@@ -21,29 +26,24 @@ An adapter must implement these methods:
 3. **`extract_event_id(payload)`**: Get the unique event identifier
 4. **`extract_event_type(payload)`**: Determine what type of event this is
 
-## Where Adapters Live
+## Using Built-in Adapters
 
-Adapters are now stored **per-provider** in the `captain_hook/providers/` directory:
+For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the built-in adapter in your YAML:
 
-```
-captain_hook/providers/
-├── stripe/
-│   ├── stripe.yml        # Provider configuration
-│   └── stripe.rb         # Adapter implementation
-├── square/
-│   ├── square.yml
-│   └── square.rb
-└── paypal/
-    ├── paypal.yml
-    └── paypal.rb
+```yaml
+# captain_hook/providers/stripe/stripe.yml
+name: stripe
+display_name: Stripe
+adapter_class: CaptainHook::Adapters::Stripe  # Built-in adapter!
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+active: true
 ```
 
-This structure makes it easy to:
-- See all provider-related code in one place
-- Share providers between applications
-- Version control provider configurations and adapters together
+No adapter file needed!
 
-## Creating a Custom Adapter
+## Creating Custom Adapters
+
+For providers not included in CaptainHook, you can create custom adapters that live alongside your provider configuration:
 
 ### 1. Create Provider Directory
 

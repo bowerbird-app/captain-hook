@@ -63,8 +63,11 @@ module CaptainHook
         provider.adapter_file = definition["adapter_file"]
         provider.active = definition.fetch("active", true)
 
+        # Set adapter_class from YAML if provided (built-in adapters)
+        if definition["adapter_class"].present?
+          provider.adapter_class = definition["adapter_class"]
         # Extract adapter_class from file if adapter_file is provided
-        if definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
+        elsif definition["adapter_file"].present? && (is_new || provider.adapter_class.blank?)
           adapter_class = extract_adapter_class(definition)
           provider.adapter_class = adapter_class if adapter_class.present?
         end
