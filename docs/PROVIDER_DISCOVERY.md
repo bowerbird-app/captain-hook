@@ -54,11 +54,11 @@ your_rails_app/
 │   │   ├── stripe.yml                   # Provider config
 │   │   ├── stripe.rb                    # (Optional) Custom verifier
 │   │   └── actions/                     # Action files for this provider
-│   │       └── payment_intent_succeeded_handler.rb
+│   │       └── payment_intent_succeeded_action.rb
 │   ├── square/
 │   │   ├── square.yml
 │   │   └── actions/
-│   │       └── bank_account_handler.rb
+│   │       └── bank_account_action.rb
 │   └── webhook_site/
 │       ├── webhook_site.yml
 │       └── actions/
@@ -71,7 +71,7 @@ your_gem/
         ├── my_service.yml               # Provider config
         ├── my_service.rb                # Custom verifier
         └── actions/                     # Action files
-            └── my_service_event_handler.rb
+            └── my_service_event_action.rb
 ```
 
 **Key Design Decisions:**

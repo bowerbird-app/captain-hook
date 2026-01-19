@@ -116,7 +116,7 @@ Deleting a action:
 CaptainHook.register_action(
   provider: "stripe",
   event_type: "payment.succeeded",
-  action_class: "ProcessPaymentHandler",
+  action_class: "ProcessPaymentAction",
   priority: 100,
   async: true,
   max_attempts: 5,
