@@ -1,7 +1,7 @@
 # Webhook.site testing provider configuration
 # This file is automatically scanned by CaptainHook on "Scan for Providers"
 # Place this file in: captain_hook/providers/webhook_site/webhook_site.yml
-# Create adapter in: captain_hook/providers/webhook_site/webhook_site.rb
+# Note: webhook_site.rb adapter is built into CaptainHook - no need to create it!
 
 name: webhook_site
 display_name: Webhook.site

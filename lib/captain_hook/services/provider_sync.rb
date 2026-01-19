@@ -165,7 +165,13 @@ module CaptainHook
           Rails.root.join("captain_hook", "providers", adapter_file)
         ]
 
-        # Also check in gems
+        # Check in CaptainHook gem's built-in adapters
+        gem_adapters_path = File.expand_path("../../adapters", __dir__)
+        if Dir.exist?(gem_adapters_path)
+          possible_paths << File.join(gem_adapters_path, adapter_file)
+        end
+
+        # Also check in other gems
         Bundler.load.specs.each do |spec|
           gem_providers_path = File.join(spec.gem_dir, "captain_hook", "providers")
           next unless File.directory?(gem_providers_path)
