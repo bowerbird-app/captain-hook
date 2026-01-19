@@ -8,7 +8,7 @@ module CaptainHook
       @config_data = {
         "name" => "stripe",
         "display_name" => "Stripe",
-        "adapter_class" => "CaptainHook::Adapters::Stripe",
+        "verifier_class" => "CaptainHook::Verifiers::Stripe",
         "signing_secret" => "whsec_test123",
         "timestamp_tolerance_seconds" => 300,
         "rate_limit_requests" => 100,
@@ -28,8 +28,8 @@ module CaptainHook
       assert_equal "Stripe", @provider_config.display_name
     end
 
-    def test_reads_adapter_class
-      assert_equal "CaptainHook::Adapters::Stripe", @provider_config.adapter_class
+    def test_reads_verifier_class
+      assert_equal "CaptainHook::Verifiers::Stripe", @provider_config.verifier_class
     end
 
     def test_reads_signing_secret
@@ -87,22 +87,22 @@ module CaptainHook
       assert_equal "minimal", config.name
     end
 
-    # === Adapter Class Tests ===
+    # === Verifier Class Tests ===
 
-    def test_can_instantiate_adapter_class
-      adapter_class = @provider_config.adapter_class.constantize
-      assert adapter_class.ancestors.include?(CaptainHook::Adapters::Base)
+    def test_can_instantiate_verifier_class
+      verifier_class = @provider_config.verifier_class.constantize
+      assert verifier_class.ancestors.include?(CaptainHook::Verifiers::Base)
     end
 
-    def test_validates_adapter_class_exists
+    def test_validates_verifier_class_exists
       config = ProviderConfig.new(
         "name" => "test",
-        "adapter_class" => "CaptainHook::Adapters::Stripe"
+        "verifier_class" => "CaptainHook::Verifiers::Stripe"
       )
 
       # Should not raise an error
-      adapter_class = config.adapter_class.constantize
-      assert_kind_of Class, adapter_class
+      verifier_class = config.verifier_class.constantize
+      assert_kind_of Class, verifier_class
     end
 
     # === ENV Variable Resolution Tests ===
@@ -193,7 +193,7 @@ module CaptainHook
 
       assert_includes hash.keys, "name"
       assert_includes hash.keys, "display_name"
-      assert_includes hash.keys, "adapter_class"
+      assert_includes hash.keys, "verifier_class"
       assert_includes hash.keys, "signing_secret"
     end
 
@@ -275,14 +275,14 @@ module CaptainHook
       config = ProviderConfig.new(
         "name" => "test",
         "signing_secret" => "secret",
-        "adapter_class" => "TestAdapter"
+        "verifier_class" => "TestVerifier"
       )
 
       hash = config.to_h
       assert hash.is_a?(Hash)
       assert_equal "test", hash["name"]
       assert hash.key?("signing_secret")
-      assert hash.key?("adapter_class")
+      assert hash.key?("verifier_class")
     end
 
     def test_config_with_empty_string_values
@@ -302,10 +302,10 @@ module CaptainHook
       assert config.active?
     end
 
-    def test_adapter_class_defaults_to_base
+    def test_verifier_class_defaults_to_base
       config = ProviderConfig.new("name" => "test")
 
-      assert_equal "CaptainHook::Adapters::Base", config.adapter_class
+      assert_equal "CaptainHook::Verifiers::Base", config.verifier_class
     end
 
     def test_rate_limiting_enabled_returns_true_when_both_present
@@ -361,25 +361,25 @@ module CaptainHook
       refute config.timestamp_validation_enabled?
     end
 
-    def test_adapter_returns_adapter_instance
+    def test_verifier_returns_verifier_instance
       config = ProviderConfig.new(
         "name" => "test",
-        "adapter_class" => "CaptainHook::Adapters::Base"
+        "verifier_class" => "CaptainHook::Verifiers::Base"
       )
 
-      adapter = config.adapter
-      assert_instance_of CaptainHook::Adapters::Base, adapter
+      verifier = config.verifier
+      assert_instance_of CaptainHook::Verifiers::Base, verifier
     end
 
-    def test_adapter_is_memoized
+    def test_verifier_is_memoized
       config = ProviderConfig.new(
         "name" => "test",
-        "adapter_class" => "CaptainHook::Adapters::Base"
+        "verifier_class" => "CaptainHook::Verifiers::Base"
       )
 
-      adapter1 = config.adapter
-      adapter2 = config.adapter
-      assert_same adapter1, adapter2
+      verifier1 = config.verifier
+      verifier2 = config.verifier
+      assert_same verifier1, verifier2
     end
 
     def test_display_name_can_be_explicitly_nil

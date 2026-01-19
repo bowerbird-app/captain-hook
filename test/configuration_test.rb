@@ -96,7 +96,7 @@ module CaptainHook
       db_provider = CaptainHook::Provider.create!(
         name: "stripe",
         display_name: "Stripe",
-        adapter_class: "StripeAdapter",
+        verifier_class: "StripeVerifier",
         signing_secret: "db_secret",
         active: true
       )
@@ -126,7 +126,7 @@ module CaptainHook
       provider_model = CaptainHook::Provider.create!(
         name: "test_provider",
         display_name: "Test Provider",
-        adapter_class: "TestAdapter",
+        verifier_class: "TestVerifier",
         signing_secret: "test_secret",
         token: "test_token",
         active: true,
@@ -141,7 +141,7 @@ module CaptainHook
       assert_equal "test_provider", provider_config.name
       assert_equal "test_token", provider_config.token
       assert_equal "test_secret", provider_config.signing_secret
-      assert_equal "TestAdapter", provider_config.adapter_class
+      assert_equal "TestVerifier", provider_config.verifier_class
       assert_equal 600, provider_config.timestamp_tolerance_seconds
       assert_equal 2_097_152, provider_config.max_payload_size_bytes
       assert_equal 50, provider_config.rate_limit_requests

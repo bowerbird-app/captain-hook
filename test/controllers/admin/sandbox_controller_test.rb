@@ -10,7 +10,7 @@ module CaptainHook
       setup do
         @provider = CaptainHook::Provider.create!(
           name: "stripe",
-          adapter_class: "CaptainHook::Adapters::Stripe",
+          verifier_class: "CaptainHook::Verifiers::Stripe",
           token: "test_token",
           signing_secret: "test_secret"
         )
@@ -126,10 +126,10 @@ module CaptainHook
       end
 
       test "should handle exceptions gracefully" do
-        # Create a provider with invalid adapter_class to trigger error
+        # Create a provider with invalid verifier_class to trigger error
         bad_provider = CaptainHook::Provider.create!(
           name: "bad",
-          adapter_class: "NonExistentAdapter",
+          verifier_class: "NonExistentVerifier",
           token: "bad_test_token"
         )
 

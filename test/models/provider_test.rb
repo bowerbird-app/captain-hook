@@ -8,7 +8,7 @@ module CaptainHook
       @provider = CaptainHook::Provider.create!(
         name: "test_provider",
         display_name: "Test Provider",
-        adapter_class: "CaptainHook::Adapters::Base",
+        verifier_class: "CaptainHook::Verifiers::Base",
         signing_secret: "test_secret",
         active: true
       )
@@ -21,40 +21,40 @@ module CaptainHook
     end
 
     test "requires name" do
-      provider = CaptainHook::Provider.new(adapter_class: "Test")
+      provider = CaptainHook::Provider.new(verifier_class: "Test")
       refute provider.valid?
       assert_includes provider.errors[:name], "can't be blank"
     end
 
     test "requires unique name" do
-      duplicate = CaptainHook::Provider.new(name: @provider.name, adapter_class: "Test")
+      duplicate = CaptainHook::Provider.new(name: @provider.name, verifier_class: "Test")
       refute duplicate.valid?
       assert_includes duplicate.errors[:name], "has already been taken"
     end
 
-    test "requires adapter_class" do
-      provider = CaptainHook::Provider.new(name: "unique_test", adapter_class: nil)
+    test "requires verifier_class" do
+      provider = CaptainHook::Provider.new(name: "unique_test", verifier_class: nil)
       assert_not provider.valid?
-      assert_includes provider.errors[:adapter_class], "can't be blank"
+      assert_includes provider.errors[:verifier_class], "can't be blank"
     end
 
     test "name must be lowercase alphanumeric with underscores" do
       # The normalize_name callback converts any invalid chars to underscores
       # So "Test-Provider!" becomes "test_provider_" which is valid
       # This test verifies that normalization happens
-      provider = CaptainHook::Provider.new(name: "Test-Provider!", adapter_class: "Test")
+      provider = CaptainHook::Provider.new(name: "Test-Provider!", verifier_class: "Test")
       assert provider.save
       assert_equal "test_provider_", provider.name
     end
 
     test "normalizes name before validation" do
-      provider = CaptainHook::Provider.create!(name: "Test-Provider-123", adapter_class: "CaptainHook::Adapters::Base")
+      provider = CaptainHook::Provider.create!(name: "Test-Provider-123", verifier_class: "CaptainHook::Verifiers::Base")
       assert_equal "test_provider_123", provider.name
     end
 
     test "token must be unique" do
-      provider1 = CaptainHook::Provider.create!(name: "provider1", adapter_class: "Test")
-      provider2 = CaptainHook::Provider.new(name: "provider2", adapter_class: "Test", token: provider1.token)
+      provider1 = CaptainHook::Provider.create!(name: "provider1", verifier_class: "Test")
+      provider2 = CaptainHook::Provider.new(name: "provider2", verifier_class: "Test", token: provider1.token)
 
       refute provider2.valid?
       assert_includes provider2.errors[:token], "has already been taken"
@@ -107,7 +107,7 @@ module CaptainHook
     # === Callbacks ===
 
     test "generates token before validation if blank" do
-      provider = CaptainHook::Provider.new(name: "new_provider", adapter_class: "Test")
+      provider = CaptainHook::Provider.new(name: "new_provider", verifier_class: "Test")
       assert_nil provider.token
 
       provider.valid?
@@ -126,7 +126,7 @@ module CaptainHook
     # === Scopes ===
 
     test "active scope returns only active providers" do
-      inactive = CaptainHook::Provider.create!(name: "inactive", adapter_class: "Test", active: false)
+      inactive = CaptainHook::Provider.create!(name: "inactive", verifier_class: "Test", active: false)
 
       active_providers = CaptainHook::Provider.active
       assert_includes active_providers, @provider
@@ -134,7 +134,7 @@ module CaptainHook
     end
 
     test "inactive scope returns only inactive providers" do
-      inactive = CaptainHook::Provider.create!(name: "inactive", adapter_class: "Test", active: false)
+      inactive = CaptainHook::Provider.create!(name: "inactive", verifier_class: "Test", active: false)
 
       inactive_providers = CaptainHook::Provider.inactive
       assert_includes inactive_providers, inactive
@@ -142,8 +142,8 @@ module CaptainHook
     end
 
     test "by_name scope orders by name" do
-      CaptainHook::Provider.create!(name: "z_provider", adapter_class: "Test")
-      CaptainHook::Provider.create!(name: "a_provider", adapter_class: "Test")
+      CaptainHook::Provider.create!(name: "z_provider", verifier_class: "Test")
+      CaptainHook::Provider.create!(name: "a_provider", verifier_class: "Test")
 
       ordered = CaptainHook::Provider.by_name
       assert_equal "a_provider", ordered.first.name
@@ -255,15 +255,15 @@ module CaptainHook
     end
 
     test "adapter returns adapter instance" do
-      adapter = @provider.adapter
-      assert_kind_of CaptainHook::Adapters::Base, adapter
+      verifier = @provider.verifier
+      assert_kind_of CaptainHook::Verifiers::Base, verifier
     end
 
-    test "adapter handles invalid adapter_class gracefully" do
-      @provider.adapter_class = "NonExistent::Adapter"
+    test "adapter handles invalid verifier_class gracefully" do
+      @provider.verifier_class = "NonExistent::Verifier"
 
-      adapter = @provider.adapter
-      assert_kind_of CaptainHook::Adapters::Base, adapter
+      verifier = @provider.verifier
+      assert_kind_of CaptainHook::Verifiers::Base, verifier
     end
 
     # === Associations ===
@@ -321,19 +321,19 @@ module CaptainHook
       assert_equal "super_secret", @provider.reload.signing_secret
     end
 
-    test "adapter returns initialized adapter instance" do
-      adapter = @provider.adapter
+    test "adapter returns initialized verifier instance" do
+      verifier = @provider.verifier
 
-      assert_instance_of CaptainHook::Adapters::Base, adapter
+      assert_instance_of CaptainHook::Verifiers::Base, verifier
     end
 
-    test "adapter falls back to Base adapter when adapter_class invalid" do
-      @provider.adapter_class = "NonExistent::Adapter"
+    test "adapter falls back to Base verifier when verifier_class invalid" do
+      @provider.verifier_class = "NonExistent::Verifier"
       @provider.save!
 
-      adapter = @provider.adapter
+      verifier = @provider.verifier
 
-      assert_instance_of CaptainHook::Adapters::Base, adapter
+      assert_instance_of CaptainHook::Verifiers::Base, verifier
     end
 
     test "signing_secret uses ENV override when present" do
@@ -365,7 +365,7 @@ module CaptainHook
     test "generate_token creates unique token" do
       provider = CaptainHook::Provider.new(
         name: "token_test",
-        adapter_class: "TestAdapter"
+        verifier_class: "TestVerifier"
       )
       provider.save!
 
@@ -376,7 +376,7 @@ module CaptainHook
     test "normalize_name is called before validation" do
       provider = CaptainHook::Provider.new(
         name: "MixedCase_Name",
-        adapter_class: "TestAdapter"
+        verifier_class: "TestVerifier"
       )
       provider.valid?
 
@@ -386,7 +386,7 @@ module CaptainHook
     test "timestamp_validation_enabled checks for presence" do
       provider = CaptainHook::Provider.new(
         name: "test",
-        adapter_class: "TestAdapter",
+        verifier_class: "TestVerifier",
         timestamp_tolerance_seconds: 300
       )
 
@@ -396,7 +396,7 @@ module CaptainHook
     test "timestamp_validation_enabled returns false when nil" do
       provider = CaptainHook::Provider.new(
         name: "test",
-        adapter_class: "TestAdapter",
+        verifier_class: "TestVerifier",
         timestamp_tolerance_seconds: nil
       )
 

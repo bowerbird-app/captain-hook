@@ -25,7 +25,7 @@ module CaptainHook
 
         providers.each do |provider|
           assert provider["name"].present?, "Provider should have a name"
-          assert provider["adapter_class"].present?, "Provider should have an adapter_class"
+          assert provider["verifier_class"].present?, "Provider should have a verifier_class"
           assert provider["source_file"].present?, "Provider should have source_file metadata"
           assert provider["source"].present?, "Provider should have source metadata"
         end
@@ -37,7 +37,7 @@ module CaptainHook
 
         assert_not_nil square_provider
         assert_equal "Square", square_provider["display_name"]
-        assert_equal "CaptainHook::Adapters::Square", square_provider["adapter_class"]
+        assert_equal "CaptainHook::Verifiers::Square", square_provider["verifier_class"]
       end
 
       test "handles missing directory gracefully" do
@@ -104,10 +104,10 @@ module CaptainHook
 
         begin
           # Create files with different extensions
-          File.write(temp_dir.join("valid.yml"), "name: test1\nadapter_class: Test")
-          File.write(temp_dir.join("valid.yaml"), "name: test2\nadapter_class: Test")
-          File.write(temp_dir.join("ignored.txt"), "name: test3\nadapter_class: Test")
-          File.write(temp_dir.join("ignored.rb"), "name: test4\nadapter_class: Test")
+          File.write(temp_dir.join("valid.yml"), "name: test1\nverifier_class: Test")
+          File.write(temp_dir.join("valid.yaml"), "name: test2\nverifier_class: Test")
+          File.write(temp_dir.join("ignored.txt"), "name: test3\nverifier_class: Test")
+          File.write(temp_dir.join("ignored.rb"), "name: test4\nverifier_class: Test")
 
           discovery = ProviderDiscovery.new
           discovery.send(:scan_directory, temp_dir, source: "test")

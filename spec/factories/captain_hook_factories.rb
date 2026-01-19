@@ -4,7 +4,7 @@ FactoryBot.define do
   factory :captain_hook_provider, class: "CaptainHook::Provider" do
     sequence(:name) { |n| "test_provider_#{n}" }
     display_name { "Test Provider" }
-    adapter_class { "CaptainHook::Adapters::Stripe" }
+    verifier_class { "CaptainHook::Verifiers::Stripe" }
     signing_secret { "whsec_test_secret_#{SecureRandom.hex(16)}" }
     token { SecureRandom.urlsafe_base64(32) }
     active { true }
@@ -20,25 +20,25 @@ FactoryBot.define do
     trait :stripe do
       name { "stripe" }
       display_name { "Stripe" }
-      adapter_class { "CaptainHook::Adapters::Stripe" }
+      verifier_class { "CaptainHook::Verifiers::Stripe" }
     end
 
     trait :square do
       name { "square" }
       display_name { "Square" }
-      adapter_class { "CaptainHook::Adapters::Square" }
+      verifier_class { "CaptainHook::Verifiers::Square" }
     end
 
     trait :paypal do
       name { "paypal" }
       display_name { "PayPal" }
-      adapter_class { "CaptainHook::Adapters::Paypal" }
+      verifier_class { "CaptainHook::Verifiers::Paypal" }
     end
 
     trait :webhook_site do
       name { "webhook_site" }
       display_name { "Webhook.site" }
-      adapter_class { "CaptainHook::Adapters::WebhookSite" }
+      verifier_class { "CaptainHook::Verifiers::WebhookSite" }
     end
 
     trait :with_rate_limiting do

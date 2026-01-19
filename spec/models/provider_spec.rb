@@ -7,7 +7,7 @@ RSpec.describe CaptainHook::Provider, type: :model do
     subject { build(:captain_hook_provider) }
 
     it { is_expected.to validate_presence_of(:name) }
-    it { is_expected.to validate_presence_of(:adapter_class) }
+    it { is_expected.to validate_presence_of(:verifier_class) }
 
     # Token has presence validation but also has auto-generation callback
     # So we test that token is set after save even if not provided
@@ -206,19 +206,19 @@ RSpec.describe CaptainHook::Provider, type: :model do
     end
   end
 
-  describe "#adapter" do
+  describe "#verifier" do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
-    it "returns adapter instance" do
-      adapter = provider.adapter
-      expect(adapter).to be_a(CaptainHook::Adapters::Stripe)
-      expect(adapter.provider_config).to eq(provider)
+    it "returns verifier instance" do
+      verifier = provider.verifier
+      expect(verifier).to be_a(CaptainHook::Verifiers::Stripe)
+      expect(verifier.provider_config).to eq(provider)
     end
 
-    it "falls back to base adapter for invalid adapter class" do
-      provider.update_column(:adapter_class, "NonExistentAdapter")
-      adapter = provider.adapter
-      expect(adapter).to be_a(CaptainHook::Adapters::Base)
+    it "falls back to base verifier for invalid verifier class" do
+      provider.update_column(:verifier_class, "NonExistentVerifier")
+      verifier = provider.verifier
+      expect(verifier).to be_a(CaptainHook::Verifiers::Base)
     end
   end
 
