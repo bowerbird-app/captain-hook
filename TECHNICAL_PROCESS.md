@@ -164,7 +164,7 @@ yaml_data.merge!(
 
 **Source tracking** helps identify where providers came from:
 - `"application"` = Your Rails app
-- `"gem:marikit-stripe"` = From a specific gem
+- `"gem:example-stripe"` = From a specific gem
 
 #### Step 3: Adapter Auto-loading
 
@@ -923,12 +923,12 @@ end
 
 ### From Third-Party Gems
 
-When a gem like `marikit-stripe` provides webhooks:
+When a gem like `example-stripe` provides webhooks:
 
 ```
-marikit-stripe/
+example-stripe/
 ├── lib/
-│   └── marikit/
+│   └── example/
 │       └── stripe.rb               # Main gem code (NOT webhook-related)
 └── captain_hook/                   # CaptainHook-specific files (scanned)
     └── providers/
@@ -937,7 +937,7 @@ marikit-stripe/
             └── stripe.rb           # Webhook adapter (loaded by CaptainHook)
 ```
 
-**Important:** The `lib/marikit/stripe.rb` file is the gem's main business logic (API client, payment processing, etc.) and is NOT scanned by CaptainHook. Only files in the `captain_hook/providers/` directory are discovered during provider scanning.
+**Important:** The `lib/example/stripe.rb` file is the gem's main business logic (API client, payment processing, etc.) and is NOT scanned by CaptainHook. Only files in the `captain_hook/providers/` directory are discovered during provider scanning.
 
 **Why gems need both locations:**
 
@@ -1018,10 +1018,10 @@ your-rails-app/
 
 ```
 # Gemfile
-gem 'marikit-stripe'
+gem 'example-stripe'
 
-# Inside marikit-stripe gem:
-marikit-stripe/
+# Inside example-stripe gem:
+example-stripe/
 └── captain_hook/
     └── providers/
         └── stripe/
@@ -1083,10 +1083,10 @@ signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 Application:
   captain_hook/providers/custom/custom.yml
 
-Gem 1 (marikit-stripe):
+Gem 1 (example-stripe):
   captain_hook/providers/stripe/stripe.yml
 
-Gem 2 (marikit-square):
+Gem 2 (example-square):
   captain_hook/providers/square/square.yml
 ```
 
@@ -1112,8 +1112,8 @@ Provider.create!(
 #### ❌ Dynamic Adapter Loading from Gems
 
 ```ruby
-# In gem: lib/marikit/stripe_adapter.rb
-# Trying to use: adapter_class: "Marikit::StripeAdapter"
+# In gem: lib/example/stripe_adapter.rb
+# Trying to use: adapter_class: "Example::StripeAdapter"
 ```
 
 **Limitation:** Adapter must be in `captain_hook/providers/` directory, not `lib/`
@@ -1647,11 +1647,11 @@ CaptainHook.register_handler(
   handler_class: "AppPaymentHandler"
 )
 
-# In gem initializer (e.g., marikit-stripe)
+# In gem initializer (e.g., example-stripe)
 CaptainHook.register_handler(
   provider: "stripe",          # Same provider name
   event_type: "charge.succeeded",
-  handler_class: "MariKit::ChargeHandler"
+  handler_class: "Example::ChargeHandler"
 )
 ```
 
@@ -1747,9 +1747,9 @@ your-rails-app/
 #### Option 2: Third-Party Gems
 
 ```
-marikit-stripe/
+example-stripe/
 ├── lib/
-│   └── marikit/
+│   └── example/
 │       └── stripe/
 │           └── handlers/
 │               ├── charge_handler.rb
@@ -1760,7 +1760,7 @@ marikit-stripe/
 │           ├── stripe.yml
 │           └── stripe.rb
 └── lib/
-    └── marikit/
+    └── example/
         └── stripe/
             └── engine.rb    # Register handlers in initializer
 ```
@@ -1768,17 +1768,17 @@ marikit-stripe/
 **Gem Registration:**
 
 ```ruby
-# marikit-stripe/lib/marikit/stripe/engine.rb
+# example-stripe/lib/example/stripe/engine.rb
 
-module MariKit
+module Example
   module Stripe
     class Engine < ::Rails::Engine
-      initializer "marikit.stripe.register_handlers" do
+      initializer "example.stripe.register_handlers" do
         Rails.application.config.after_initialize do
           CaptainHook.register_handler(
             provider: "stripe",
             event_type: "charge.succeeded",
-            handler_class: "MariKit::Stripe::ChargeHandler"
+            handler_class: "Example::Stripe::ChargeHandler"
           )
         end
       end
@@ -1793,8 +1793,8 @@ Handler classes must be autoloadable:
 
 ```ruby
 # Option 1: Standard autoload paths
-# marikit-stripe/app/handlers/mari_kit/stripe/charge_handler.rb
-module MariKit
+# example-stripe/app/handlers/example/stripe/charge_handler.rb
+module Example
   module Stripe
     class ChargeHandler
       def handle(event:, payload:, metadata:)
@@ -1805,8 +1805,8 @@ module MariKit
 end
 
 # Option 2: Manual require in gem
-# marikit-stripe/lib/marikit/stripe.rb
-require "marikit/stripe/handlers/charge_handler"
+# example-stripe/lib/example/stripe.rb
+require "example/stripe/handlers/charge_handler"
 ```
 
 ### Handler Discovery from Gems
@@ -1823,20 +1823,20 @@ require "marikit/stripe/handlers/charge_handler"
 **Example: Full Gem Integration**
 
 ```ruby
-# marikit-stripe/lib/marikit/stripe/engine.rb
+# example-stripe/lib/example/stripe/engine.rb
 
-module MariKit
+module Example
   module Stripe
     class Engine < ::Rails::Engine
-      isolate_namespace MariKit::Stripe
+      isolate_namespace Example::Stripe
       
-      initializer "marikit.stripe.register_handlers", after: :load_config_initializers do
+      initializer "example.stripe.register_handlers", after: :load_config_initializers do
         Rails.application.config.after_initialize do
           # Register multiple handlers
           [
-            { event: "charge.succeeded", handler: "MariKit::Stripe::ChargeSucceededHandler" },
-            { event: "charge.failed", handler: "MariKit::Stripe::ChargeFailedHandler" },
-            { event: "payment_intent.*", handler: "MariKit::Stripe::PaymentIntentHandler" }
+            { event: "charge.succeeded", handler: "Example::Stripe::ChargeSucceededHandler" },
+            { event: "charge.failed", handler: "Example::Stripe::ChargeFailedHandler" },
+            { event: "payment_intent.*", handler: "Example::Stripe::PaymentIntentHandler" }
           ].each do |config|
             CaptainHook.register_handler(
               provider: "stripe",

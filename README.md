@@ -130,12 +130,12 @@ $ ruby generate_keys.rb
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/providers/` directory.
 
-**Provider adapters are distributed with individual gems** (like `marikit-stripe`, `marikit-square`) or can be created in your host application. Each adapter handles provider-specific signature verification and event extraction.
+**Provider adapters are distributed with individual gems** (like `example-stripe`, `example-square`) or can be created in your host application. Each adapter handles provider-specific signature verification and event extraction.
 
 Common providers typically have adapters available:
-- **Stripe** - Check for gems like `marikit-stripe` or create your own
-- **Square** - Check for gems like `marikit-square` or create your own
-- **PayPal** - Check for gems like `marikit-paypal` or create your own
+- **Stripe** - Check for gems like `example-stripe` or create your own
+- **Square** - Check for gems like `example-square` or create your own
+- **PayPal** - Check for gems like `example-paypal` or create your own
 
 See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to create adapters.
 
@@ -392,7 +392,7 @@ Handlers can be configured with:
 
 ## Adapters
 
-Adapters handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `marikit-stripe`, `marikit-square`) or can be created in your host application.
+Adapters handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `example-stripe`, `example-square`) or can be created in your host application.
 
 ### Using an Adapter
 
