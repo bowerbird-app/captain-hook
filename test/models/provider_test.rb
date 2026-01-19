@@ -254,12 +254,12 @@ module CaptainHook
       refute @provider.reload.active?
     end
 
-    test "adapter returns adapter instance" do
+    test "verifier returns verifier instance" do
       verifier = @provider.verifier
       assert_kind_of CaptainHook::Verifiers::Base, verifier
     end
 
-    test "adapter handles invalid verifier_class gracefully" do
+    test "verifier handles invalid verifier_class gracefully" do
       @provider.verifier_class = "NonExistent::Verifier"
 
       verifier = @provider.verifier
@@ -321,13 +321,13 @@ module CaptainHook
       assert_equal "super_secret", @provider.reload.signing_secret
     end
 
-    test "adapter returns initialized verifier instance" do
+    test "verifier returns initialized verifier instance" do
       verifier = @provider.verifier
 
       assert_instance_of CaptainHook::Verifiers::Base, verifier
     end
 
-    test "adapter falls back to Base verifier when verifier_class invalid" do
+    test "verifier falls back to Base verifier when verifier_class invalid" do
       @provider.verifier_class = "NonExistent::Verifier"
       @provider.save!
 

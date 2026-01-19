@@ -319,7 +319,7 @@ class AcmePaymentsVerifierTest < ActiveSupport::TestCase
       timestamp_tolerance_seconds: 300,
       timestamp_validation_enabled?: true
     )
-    @verifier = AcmePaymentsAdapter.new
+    @verifier = AcmePaymentsVerifier.new
   end
 
   test "verifies valid signature" do
