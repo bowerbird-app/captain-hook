@@ -14,13 +14,13 @@ class CreateCaptainHookHandlers < ActiveRecord::Migration[7.0]
 
       t.timestamps
 
-      # Unique constraint to prevent duplicate handler registrations
+      # Unique constraint to prevent duplicate action registrations
       t.index [:provider, :event_type, :handler_class], unique: true, name: "idx_captain_hook_handlers_unique"
       
-      # Index for finding handlers by provider
+      # Index for finding actions by provider
       t.index :provider
       
-      # Index for finding active handlers
+      # Index for finding active actions
       t.index :deleted_at
     end
   end

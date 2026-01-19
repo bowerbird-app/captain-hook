@@ -35,25 +35,25 @@ module CaptainHook
         assert_response :success
       end
 
-      test "should update handler" do
+      test "should update action" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { handler: { priority: 200 } }
+              params: { action: { priority: 200 } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal 200, @action.priority
       end
 
-      test "should update handler with JSON retry_delays" do
+      test "should update action with JSON retry_delays" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { handler: { retry_delays: "[10, 20, 30]" } }
+              params: { action: { retry_delays: "[10, 20, 30]" } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal [10, 20, 30], @action.retry_delays
       end
 
-      test "should update handler with comma-separated retry_delays" do
+      test "should update action with comma-separated retry_delays" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { handler: { retry_delays: "10, 20, 30" } }
+              params: { action: { retry_delays: "10, 20, 30" } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal [10, 20, 30], @action.retry_delays
@@ -61,7 +61,7 @@ module CaptainHook
 
       test "should handle invalid JSON in retry_delays gracefully" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { handler: { retry_delays: "not-json" } }
+              params: { action: { retry_delays: "not-json" } }
         assert_response :unprocessable_entity
       end
 
@@ -72,8 +72,8 @@ module CaptainHook
         assert @action.deleted_at.present?
       end
 
-      test "should get handlers from registry" do
-        # Register a test handler
+      test "should get actions from registry" do
+        # Register a test action
         CaptainHook.register_action(
           provider: "stripe",
           event_type: "test.event",

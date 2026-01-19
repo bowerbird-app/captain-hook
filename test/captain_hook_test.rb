@@ -32,14 +32,14 @@ class CaptainHookTest < Minitest::Test
     assert_same CaptainHook.configuration, yielded_config
   end
 
-  def test_handler_registry_convenience_method
-    registry = CaptainHook.handler_registry
+  def test_action_registry_convenience_method
+    registry = CaptainHook.action_registry
     assert_kind_of CaptainHook::ActionRegistry, registry
-    assert_same CaptainHook.configuration.handler_registry, registry
+    assert_same CaptainHook.configuration.action_registry, registry
   end
 
   def test_register_action_convenience_method
-    CaptainHook.handler_registry.clear!
+    CaptainHook.action_registry.clear!
 
     CaptainHook.register_action(
       provider: "test",
@@ -47,14 +47,14 @@ class CaptainHookTest < Minitest::Test
       action_class: "TestAction"
     )
 
-    handlers = CaptainHook.handler_registry.actions_for(
+    actions = CaptainHook.action_registry.actions_for(
       provider: "test",
       event_type: "test.event"
     )
 
-    assert_equal 1, handlers.size
-    assert_equal "TestAction", handlers.first.action_class
+    assert_equal 1, actions.size
+    assert_equal "TestAction", actions.first.action_class
   ensure
-    CaptainHook.handler_registry.clear!
+    CaptainHook.action_registry.clear!
   end
 end

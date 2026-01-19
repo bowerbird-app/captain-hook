@@ -222,31 +222,31 @@ module CaptainHook
     end
 
     test "recalculate_status! marks as processed when all actions processed" do
-      @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
-      @event.incoming_event_actions.create!(action_class: "Handler2", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Action1", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Action2", status: :processed)
 
       @event.recalculate_status!
       assert @event.status_processed?
     end
 
     test "recalculate_status! marks as failed when all actions failed" do
-      @event.incoming_event_actions.create!(action_class: "Handler1", status: :failed)
-      @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Action1", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Action2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_failed?
     end
 
     test "recalculate_status! marks as partially_processed when some actions failed" do
-      @event.incoming_event_actions.create!(action_class: "Handler1", status: :processed)
-      @event.incoming_event_actions.create!(action_class: "Handler2", status: :failed)
+      @event.incoming_event_actions.create!(action_class: "Action1", status: :processed)
+      @event.incoming_event_actions.create!(action_class: "Action2", status: :failed)
 
       @event.recalculate_status!
       assert @event.status_partially_processed?
     end
 
     test "recalculate_status! marks as processing when none processed or failed" do
-      @event.incoming_event_actions.create!(action_class: "Handler1", status: :pending)
+      @event.incoming_event_actions.create!(action_class: "Action1", status: :pending)
 
       @event.recalculate_status!
       assert @event.status_processing?
