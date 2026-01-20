@@ -187,4 +187,3 @@ This will restore the removed columns with their default values. You'll need to 
 
 For issues or questions, see:
 - [Main README](../README.md)
-- [Refactoring Documentation](docs/refactoring/TEST_REFACTORING_INDEX.md)

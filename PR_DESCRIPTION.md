@@ -186,14 +186,15 @@ SQUARE_WEBHOOK_SECRET=your_secret
 
 ## Files Changed
 
-### Created (13 files)
+### Created (8 files)
 - `db/migrate/20260120015225_simplify_providers_table.rb`
 - `lib/captain_hook/services/global_config_loader.rb`
 - `config/captain_hook.yml.example`
 - `test/dummy/config/captain_hook.yml`
 - `docs/MIGRATION_GUIDE.md`
 - `docs/IMPLEMENTATION_SUMMARY.md`
-- 5 refactoring documentation files
+- `PR_DESCRIPTION.md`
+- Test helper updates
 
 ### Modified (9 files)
 - `app/models/captain_hook/provider.rb`
@@ -218,7 +219,6 @@ After merging, users should:
 
 - **Migration Guide**: `docs/MIGRATION_GUIDE.md`
 - **Implementation Summary**: `docs/IMPLEMENTATION_SUMMARY.md`
-- **Test Refactoring**: `docs/refactoring/TEST_REFACTORING_INDEX.md`
 - **Main README**: Updated architecture section
 
 ## Related Issues

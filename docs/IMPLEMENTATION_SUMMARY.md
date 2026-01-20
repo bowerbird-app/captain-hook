@@ -63,11 +63,6 @@ Successfully refactored the CaptainHook provider system to use the registry (YAM
 
 ### ✅ 9. Documentation
 - **Created**: `docs/MIGRATION_GUIDE.md` - Complete migration guide for users
-- **Created**: `docs/refactoring/TEST_REFACTORING_INDEX.md` - Test refactoring navigation
-- **Created**: `docs/refactoring/TEST_REFACTORING_SUMMARY.md` - Architectural overview
-- **Created**: `docs/refactoring/REMAINING_TEST_UPDATES.md` - Guide for remaining tests
-- **Created**: `docs/refactoring/COMPLETION_SUMMARY.md` - Status and next steps
-- **Created**: `docs/refactoring/CHANGES_DIFF.md` - Detailed code changes
 - **Updated**: `README.md` - Documented new architecture, global config, ENV variables
 
 ## What This Achieves
@@ -141,8 +136,6 @@ bin/rubocop -a
 - Integration tests
 - etc.
 
-See `docs/refactoring/REMAINING_TEST_UPDATES.md` for details.
-
 ### ⏳ 5. Verify in Development
 1. Start the dummy app
 2. Navigate to /captain_hook/admin/providers
@@ -152,18 +145,13 @@ See `docs/refactoring/REMAINING_TEST_UPDATES.md` for details.
 
 ## Files Changed
 
-### New Files (11)
+### New Files (6)
 1. `db/migrate/20260120015225_simplify_providers_table.rb`
 2. `lib/captain_hook/services/global_config_loader.rb`
 3. `config/captain_hook.yml.example`
 4. `test/dummy/config/captain_hook.yml`
 5. `docs/MIGRATION_GUIDE.md`
-6. `docs/refactoring/TEST_REFACTORING_INDEX.md`
-7. `docs/refactoring/TEST_REFACTORING_SUMMARY.md`
-8. `docs/refactoring/REMAINING_TEST_UPDATES.md`
-9. `docs/refactoring/COMPLETION_SUMMARY.md`
-10. `docs/refactoring/CHANGES_DIFF.md`
-11. `docs/IMPLEMENTATION_SUMMARY.md` (this file)
+6. `docs/IMPLEMENTATION_SUMMARY.md` (this file)
 
 ### Modified Files (8)
 1. `app/models/captain_hook/provider.rb` - Simplified to manage only DB fields
@@ -300,5 +288,4 @@ These tasks will need to be completed by the user after pulling the changes.
 
 For questions or issues, refer to:
 - [Migration Guide](docs/MIGRATION_GUIDE.md)
-- [Test Refactoring Docs](docs/refactoring/TEST_REFACTORING_INDEX.md)
 - [Main README](README.md)
