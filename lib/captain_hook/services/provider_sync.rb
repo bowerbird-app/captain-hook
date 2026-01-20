@@ -59,11 +59,20 @@ module CaptainHook
 
         # Only sync database-managed fields: active, rate_limit_requests, rate_limit_period
         # Note: token is auto-generated if blank via before_validation callback
-        provider.active = definition.fetch("active", true)
-
-        # Optional rate limiting attributes
-        provider.rate_limit_requests = definition["rate_limit_requests"] if definition["rate_limit_requests"].present?
-        provider.rate_limit_period = definition["rate_limit_period"] if definition["rate_limit_period"].present?
+        
+        # For new providers, set defaults
+        # For existing providers, only update if YAML explicitly specifies a value (preserve manual DB changes)
+        if is_new
+          # Set defaults for new providers
+          provider.active = definition.fetch("active", true)
+          provider.rate_limit_requests = definition.fetch("rate_limit_requests", 100)
+          provider.rate_limit_period = definition.fetch("rate_limit_period", 60)
+        else
+          # For existing providers, only update if explicitly set in YAML (preserve manual changes)
+          provider.active = definition["active"] if definition.key?("active")
+          provider.rate_limit_requests = definition["rate_limit_requests"] if definition.key?("rate_limit_requests")
+          provider.rate_limit_period = definition["rate_limit_period"] if definition.key?("rate_limit_period")
+        end
 
         if provider.save
           if is_new

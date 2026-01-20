@@ -5,15 +5,16 @@ name: stripe
 display_name: Stripe
 description: Stripe payment webhooks
 verifier_file: stripe.rb
-active: true
 
-# Security settings
+# Database-synced fields (can be updated at runtime via admin UI or database)
+# These values are saved to the database on provider creation and can be modified without restart
+active: true                      # Default: true. Can be toggled in DB to enable/disable webhooks instantly
+rate_limit_requests: 100          # Default: 100. Number of requests allowed per period. Can be adjusted in DB
+rate_limit_period: 60             # Default: 60 seconds. Rate limit window. Can be adjusted in DB
+
+# Security settings (loaded from YAML at runtime, requires restart to change)
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 timestamp_tolerance_seconds: 300
-
-# Rate limiting (optional)
-rate_limit_requests: 100
-rate_limit_period: 60
 
 # Payload size limit (optional, in bytes)
 max_payload_size_bytes: 1048576
