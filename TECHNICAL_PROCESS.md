@@ -344,12 +344,10 @@ defaults:
 
 #### Creating the Configuration File
 
-```bash
-# Copy example file
-cp config/captain_hook.yml.example config/captain_hook.yml
+The `config/captain_hook.yml` file is automatically generated when you install CaptainHook. If you need to regenerate it, you can run:
 
-# Edit as needed
-nano config/captain_hook.yml
+```bash
+rails generate captain_hook:install
 ```
 
 **Important**: Changes to `captain_hook.yml` require an application restart to take effect.
