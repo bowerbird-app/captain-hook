@@ -55,8 +55,12 @@ CaptainHook uses a **two-layer architecture**:
 **Database (Runtime Data Only)**:
 - Unique token (auto-generated for webhook URLs)
 - Active/inactive toggle (can be changed at runtime)
-- Rate limiting overrides (optional)
+- Rate limiting settings (requests per period)
 - Creation/update timestamps
+
+**Important**: Fields like `active`, `rate_limit_requests`, and `rate_limit_period` can be specified in YAML for initial setup, but omitting them allows runtime database changes to persist across server restarts. If these fields are present in YAML, they will overwrite database values on each restart.
+
+**Best Practice**: For production environments, omit `active`, `rate_limit_requests`, and `rate_limit_period` from YAML files after initial setup. Manage these values through the admin UI or database directly to allow runtime changes without requiring application restarts.
 
 ### Data Flow
 
@@ -97,23 +101,30 @@ name: stripe
 display_name: Stripe
 description: Stripe payment webhooks
 verifier_file: stripe.rb
-active: true
 
-# Security settings
+# Security settings (requires restart to change)
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 timestamp_tolerance_seconds: 300
+max_payload_size_bytes: 1048576  # Optional, in bytes
 
-# Rate limiting (optional)
-rate_limit_requests: 100
-rate_limit_period: 60
-
-# Payload size limit (optional, in bytes)
-max_payload_size_bytes: 1048576
+# Database-synced fields (optional - see note below)
+# active: true                    # Default: true if omitted
+# rate_limit_requests: 100        # Default: 100 if omitted
+# rate_limit_period: 60           # Default: 60 seconds if omitted
 ```
 
-#### Step 3: Create Verifier File
+**Note on Database-Synced Fields**: The `active`, `rate_limit_requests`, and `rate_limit_period` fields are saved to the database on provider creation with sensible defaults (active: true, rate_limit_requests: 100, rate_limit_period: 60). 
 
-Create `captain_hook/stripe/stripe.rb`:
+- **If included in YAML**: Values are used on first creation, but will overwrite any manual database changes on every server restart
+- **If omitted from YAML**: Provider created with defaults, and any runtime changes to these values in the database will persist across restarts
+
+**Recommendation**: Omit these fields from YAML (or comment them out) to allow runtime management via admin UI without requiring application restarts.
+
+#### Step 3: Create Verifier File (Optional)
+
+**Note**: This step is only needed if you're using a provider that doesn't have a built-in verifier. CaptainHook includes verifiers for **Stripe**, **Square**, **PayPal**, and **WebhookSite**. If you're using one of these, you can skip this step and just reference the built-in verifier (e.g., `verifier_file: stripe.rb` will automatically use `CaptainHook::Verifiers::Stripe`).
+
+For custom providers, create `captain_hook/stripe/stripe.rb`:
 
 ```ruby
 # frozen_string_literal: true
