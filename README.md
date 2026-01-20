@@ -7,17 +7,20 @@ A comprehensive Rails engine for receiving and processing webhooks from external
 CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
 
 1. **Provider Setup**: Define providers in YAML files (`captain_hook/<provider>/<provider>.yml`) - automatically discovered on boot
-2. **Action Registration**: Register actions in `config/initializers/captain_hook.rb` - automatically synced to database on boot
-3. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
-4. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
-5. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
-6. **Action Execution**: Looks up actions from database, creates execution records, enqueues jobs
-7. **Background Processing**: `IncomingActionJob` executes actions with retry logic and exponential backoff
-8. **Observability**: ActiveSupport::Notifications events for monitoring
+2. **Global Configuration**: Set defaults in `config/captain_hook.yml` for max_payload_size_bytes and timestamp_tolerance_seconds
+3. **Action Registration**: Register actions in `config/initializers/captain_hook.rb` - automatically synced to database on boot
+4. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
+5. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
+6. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
+7. **Action Execution**: Looks up actions from database, creates execution records, enqueues jobs
+8. **Background Processing**: `IncomingActionJob` executes actions with retry logic and exponential backoff
+9. **Observability**: ActiveSupport::Notifications events for monitoring
 
 **Key Architecture Points:**
-- **Auto-Discovery on Boot**: Providers and actions are automatically discovered and synced to database when Rails starts
-- **Registry as Source of Truth**: Action registrations define behavior, database updates are overwritten on each boot
+- **Registry as Source of Truth**: Provider configuration (verifier, signing secret, display name) comes from YAML files
+- **Minimal Database Storage**: Database only stores runtime data: token, active status, rate limits
+- **Global Configuration**: Host app can override defaults via `config/captain_hook.yml`
+- **ENV-based Secrets**: Signing secrets reference environment variables (e.g., `ENV[STRIPE_WEBHOOK_SECRET]`)
 - **File-based Discovery**: Providers and verifiers auto-discovered from YAML files in app or gems
 - **In-Memory Registry**: Actions stored in thread-safe `ActionRegistry` then synced to database
 - **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
@@ -37,10 +40,13 @@ CaptainHook provides a complete webhook management system with automatic discove
   - Optimistic locking for safe concurrency
 
 - **Provider Management**
-  - Database-backed provider configuration
-  - Per-provider security settings
+  - Registry-based provider configuration (YAML files as source of truth)
+  - Minimal database storage for runtime data (token, rate limits, active status)
+  - Global configuration file for application-wide defaults
+  - Per-provider security settings via YAML
   - Webhook URL generation for sharing with providers
   - Active/inactive status control
+  - ENV-based signing secret management
   - Built-in verifiers for Stripe, Square, PayPal, WebhookSite
 
 - **Admin Interface**
@@ -105,29 +111,46 @@ $ rails db:migrate
 
 ## Quick Start
 
-### 1. Encryption Setup (Automatic!)
+### 1. Global Configuration (Optional)
 
-CaptainHook encrypts webhook signing secrets in the database using AES-256-GCM encryption.
+Create `config/captain_hook.yml` to set application-wide defaults:
 
-**For Development**: Encryption keys are automatically generated on first server start and saved to `config/local_encryption_keys.yml` (gitignored). No setup required!
+```yaml
+# config/captain_hook.yml
+defaults:
+  max_payload_size_bytes: 1048576      # 1MB default
+  timestamp_tolerance_seconds: 300     # 5 minutes default
 
-**For Production**: Set environment variables:
-
-```bash
-ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=your_32_char_key
-ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=your_32_char_key
-ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=your_32_char_salt
-SECRET_KEY_BASE=your_128_char_secret
+# Per-provider overrides (optional)
+providers:
+  stripe:
+    max_payload_size_bytes: 2097152    # 2MB for Stripe
+  square:
+    timestamp_tolerance_seconds: 600    # 10 minutes for Square
 ```
 
-Generate production keys with:
+**Note**: Individual provider YAML files can override these defaults. The priority is:
+1. Provider YAML file value (highest priority)
+2. Global config per-provider override
+3. Global config default
+4. Built-in default (lowest priority)
+
+### 2. Environment Variables for Signing Secrets
+
+CaptainHook now stores signing secrets as environment variable references (not in the database).
+
+Set your provider webhook secrets as environment variables:
+
 ```bash
-$ ruby generate_keys.rb
+# .env or production environment
+STRIPE_WEBHOOK_SECRET=whsec_xxxxx
+SQUARE_WEBHOOK_SECRET=your_square_secret
+PAYPAL_WEBHOOK_SECRET=your_paypal_secret
 ```
 
-**Important**: Environment variables take precedence over the local file. Never commit `local_encryption_keys.yml` to version control.
+**Important**: Provider YAML files reference these via `ENV[VARIABLE_NAME]` syntax.
 
-### 2. Configure Providers
+### 3. Configure Providers
 
 CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/<provider>/` directory.
 
@@ -162,15 +185,21 @@ active: true
 
 # Security settings
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
-timestamp_tolerance_seconds: 300
 
-# Rate limiting (optional)
+# Rate limiting (optional - can be set per-provider or in database)
 rate_limit_requests: 100
 rate_limit_period: 60
 
-# Payload size limit (optional, in bytes)
-max_payload_size_bytes: 1048576
+# Payload size and timestamp tolerance now come from global config
+# But can be overridden here if needed for this specific provider
+# timestamp_tolerance_seconds: 600
+# max_payload_size_bytes: 2097152
 ```
+
+**Note on configuration priority:**
+- `signing_secret`: Must be in provider YAML as `ENV[VARIABLE_NAME]` reference
+- `rate_limit_requests/rate_limit_period`: Can be in YAML or set via admin UI (stored in database)
+- `timestamp_tolerance_seconds/max_payload_size_bytes`: Come from global config by default, can override in provider YAML
 
 **Create the verifier file** (if needed - Stripe has a built-in verifier) (`captain_hook/stripe/stripe.rb`):
 
