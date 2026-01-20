@@ -19,6 +19,12 @@ module CaptainHook
       # GET /captain_hook/admin/providers/:id
       def show
         @recent_events = @provider.incoming_events.recent.limit(10)
+        
+        # Load registry config for this provider
+        discovery = CaptainHook::Services::ProviderDiscovery.new
+        provider_definitions = discovery.call
+        config_data = provider_definitions.find { |p| p["name"] == @provider.name }
+        @registry_config = config_data ? CaptainHook::ProviderConfig.new(config_data) : nil
       end
 
       # GET /captain_hook/admin/providers/new

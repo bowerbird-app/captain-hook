@@ -10,8 +10,8 @@ defaults:
 # Per-provider overrides (optional)
 # Uncomment and customize as needed
 providers:
-  # stripe:
-  #   max_payload_size_bytes: 2097152   # 2MB for Stripe
+  stripe:
+    max_payload_size_bytes: 2097152   # 2MB for Stripe
   #   timestamp_tolerance_seconds: 600   # 10 minutes for Stripe
   # 
   # square:

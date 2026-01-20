@@ -47,6 +47,29 @@ module CaptainHook
         end
       end
 
+      # PRIORITY ORDER:
+      # 1. captain_hook.yml providers/<name> (highest)
+      # 2. stripe.yml value (provider YAML)
+      # 3. captain_hook.yml defaults (only if stripe.yml is nil)
+      if defined?(CaptainHook::Services::GlobalConfigLoader) && kwargs[:name].present?
+        provider_name = kwargs[:name]
+        
+        # Store provider YAML values (from stripe.yml)
+        provider_yaml_timestamp = kwargs[:timestamp_tolerance_seconds]
+        provider_yaml_max_size = kwargs[:max_payload_size_bytes]
+        
+        # Check captain_hook.yml for provider-specific overrides ONLY
+        config_instance = CaptainHook::Services::GlobalConfigLoader.new
+        global_config = config_instance.call
+        
+        provider_override_timestamp = global_config.dig("providers", provider_name, "timestamp_tolerance_seconds")
+        provider_override_max_size = global_config.dig("providers", provider_name, "max_payload_size_bytes")
+        
+        # Priority: provider override > stripe.yml > global defaults
+        kwargs[:timestamp_tolerance_seconds] = provider_override_timestamp || provider_yaml_timestamp || global_config.dig("defaults", "timestamp_tolerance_seconds")
+        kwargs[:max_payload_size_bytes] = provider_override_max_size || provider_yaml_max_size || global_config.dig("defaults", "max_payload_size_bytes")
+      end
+
       super(**kwargs)
 
       # Set defaults
@@ -54,18 +77,9 @@ module CaptainHook
       self.active = true if active.nil?
       self.verifier_class ||= "CaptainHook::Verifiers::Base"
 
-      # Load global config defaults for settings not provided
-      # These come from config/captain_hook.yml in the host application
-      if defined?(CaptainHook::Services::GlobalConfigLoader)
-        self.timestamp_tolerance_seconds ||=
-          CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :timestamp_tolerance_seconds) || 300
-        self.max_payload_size_bytes ||=
-          CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :max_payload_size_bytes) || 1_048_576
-      else
-        # Fallback to defaults if GlobalConfigLoader not available
-        self.timestamp_tolerance_seconds ||= 300 # 5 minutes default
-        self.max_payload_size_bytes ||= 1_048_576 # 1MB default
-      end
+      # Apply fallback defaults if still not set (after global config override)
+      self.timestamp_tolerance_seconds ||= 300 # 5 minutes default
+      self.max_payload_size_bytes ||= 1_048_576 # 1MB default
 
       # Rate limiting defaults (not in global config, provider-specific)
       self.rate_limit_requests ||= 100 # 100 requests

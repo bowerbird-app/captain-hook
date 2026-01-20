@@ -6,6 +6,7 @@
 name: stripe
 display_name: Stripe
 description: Stripe payment and subscription webhooks
+verifier_class: CaptainHook::Verifiers::Stripe
 verifier_file: stripe.rb
 active: true
 

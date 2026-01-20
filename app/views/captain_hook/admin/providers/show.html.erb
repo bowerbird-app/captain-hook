@@ -9,7 +9,6 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><%= @provider.display_name || @provider.name.titleize %></h1>
     <div>
-      <%= link_to "Edit", edit_admin_provider_path(@provider), class: "btn btn-secondary" %>
       <%= link_to "View Actions", admin_provider_actions_path(@provider), class: "btn btn-info" %>
     </div>
   </div>
@@ -51,18 +50,59 @@
         <dd class="col-sm-9"><code><%= @provider.name %></code></dd>
 
         <dt class="col-sm-3">Display Name</dt>
-        <dd class="col-sm-9"><%= @provider.display_name || "—" %></dd>
+        <dd class="col-sm-9">
+          <% if @provider.display_name.present? %>
+            <%= @provider.display_name %>
+            <% if @provider.display_name != @registry_config&.display_name %>
+              <span class="badge bg-info ms-2">Overridden</span>
+            <% end %>
+          <% elsif @registry_config&.display_name.present? %>
+            <%= @registry_config.display_name %>
+            <small class="text-muted">(from registry)</small>
+          <% else %>
+            —
+          <% end %>
+        </dd>
 
         <dt class="col-sm-3">Description</dt>
-        <dd class="col-sm-9"><%= @provider.description || "—" %></dd>
+        <dd class="col-sm-9">
+          <% if @provider.description.present? %>
+            <%= @provider.description %>
+            <% if @provider.description != @registry_config&.description %>
+              <span class="badge bg-info ms-2">Overridden</span>
+            <% end %>
+          <% elsif @registry_config&.description.present? %>
+            <%= @registry_config.description %>
+            <small class="text-muted">(from registry)</small>
+          <% else %>
+            —
+          <% end %>
+        </dd>
 
-        <dt class="col-sm-3">Verifier Class</dt>
-        <dd class="col-sm-9"><code><%= @provider.verifier_class %></code></dd>
+        <dt class="col-sm-3">Verifier File</dt>
+        <dd class="col-sm-9">
+          <% if @registry_config&.verifier_file.present? %>
+            <code><%= @registry_config.verifier_file %></code>
+          <% else %>
+            —
+          <% end %>
+        </dd>
 
         <dt class="col-sm-3">Signing Secret</dt>
         <dd class="col-sm-9">
-          <% if @provider.signing_secret.present? %>
+          <% 
+            # Check DB first, then registry
+            db_secret = @provider.signing_secret
+            registry_secret = @registry_config&.signing_secret
+            resolved_secret = db_secret.presence || registry_secret
+          %>
+          <% if resolved_secret.present? %>
             <span class="badge bg-success">Configured</span>
+            <% if db_secret.present? && db_secret != @registry_config&.raw_signing_secret %>
+              <span class="badge bg-info ms-2">Overridden in DB</span>
+            <% elsif registry_secret.present? %>
+              <small class="text-muted">(from registry)</small>
+            <% end %>
           <% else %>
             <span class="badge bg-secondary">Not Set</span>
             <div class="text-muted small mt-1">
@@ -70,9 +110,6 @@
             </div>
           <% end %>
         </dd>
-
-        <dt class="col-sm-3">Token</dt>
-        <dd class="col-sm-9"><code><%= @provider.token.truncate(20) %></code></dd>
       </dl>
     </div>
   </div>
@@ -86,9 +123,19 @@
       <dl class="row">
         <dt class="col-sm-4">Timestamp Validation</dt>
         <dd class="col-sm-8">
-          <% if @provider.timestamp_validation_enabled? %>
+          <% 
+            # Use DB value if present, otherwise registry default
+            timestamp_tolerance = @provider.timestamp_tolerance_seconds || @registry_config&.timestamp_tolerance_seconds || 300
+            is_overridden = @provider.timestamp_tolerance_seconds.present? && @provider.timestamp_tolerance_seconds != @registry_config&.timestamp_tolerance_seconds
+          %>
+          <% if timestamp_tolerance && timestamp_tolerance > 0 %>
             <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(±<%= @provider.timestamp_tolerance_seconds %>s)</small>
+            <small class="text-muted">(±<%= timestamp_tolerance %>s)</small>
+            <% if is_overridden %>
+              <span class="badge bg-info ms-2">Overridden</span>
+            <% elsif !@provider.timestamp_tolerance_seconds.present? %>
+              <small class="text-muted">(default)</small>
+            <% end %>
           <% else %>
             <span class="badge bg-secondary">Disabled</span>
           <% end %>
@@ -96,9 +143,19 @@
 
         <dt class="col-sm-4">Payload Size Limit</dt>
         <dd class="col-sm-8">
-          <% if @provider.payload_size_limit_enabled? %>
+          <% 
+            # Use DB value if present, otherwise registry default
+            payload_size = @provider.max_payload_size_bytes || @registry_config&.max_payload_size_bytes || 1_048_576
+            is_overridden = @provider.max_payload_size_bytes.present? && @provider.max_payload_size_bytes != @registry_config&.max_payload_size_bytes
+          %>
+          <% if payload_size && payload_size > 0 %>
             <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(<%= number_to_human_size(@provider.max_payload_size_bytes) %>)</small>
+            <small class="text-muted">(<%= number_to_human_size(payload_size) %>)</small>
+            <% if is_overridden %>
+              <span class="badge bg-info ms-2">Overridden</span>
+            <% elsif !@provider.max_payload_size_bytes.present? %>
+              <small class="text-muted">(default)</small>
+            <% end %>
           <% else %>
             <span class="badge bg-secondary">Disabled</span>
           <% end %>
@@ -106,9 +163,21 @@
 
         <dt class="col-sm-4">Rate Limiting</dt>
         <dd class="col-sm-8">
-          <% if @provider.rate_limiting_enabled? %>
+          <% 
+            # Use DB values if present, otherwise registry defaults
+            rate_limit_requests = @provider.rate_limit_requests || @registry_config&.rate_limit_requests || 100
+            rate_limit_period = @provider.rate_limit_period || @registry_config&.rate_limit_period || 60
+            is_overridden = (@provider.rate_limit_requests.present? && @provider.rate_limit_requests != @registry_config&.rate_limit_requests) ||
+                           (@provider.rate_limit_period.present? && @provider.rate_limit_period != @registry_config&.rate_limit_period)
+          %>
+          <% if rate_limit_requests && rate_limit_requests > 0 %>
             <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(<%= @provider.rate_limit_requests %> req / <%= @provider.rate_limit_period %>s)</small>
+            <small class="text-muted">(<%= rate_limit_requests %> req / <%= rate_limit_period %>s)</small>
+            <% if is_overridden %>
+              <span class="badge bg-info ms-2">Overridden</span>
+            <% elsif !@provider.rate_limit_requests.present? && !@provider.rate_limit_period.present? %>
+              <small class="text-muted">(default)</small>
+            <% end %>
           <% else %>
             <span class="badge bg-secondary">Disabled</span>
           <% end %>
