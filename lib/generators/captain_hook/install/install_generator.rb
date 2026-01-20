@@ -15,6 +15,10 @@ module CaptainHook
         template "captain_hook_initializer.rb", "config/initializers/captain_hook.rb"
       end
 
+      def copy_global_config
+        template "captain_hook.yml", "config/captain_hook.yml"
+      end
+
       def show_provider_instructions
         say "\n#{'=' * 80}", :green
         say "✓ CaptainHook installed successfully!", :green
