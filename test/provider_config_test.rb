@@ -10,7 +10,6 @@ module CaptainHook
         "display_name" => "Stripe",
         "verifier_class" => "CaptainHook::Verifiers::Stripe",
         "signing_secret" => "whsec_test123",
-        "timestamp_tolerance_seconds" => 300,
         "rate_limit_requests" => 100,
         "rate_limit_period" => 60,
         "active" => true
@@ -36,10 +35,6 @@ module CaptainHook
       assert_equal "whsec_test123", @provider_config.signing_secret
     end
 
-    def test_reads_timestamp_tolerance_seconds
-      assert_equal 300, @provider_config.timestamp_tolerance_seconds
-    end
-
     def test_reads_rate_limit_requests
       assert_equal 100, @provider_config.rate_limit_requests
     end
@@ -59,14 +54,26 @@ module CaptainHook
       assert_equal true, config.active
     end
 
-    def test_defaults_timestamp_tolerance_to_300
+    def test_loads_timestamp_tolerance_from_global_config
+      # GlobalConfigLoader should provide default of 300
       config = ProviderConfig.new("name" => "test")
       assert_equal 300, config.timestamp_tolerance_seconds
+    end
+
+    def test_loads_max_payload_size_from_global_config
+      # GlobalConfigLoader should provide default of 1MB
+      config = ProviderConfig.new("name" => "test")
+      assert_equal 1_048_576, config.max_payload_size_bytes
     end
 
     def test_allows_custom_timestamp_tolerance
       config = ProviderConfig.new("name" => "test", "timestamp_tolerance_seconds" => 600)
       assert_equal 600, config.timestamp_tolerance_seconds
+    end
+
+    def test_allows_custom_max_payload_size
+      config = ProviderConfig.new("name" => "test", "max_payload_size_bytes" => 2_097_152)
+      assert_equal 2_097_152, config.max_payload_size_bytes
     end
 
     def test_allows_inactive_provider

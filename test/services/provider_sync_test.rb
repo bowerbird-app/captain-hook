@@ -9,14 +9,17 @@ module CaptainHook
         # Clear any existing providers
         CaptainHook::Provider.delete_all
 
+        # Provider definitions from registry (YAML files)
+        # Only DB-managed fields should be synced: active, rate_limit_requests, rate_limit_period
         @provider_definitions = [
           {
             "name" => "test_provider",
             "display_name" => "Test Provider",
             "description" => "A test provider",
             "verifier_class" => "CaptainHook::Verifiers::Base",
+            "verifier_file" => "test_provider.rb",
             "active" => true,
-            "signing_secret" => "test_secret",
+            "signing_secret" => "ENV[TEST_SECRET]",
             "timestamp_tolerance_seconds" => 300,
             "rate_limit_requests" => 100,
             "rate_limit_period" => 60,
@@ -36,22 +39,28 @@ module CaptainHook
 
         provider = CaptainHook::Provider.find_by(name: "test_provider")
         assert_not_nil provider
-        assert_equal "Test Provider", provider.display_name
-        assert_equal "A test provider", provider.description
-        assert_equal "CaptainHook::Verifiers::Base", provider.verifier_class
+        # Only DB fields are synced
         assert provider.active?
-        assert_equal 300, provider.timestamp_tolerance_seconds
         assert_equal 100, provider.rate_limit_requests
         assert_equal 60, provider.rate_limit_period
+        # Token is auto-generated
+        assert_not_nil provider.token
+        
+        # These fields are NOT in database anymore
+        assert_nil provider.attributes["display_name"]
+        assert_nil provider.attributes["description"]
+        assert_nil provider.attributes["verifier_class"]
+        assert_nil provider.attributes["signing_secret"]
+        assert_nil provider.attributes["timestamp_tolerance_seconds"]
       end
 
       test "updates existing provider from definition" do
         # Create initial provider
         provider = CaptainHook::Provider.create!(
           name: "test_provider",
-          display_name: "Old Name",
-          verifier_class: "CaptainHook::Verifiers::Base",
-          signing_secret: "old_secret"
+          active: false,
+          rate_limit_requests: 50,
+          rate_limit_period: 30
         )
 
         sync = ProviderSync.new(@provider_definitions)
@@ -62,59 +71,31 @@ module CaptainHook
         assert_equal 0, results[:errors].size
 
         provider.reload
-        assert_equal "Test Provider", provider.display_name
-        assert_equal "A test provider", provider.description
+        # DB fields should be updated
+        assert provider.active?
+        assert_equal 100, provider.rate_limit_requests
+        assert_equal 60, provider.rate_limit_period
       end
 
-      test "resolves ENV variable references in signing_secret" do
-        # Set an environment variable
-        ENV["TEST_WEBHOOK_SECRET"] = "secret_from_env"
-
-        definitions = [
-          {
-            "name" => "env_test_provider",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "ENV[TEST_WEBHOOK_SECRET]",
-            "source" => "test"
-          }
-        ]
-
-        sync = ProviderSync.new(definitions)
+      test "does not sync registry-only fields to database" do
+        sync = ProviderSync.new(@provider_definitions)
         results = sync.call
 
-        assert_equal 1, results[:created].size
-        provider = CaptainHook::Provider.find_by(name: "env_test_provider")
-        assert_not_nil provider
-        assert_equal "secret_from_env", provider.signing_secret
-      ensure
-        ENV.delete("TEST_WEBHOOK_SECRET")
-      end
-
-      test "handles missing ENV variable gracefully" do
-        definitions = [
-          {
-            "name" => "missing_env_provider",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "ENV[NONEXISTENT_VARIABLE]",
-            "source" => "test"
-          }
-        ]
-
-        sync = ProviderSync.new(definitions)
-        results = sync.call
-
-        assert_equal 1, results[:created].size
-        provider = CaptainHook::Provider.find_by(name: "missing_env_provider")
-        assert_not_nil provider
-        # Should be nil when ENV variable doesn't exist
-        assert_nil provider.signing_secret
+        provider = CaptainHook::Provider.find_by(name: "test_provider")
+        
+        # Verify these columns don't exist in database
+        refute provider.respond_to?(:display_name)
+        refute provider.respond_to?(:description)
+        refute provider.respond_to?(:verifier_class)
+        refute provider.respond_to?(:signing_secret)
+        refute provider.respond_to?(:timestamp_tolerance_seconds)
+        refute provider.respond_to?(:max_payload_size_bytes)
       end
 
       test "handles invalid provider definition" do
         invalid_definitions = [
           {
             "name" => "",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
             "source" => "test"
           }
         ]
@@ -131,14 +112,14 @@ module CaptainHook
         multi_definitions = [
           {
             "name" => "provider_one",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "secret1",
+            "active" => true,
             "source" => "test"
           },
           {
             "name" => "provider_two",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "secret2",
+            "active" => false,
+            "rate_limit_requests" => 200,
+            "rate_limit_period" => 120,
             "source" => "test"
           }
         ]
@@ -149,13 +130,16 @@ module CaptainHook
         assert_equal 2, results[:created].size
         assert CaptainHook::Provider.exists?(name: "provider_one")
         assert CaptainHook::Provider.exists?(name: "provider_two")
+        
+        provider_two = CaptainHook::Provider.find_by(name: "provider_two")
+        assert_equal 200, provider_two.rate_limit_requests
+        assert_equal 120, provider_two.rate_limit_period
       end
 
       test "sets default active to true when not specified" do
         definitions = [
           {
             "name" => "default_active_provider",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
             "source" => "test"
           }
         ]
@@ -169,42 +153,27 @@ module CaptainHook
 
       test "valid_provider_definition checks for name presence" do
         sync = ProviderSync.new([])
-        result = sync.send(:valid_provider_definition?, { "verifier_class" => "Test" })
+        result = sync.send(:valid_provider_definition?, { "source" => "test" })
         refute result, "Should be invalid without name"
       end
 
-      test "valid_provider_definition checks for verifier_class presence" do
-        sync = ProviderSync.new([])
-        result = sync.send(:valid_provider_definition?, { "name" => "test" })
-        refute result, "Should be invalid without verifier_class"
-      end
-
-      test "resolve_signing_secret returns nil for blank value" do
-        sync = ProviderSync.new([])
-        assert_nil sync.send(:resolve_signing_secret, nil)
-        assert_nil sync.send(:resolve_signing_secret, "")
-      end
-
-      test "resolve_signing_secret returns direct value when not ENV reference" do
-        sync = ProviderSync.new([])
-        assert_equal "direct_secret", sync.send(:resolve_signing_secret, "direct_secret")
-      end
-
-      test "only updates signing_secret when value changes" do
-        # Create provider with initial secret
+      test "only updates database-managed fields" do
+        # Create provider with initial values
         provider = CaptainHook::Provider.create!(
           name: "test_provider",
-          verifier_class: "CaptainHook::Verifiers::Base",
-          signing_secret: "original_secret"
+          active: false
         )
 
-        # Try to sync with same secret (via ENV)
-        ENV["SAME_SECRET"] = "original_secret"
+        # Try to sync with updated values
         definitions = [
           {
             "name" => "test_provider",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "ENV[SAME_SECRET]",
+            "active" => true,
+            "rate_limit_requests" => 500,
+            "rate_limit_period" => 300,
+            "display_name" => "Should Not Sync",
+            "description" => "Should Not Sync",
+            "signing_secret" => "Should Not Sync",
             "source" => "test"
           }
         ]
@@ -213,39 +182,15 @@ module CaptainHook
         sync.call
 
         provider.reload
-        # Secret should remain the same
-        assert_equal "original_secret", provider.signing_secret
-      ensure
-        ENV.delete("SAME_SECRET")
-      end
-
-      test "updates signing_secret when value is different" do
-        # Create provider with initial secret
-        provider = CaptainHook::Provider.create!(
-          name: "test_provider",
-          verifier_class: "CaptainHook::Verifiers::Base",
-          signing_secret: "old_secret"
-        )
-
-        # Sync with different secret
-        ENV["NEW_SECRET"] = "new_secret"
-        definitions = [
-          {
-            "name" => "test_provider",
-            "verifier_class" => "CaptainHook::Verifiers::Base",
-            "signing_secret" => "ENV[NEW_SECRET]",
-            "source" => "test"
-          }
-        ]
-
-        sync = ProviderSync.new(definitions)
-        sync.call
-
-        provider.reload
-        # Secret should be updated
-        assert_equal "new_secret", provider.signing_secret
-      ensure
-        ENV.delete("NEW_SECRET")
+        # These should update
+        assert provider.active?
+        assert_equal 500, provider.rate_limit_requests
+        assert_equal 300, provider.rate_limit_period
+        
+        # These columns don't exist in database anymore
+        refute provider.respond_to?(:display_name)
+        refute provider.respond_to?(:description)
+        refute provider.respond_to?(:signing_secret)
       end
     end
   end

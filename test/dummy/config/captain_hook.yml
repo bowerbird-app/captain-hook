@@ -1,0 +1,18 @@
+# Global CaptainHook Configuration
+# This file provides global defaults and per-provider overrides
+# For settings like max_payload_size_bytes and timestamp_tolerance_seconds
+
+# Global defaults applied to all providers unless overridden
+defaults:
+  max_payload_size_bytes: 1048576      # 1MB default
+  timestamp_tolerance_seconds: 300     # 5 minutes default
+
+# Per-provider overrides (optional)
+# Uncomment and customize as needed
+providers:
+  # stripe:
+  #   max_payload_size_bytes: 2097152   # 2MB for Stripe
+  #   timestamp_tolerance_seconds: 600   # 10 minutes for Stripe
+  # 
+  # square:
+  #   max_payload_size_bytes: 524288    # 512KB for Square

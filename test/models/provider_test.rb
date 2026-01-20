@@ -5,13 +5,48 @@ require "test_helper"
 module CaptainHook
   class ProviderModelTest < ActiveSupport::TestCase
     setup do
+      # Database only manages: name, token, active, rate_limit_requests, rate_limit_period
       @provider = CaptainHook::Provider.create!(
         name: "test_provider",
-        display_name: "Test Provider",
-        verifier_class: "CaptainHook::Verifiers::Base",
-        signing_secret: "test_secret",
         active: true
       )
+      
+      # Create a test provider YAML file for registry integration
+      create_test_provider_yaml("test_provider")
+    end
+    
+    teardown do
+      # Clean up test YAML file
+      cleanup_test_provider_yaml("test_provider")
+    end
+    
+    private
+    
+    def create_test_provider_yaml(name)
+      provider_dir = Rails.root.join("captain_hook", name)
+      FileUtils.mkdir_p(provider_dir)
+      
+      File.write(provider_dir.join("#{name}.yml"), <<~YAML)
+        name: #{name}
+        display_name: Test Provider
+        description: A test provider
+        verifier_file: #{name}.rb
+        signing_secret: ENV[TEST_PROVIDER_WEBHOOK_SECRET]
+        active: true
+      YAML
+      
+      # Create minimal verifier file
+      File.write(provider_dir.join("#{name}.rb"), <<~RUBY)
+        class TestProviderVerifier
+          include CaptainHook::VerifierHelpers
+          def verify(request); true; end
+        end
+      RUBY
+    end
+    
+    def cleanup_test_provider_yaml(name)
+      provider_dir = Rails.root.join("captain_hook", name)
+      FileUtils.rm_rf(provider_dir) if provider_dir.exist?
     end
 
     # === Validations ===
@@ -21,65 +56,37 @@ module CaptainHook
     end
 
     test "requires name" do
-      provider = CaptainHook::Provider.new(verifier_class: "Test")
+      provider = CaptainHook::Provider.new
       refute provider.valid?
       assert_includes provider.errors[:name], "can't be blank"
     end
 
     test "requires unique name" do
-      duplicate = CaptainHook::Provider.new(name: @provider.name, verifier_class: "Test")
+      duplicate = CaptainHook::Provider.new(name: @provider.name)
       refute duplicate.valid?
       assert_includes duplicate.errors[:name], "has already been taken"
-    end
-
-    test "requires verifier_class" do
-      provider = CaptainHook::Provider.new(name: "unique_test", verifier_class: nil)
-      assert_not provider.valid?
-      assert_includes provider.errors[:verifier_class], "can't be blank"
     end
 
     test "name must be lowercase alphanumeric with underscores" do
       # The normalize_name callback converts any invalid chars to underscores
       # So "Test-Provider!" becomes "test_provider_" which is valid
       # This test verifies that normalization happens
-      provider = CaptainHook::Provider.new(name: "Test-Provider!", verifier_class: "Test")
+      provider = CaptainHook::Provider.new(name: "Test-Provider!")
       assert provider.save
       assert_equal "test_provider_", provider.name
     end
 
     test "normalizes name before validation" do
-      provider = CaptainHook::Provider.create!(name: "Test-Provider-123", verifier_class: "CaptainHook::Verifiers::Base")
+      provider = CaptainHook::Provider.create!(name: "Test-Provider-123")
       assert_equal "test_provider_123", provider.name
     end
 
     test "token must be unique" do
-      provider1 = CaptainHook::Provider.create!(name: "provider1", verifier_class: "Test")
-      provider2 = CaptainHook::Provider.new(name: "provider2", verifier_class: "Test", token: provider1.token)
+      provider1 = CaptainHook::Provider.create!(name: "provider1")
+      provider2 = CaptainHook::Provider.new(name: "provider2", token: provider1.token)
 
       refute provider2.valid?
       assert_includes provider2.errors[:token], "has already been taken"
-    end
-
-    test "validates timestamp_tolerance_seconds is positive integer" do
-      @provider.timestamp_tolerance_seconds = -1
-      refute @provider.valid?
-
-      @provider.timestamp_tolerance_seconds = 0
-      refute @provider.valid?
-
-      @provider.timestamp_tolerance_seconds = 300
-      assert @provider.valid?
-    end
-
-    test "validates max_payload_size_bytes is positive integer" do
-      @provider.max_payload_size_bytes = -1
-      refute @provider.valid?
-
-      @provider.max_payload_size_bytes = 0
-      refute @provider.valid?
-
-      @provider.max_payload_size_bytes = 1024
-      assert @provider.valid?
     end
 
     test "validates rate_limit_requests is positive integer" do
@@ -107,7 +114,7 @@ module CaptainHook
     # === Callbacks ===
 
     test "generates token before validation if blank" do
-      provider = CaptainHook::Provider.new(name: "new_provider", verifier_class: "Test")
+      provider = CaptainHook::Provider.new(name: "new_provider")
       assert_nil provider.token
 
       provider.valid?
@@ -126,7 +133,7 @@ module CaptainHook
     # === Scopes ===
 
     test "active scope returns only active providers" do
-      inactive = CaptainHook::Provider.create!(name: "inactive", verifier_class: "Test", active: false)
+      inactive = CaptainHook::Provider.create!(name: "inactive", active: false)
 
       active_providers = CaptainHook::Provider.active
       assert_includes active_providers, @provider
@@ -134,7 +141,7 @@ module CaptainHook
     end
 
     test "inactive scope returns only inactive providers" do
-      inactive = CaptainHook::Provider.create!(name: "inactive", verifier_class: "Test", active: false)
+      inactive = CaptainHook::Provider.create!(name: "inactive", active: false)
 
       inactive_providers = CaptainHook::Provider.inactive
       assert_includes inactive_providers, inactive
@@ -142,8 +149,8 @@ module CaptainHook
     end
 
     test "by_name scope orders by name" do
-      CaptainHook::Provider.create!(name: "z_provider", verifier_class: "Test")
-      CaptainHook::Provider.create!(name: "a_provider", verifier_class: "Test")
+      CaptainHook::Provider.create!(name: "z_provider")
+      CaptainHook::Provider.create!(name: "a_provider")
 
       ordered = CaptainHook::Provider.by_name
       assert_equal "a_provider", ordered.first.name
@@ -198,49 +205,9 @@ module CaptainHook
       refute @provider.rate_limiting_enabled?
     end
 
-    test "payload_size_limit_enabled? returns true when configured" do
-      @provider.max_payload_size_bytes = 1024
-      assert @provider.payload_size_limit_enabled?
-    end
-
-    test "payload_size_limit_enabled? returns false when not configured" do
-      @provider.max_payload_size_bytes = nil
-      refute @provider.payload_size_limit_enabled?
-    end
-
-    test "timestamp_validation_enabled? returns true when configured" do
-      @provider.timestamp_tolerance_seconds = 300
-      assert @provider.timestamp_validation_enabled?
-    end
-
-    test "timestamp_validation_enabled? returns false when not configured" do
-      @provider.timestamp_tolerance_seconds = nil
-      refute @provider.timestamp_validation_enabled?
-    end
-
-    test "signing_secret returns database value" do
-      assert_equal "test_secret", @provider.signing_secret
-    end
-
-    test "signing_secret reads from environment variable" do
-      @provider.name = "stripe"
-      @provider.save!
-
-      ENV["STRIPE_WEBHOOK_SECRET"] = "env_secret"
-
-      assert_equal "env_secret", @provider.reload.signing_secret
-    ensure
-      ENV.delete("STRIPE_WEBHOOK_SECRET")
-    end
-
-    test "signing_secret falls back to database when env var not set" do
-      @provider.name = "square"
-      @provider.save!
-
-      ENV.delete("SQUARE_WEBHOOK_SECRET")
-
-      assert_equal "test_secret", @provider.reload.signing_secret
-    end
+    # Database no longer stores these fields - they come from registry/global config
+    # Removed: payload_size_limit_enabled?, timestamp_validation_enabled? tests
+    # Removed: signing_secret tests (now in registry YAML via ENV vars)
 
     test "activate! sets active to true" do
       @provider.update!(active: false)
@@ -254,17 +221,8 @@ module CaptainHook
       refute @provider.reload.active?
     end
 
-    test "verifier returns verifier instance" do
-      verifier = @provider.verifier
-      assert_kind_of CaptainHook::Verifiers::Base, verifier
-    end
-
-    test "verifier handles invalid verifier_class gracefully" do
-      @provider.verifier_class = "NonExistent::Verifier"
-
-      verifier = @provider.verifier
-      assert_kind_of CaptainHook::Verifiers::Base, verifier
-    end
+    # Verifier tests removed - verifier_class is now in registry, not database
+    # Tests for verifier() method should be in ProviderConfig tests
 
     # === Associations ===
 
@@ -306,67 +264,10 @@ module CaptainHook
       end
     end
 
-    # === Encryption ===
-
-    test "signing_secret is encrypted" do
-      @provider.signing_secret = "super_secret"
-      @provider.save!
-
-      # Check raw database value is not the plain text
-      raw_value = ActiveRecord::Base.connection.execute(
-        "SELECT signing_secret FROM captain_hook_providers WHERE id = '#{@provider.id}'"
-      ).first["signing_secret"]
-
-      refute_equal "super_secret", raw_value
-      assert_equal "super_secret", @provider.reload.signing_secret
-    end
-
-    test "verifier returns initialized verifier instance" do
-      verifier = @provider.verifier
-
-      assert_instance_of CaptainHook::Verifiers::Base, verifier
-    end
-
-    test "verifier falls back to Base verifier when verifier_class invalid" do
-      @provider.verifier_class = "NonExistent::Verifier"
-      @provider.save!
-
-      verifier = @provider.verifier
-
-      assert_instance_of CaptainHook::Verifiers::Base, verifier
-    end
-
-    test "signing_secret uses ENV override when present" do
-      ENV["TEST_PROVIDER_WEBHOOK_SECRET"] = "env_secret"
-
-      secret = @provider.signing_secret
-
-      assert_equal "env_secret", secret
-    ensure
-      ENV.delete("TEST_PROVIDER_WEBHOOK_SECRET")
-    end
-
-    test "signing_secret returns database value when no ENV override" do
-      ENV.delete("TEST_PROVIDER_WEBHOOK_SECRET")
-
-      secret = @provider.signing_secret
-
-      assert_equal "test_secret", secret
-    end
-
-    test "signing_secret returns database value when name is blank" do
-      @provider.name = nil
-
-      secret = @provider.signing_secret
-
-      assert_equal "test_secret", secret
-    end
+    # === Token Generation ===
 
     test "generate_token creates unique token" do
-      provider = CaptainHook::Provider.new(
-        name: "token_test",
-        verifier_class: "TestVerifier"
-      )
+      provider = CaptainHook::Provider.new(name: "token_test")
       provider.save!
 
       assert_not_nil provider.token
@@ -374,33 +275,10 @@ module CaptainHook
     end
 
     test "normalize_name is called before validation" do
-      provider = CaptainHook::Provider.new(
-        name: "MixedCase_Name",
-        verifier_class: "TestVerifier"
-      )
+      provider = CaptainHook::Provider.new(name: "MixedCase_Name")
       provider.valid?
 
       assert_equal "mixedcase_name", provider.name
-    end
-
-    test "timestamp_validation_enabled checks for presence" do
-      provider = CaptainHook::Provider.new(
-        name: "test",
-        verifier_class: "TestVerifier",
-        timestamp_tolerance_seconds: 300
-      )
-
-      assert provider.timestamp_validation_enabled?
-    end
-
-    test "timestamp_validation_enabled returns false when nil" do
-      provider = CaptainHook::Provider.new(
-        name: "test",
-        verifier_class: "TestVerifier",
-        timestamp_tolerance_seconds: nil
-      )
-
-      refute provider.timestamp_validation_enabled?
     end
   end
 end
