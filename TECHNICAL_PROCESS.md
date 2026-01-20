@@ -527,7 +527,11 @@ Providers Ready to Receive Webhooks
 ### Discovery Service Usage
 
 ```ruby
-# Manual discovery (in console or code)
+# Refresh registry at runtime (recommended)
+# This scans, updates registry, and syncs to database
+CaptainHook.scan_providers
+
+# Low-level discovery (returns data only, does NOT update registry)
 discovery = CaptainHook::Services::ProviderDiscovery.new
 provider_definitions = discovery.call
 
@@ -551,11 +555,13 @@ provider_definitions = discovery.call
 #   # ... more providers
 # ]
 
-# Create ProviderConfig structs
+# Create ProviderConfig structs (for inspection only)
 configs = provider_definitions.map do |definition|
   CaptainHook::ProviderConfig.new(definition)
 end
 ```
+
+**Important**: Calling `ProviderDiscovery.new.call` directly only returns discovered providers - it does NOT update the registry or database. Use `CaptainHook.scan_providers` to fully refresh the system.
 
 ---
 
