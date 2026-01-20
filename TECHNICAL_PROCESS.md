@@ -228,7 +228,7 @@ The optional `config/captain_hook.yml` file provides **global defaults** and **p
 config/captain_hook.yml
 ```
 
-If this file doesn't exist, CaptainHook uses built-in defaults (1MB payload limit, 300 seconds timestamp tolerance).
+If this file doesn't exist, CaptainHook uses built-in defaults (1MB payload limit, 300 seconds timestamp tolerance) for providers that don't specify these values in their YAML files. If a provider's YAML file specifies `max_payload_size_bytes` or `timestamp_tolerance_seconds`, those values take precedence over the built-in defaults.
 
 #### Configuration Structure
 
