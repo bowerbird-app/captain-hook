@@ -14,6 +14,12 @@ module CaptainHook
 
         # Also get actions from registry for comparison
         @registry_actions = action_registry_for_provider
+
+        # Load registry config for display_name
+        discovery = CaptainHook::Services::ProviderDiscovery.new
+        provider_definitions = discovery.call
+        config_data = provider_definitions.find { |p| p["name"] == @provider.name }
+        @registry_config = config_data ? CaptainHook::ProviderConfig.new(config_data) : nil
       end
 
       # GET /captain_hook/admin/providers/:provider_id/actions/:id

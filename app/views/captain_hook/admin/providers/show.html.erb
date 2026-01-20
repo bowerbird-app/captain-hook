@@ -2,12 +2,12 @@
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item active" aria-current="page"><%= @provider.display_name || @provider.name.titleize %></li>
+      <li class="breadcrumb-item active" aria-current="page"><%= @registry_config&.display_name || @provider.name.titleize %></li>
     </ol>
   </nav>
 
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><%= @provider.display_name || @provider.name.titleize %></h1>
+    <h1><%= @registry_config&.display_name || @provider.name.titleize %></h1>
     <div>
       <%= link_to "View Actions", admin_provider_actions_path(@provider), class: "btn btn-info" %>
     </div>
@@ -26,7 +26,7 @@
       <h5 class="mb-0">Webhook Endpoint</h5>
     </div>
     <div class="card-body">
-      <p class="text-muted mb-2">Share this URL with <%= @provider.display_name || @provider.name.titleize %> to receive webhooks:</p>
+      <p class="text-muted mb-2">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
       <div class="input-group">
         <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url %>" readonly>
         <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
@@ -51,14 +51,8 @@
 
         <dt class="col-sm-3">Display Name</dt>
         <dd class="col-sm-9">
-          <% if @provider.display_name.present? %>
-            <%= @provider.display_name %>
-            <% if @provider.display_name != @registry_config&.display_name %>
-              <span class="badge bg-info ms-2">Overridden</span>
-            <% end %>
-          <% elsif @registry_config&.display_name.present? %>
+          <% if @registry_config&.display_name.present? %>
             <%= @registry_config.display_name %>
-            <small class="text-muted">(from registry)</small>
           <% else %>
             —
           <% end %>
@@ -66,14 +60,8 @@
 
         <dt class="col-sm-3">Description</dt>
         <dd class="col-sm-9">
-          <% if @provider.description.present? %>
-            <%= @provider.description %>
-            <% if @provider.description != @registry_config&.description %>
-              <span class="badge bg-info ms-2">Overridden</span>
-            <% end %>
-          <% elsif @registry_config&.description.present? %>
+          <% if @registry_config&.description.present? %>
             <%= @registry_config.description %>
-            <small class="text-muted">(from registry)</small>
           <% else %>
             —
           <% end %>
@@ -90,19 +78,8 @@
 
         <dt class="col-sm-3">Signing Secret</dt>
         <dd class="col-sm-9">
-          <% 
-            # Check DB first, then registry
-            db_secret = @provider.signing_secret
-            registry_secret = @registry_config&.signing_secret
-            resolved_secret = db_secret.presence || registry_secret
-          %>
-          <% if resolved_secret.present? %>
+          <% if @registry_config&.signing_secret.present? %>
             <span class="badge bg-success">Configured</span>
-            <% if db_secret.present? && db_secret != @registry_config&.raw_signing_secret %>
-              <span class="badge bg-info ms-2">Overridden in DB</span>
-            <% elsif registry_secret.present? %>
-              <small class="text-muted">(from registry)</small>
-            <% end %>
           <% else %>
             <span class="badge bg-secondary">Not Set</span>
             <div class="text-muted small mt-1">
@@ -115,72 +92,102 @@
   </div>
 
   <!-- Security Settings -->
+  <!-- Configuration hierarchy: captain_hook.yml providers → provider.yml → captain_hook.yml defaults → hardcoded -->
   <div class="card mb-4">
     <div class="card-header">
       <h5 class="mb-0">Security Settings</h5>
     </div>
     <div class="card-body">
       <dl class="row">
-        <dt class="col-sm-4">Timestamp Validation</dt>
+        <% 
+          # Get values from different sources
+          provider_name = @provider.name
+          
+          # timestamp_tolerance_seconds
+          global_override_timestamp = @global_config&.dig("providers", provider_name, "timestamp_tolerance_seconds")
+          provider_yaml_timestamp = @provider_yaml&.dig("timestamp_tolerance_seconds")
+          global_default_timestamp = @global_config&.dig("defaults", "timestamp_tolerance_seconds")
+          hardcoded_timestamp = 300
+          
+          final_timestamp = global_override_timestamp || provider_yaml_timestamp || global_default_timestamp || hardcoded_timestamp
+          
+          # max_payload_size_bytes
+          global_override_size = @global_config&.dig("providers", provider_name, "max_payload_size_bytes")
+          provider_yaml_size = @provider_yaml&.dig("max_payload_size_bytes")
+          global_default_size = @global_config&.dig("defaults", "max_payload_size_bytes")
+          hardcoded_size = 1_048_576
+          
+          final_size = global_override_size || provider_yaml_size || global_default_size || hardcoded_size
+          
+          # rate_limit_requests
+          db_rate_requests = @provider.rate_limit_requests
+          provider_yaml_rate_requests = @provider_yaml&.dig("rate_limit_requests")
+          hardcoded_rate_requests = 100
+          
+          final_rate_requests = db_rate_requests || provider_yaml_rate_requests || hardcoded_rate_requests
+          
+          # rate_limit_period
+          db_rate_period = @provider.rate_limit_period
+          provider_yaml_rate_period = @provider_yaml&.dig("rate_limit_period")
+          hardcoded_rate_period = 60
+          
+          final_rate_period = db_rate_period || provider_yaml_rate_period || hardcoded_rate_period
+        %>
+        
+        <dt class="col-sm-4">timestamp_tolerance_seconds</dt>
         <dd class="col-sm-8">
-          <% 
-            # Use DB value if present, otherwise registry default
-            timestamp_tolerance = @provider.timestamp_tolerance_seconds || @registry_config&.timestamp_tolerance_seconds || 300
-            is_overridden = @provider.timestamp_tolerance_seconds.present? && @provider.timestamp_tolerance_seconds != @registry_config&.timestamp_tolerance_seconds
-          %>
-          <% if timestamp_tolerance && timestamp_tolerance > 0 %>
-            <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(±<%= timestamp_tolerance %>s)</small>
-            <% if is_overridden %>
-              <span class="badge bg-info ms-2">Overridden</span>
-            <% elsif !@provider.timestamp_tolerance_seconds.present? %>
-              <small class="text-muted">(default)</small>
-            <% end %>
+          <%= final_timestamp %>
+          <% if global_override_timestamp %>
+            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
+          <% elsif provider_yaml_timestamp %>
+            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+          <% elsif global_default_timestamp %>
+            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
           <% else %>
-            <span class="badge bg-secondary">Disabled</span>
+            <span class="badge bg-secondary ms-2">hardcoded</span>
           <% end %>
+          <small class="text-muted">(±<%= final_timestamp %>s tolerance)</small>
         </dd>
 
-        <dt class="col-sm-4">Payload Size Limit</dt>
+        <dt class="col-sm-4">max_payload_size_bytes</dt>
         <dd class="col-sm-8">
-          <% 
-            # Use DB value if present, otherwise registry default
-            payload_size = @provider.max_payload_size_bytes || @registry_config&.max_payload_size_bytes || 1_048_576
-            is_overridden = @provider.max_payload_size_bytes.present? && @provider.max_payload_size_bytes != @registry_config&.max_payload_size_bytes
-          %>
-          <% if payload_size && payload_size > 0 %>
-            <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(<%= number_to_human_size(payload_size) %>)</small>
-            <% if is_overridden %>
-              <span class="badge bg-info ms-2">Overridden</span>
-            <% elsif !@provider.max_payload_size_bytes.present? %>
-              <small class="text-muted">(default)</small>
-            <% end %>
+          <%= number_with_delimiter(final_size) %>
+          <% if global_override_size %>
+            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
+          <% elsif provider_yaml_size %>
+            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+          <% elsif global_default_size %>
+            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
           <% else %>
-            <span class="badge bg-secondary">Disabled</span>
+            <span class="badge bg-secondary ms-2">hardcoded</span>
           <% end %>
+          <small class="text-muted">(<%= number_to_human_size(final_size) %>)</small>
         </dd>
 
-        <dt class="col-sm-4">Rate Limiting</dt>
+        <dt class="col-sm-4">rate_limit_requests</dt>
         <dd class="col-sm-8">
-          <% 
-            # Use DB values if present, otherwise registry defaults
-            rate_limit_requests = @provider.rate_limit_requests || @registry_config&.rate_limit_requests || 100
-            rate_limit_period = @provider.rate_limit_period || @registry_config&.rate_limit_period || 60
-            is_overridden = (@provider.rate_limit_requests.present? && @provider.rate_limit_requests != @registry_config&.rate_limit_requests) ||
-                           (@provider.rate_limit_period.present? && @provider.rate_limit_period != @registry_config&.rate_limit_period)
-          %>
-          <% if rate_limit_requests && rate_limit_requests > 0 %>
-            <span class="badge bg-success">Enabled</span>
-            <small class="text-muted">(<%= rate_limit_requests %> req / <%= rate_limit_period %>s)</small>
-            <% if is_overridden %>
-              <span class="badge bg-info ms-2">Overridden</span>
-            <% elsif !@provider.rate_limit_requests.present? && !@provider.rate_limit_period.present? %>
-              <small class="text-muted">(default)</small>
-            <% end %>
+          <%= final_rate_requests %>
+          <% if db_rate_requests %>
+            <span class="badge bg-warning ms-2">database</span>
+          <% elsif provider_yaml_rate_requests %>
+            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
           <% else %>
-            <span class="badge bg-secondary">Disabled</span>
+            <span class="badge bg-secondary ms-2">hardcoded</span>
           <% end %>
+          <small class="text-muted">(requests)</small>
+        </dd>
+
+        <dt class="col-sm-4">rate_limit_period</dt>
+        <dd class="col-sm-8">
+          <%= final_rate_period %>
+          <% if db_rate_period %>
+            <span class="badge bg-warning ms-2">database</span>
+          <% elsif provider_yaml_rate_period %>
+            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+          <% else %>
+            <span class="badge bg-secondary ms-2">hardcoded</span>
+          <% end %>
+          <small class="text-muted">(seconds)</small>
         </dd>
       </dl>
     </div>

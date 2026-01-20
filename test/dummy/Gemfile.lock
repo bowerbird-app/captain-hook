@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/bowerbird-app/marikit-country-list.git
-  revision: 7c19420aac43c8430fefb755d471f4b56ff711e7
+  revision: 396b559a5e5d16cbb285af78933acd275bf845f7
   specs:
     marikit_country_list (0.1.0)
       rails (>= 6.0)

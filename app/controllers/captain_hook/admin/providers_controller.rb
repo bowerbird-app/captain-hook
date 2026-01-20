@@ -8,23 +8,37 @@ module CaptainHook
 
       # GET /captain_hook/admin/providers
       def index
-        @providers = CaptainHook::Provider.by_name.page(params[:page]).per(50)
-
-        # Load provider configs from registry for security status
+        # Load providers from registry
         discovery = CaptainHook::Services::ProviderDiscovery.new
         provider_definitions = discovery.call
-        @provider_configs = provider_definitions.index_by { |p| p["name"] }
+
+        # Convert to ProviderConfig objects
+        @providers = provider_definitions.map do |config_data|
+          CaptainHook::ProviderConfig.new(config_data)
+        end.sort_by(&:name)
+
+        # Get database providers for status
+        @db_providers = CaptainHook::Provider.all.index_by(&:name)
       end
 
       # GET /captain_hook/admin/providers/:id
       def show
         @recent_events = @provider.incoming_events.recent.limit(10)
 
-        # Load registry config for this provider
+        # Load registry config for this provider (with hierarchy applied)
         discovery = CaptainHook::Services::ProviderDiscovery.new
         provider_definitions = discovery.call
         config_data = provider_definitions.find { |p| p["name"] == @provider.name }
         @registry_config = config_data ? CaptainHook::ProviderConfig.new(config_data) : nil
+
+        # Load raw provider YAML (before hierarchy)
+        @provider_yaml = config_data
+
+        # Load global config
+        return unless defined?(CaptainHook::Services::GlobalConfigLoader)
+
+        config_loader = CaptainHook::Services::GlobalConfigLoader.new
+        @global_config = config_loader.call
       end
 
       # GET /captain_hook/admin/providers/new

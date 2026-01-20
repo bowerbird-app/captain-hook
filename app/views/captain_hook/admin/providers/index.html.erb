@@ -20,50 +20,46 @@
             </thead>
             <tbody>
               <% @providers.each do |provider| %>
+                <% db_provider = @db_providers[provider.name] %>
                 <tr>
                   <td>
                     <code><%= provider.name %></code>
                   </td>
                   <td><%= provider.display_name || provider.name.titleize %></td>
                   <td>
-                    <% if provider.active? %>
+                    <% if db_provider&.active? %>
                       <span class="badge bg-success">Active</span>
                     <% else %>
                       <span class="badge bg-secondary">Inactive</span>
                     <% end %>
                   </td>
                   <td>
-                    <%
-                      config_data = @provider_configs[provider.name]
-                      resolved_secret = nil
-                      if config_data
-                        config = CaptainHook::ProviderConfig.new(config_data)
-                        resolved_secret = config.signing_secret
-                      end
-                    %>
-                    <% if resolved_secret.present? %>
+                    <% if provider.signing_secret.present? %>
                       <span class="badge bg-success">Configured</span>
                     <% else %>
                       <span class="badge bg-warning">No Secret</span>
                     <% end %>
                   </td>
                   <td>
-                    <%= link_to admin_provider_actions_path(provider) do %>
-                      <%= provider.actions.count %>
+                    <% if db_provider %>
+                      <%= link_to admin_provider_actions_path(db_provider) do %>
+                        <%= db_provider.actions.count %>
+                      <% end %>
+                    <% else %>
+                      0
                     <% end %>
                   </td>
                   <td>
-                    <%= link_to "View", [:admin, provider], class: "btn btn-sm btn-outline-primary" %>
+                    <% if db_provider %>
+                      <%= link_to "View", [:admin, db_provider], class: "btn btn-sm btn-outline-primary" %>
+                    <% else %>
+                      <span class="text-muted">Not in DB</span>
+                    <% end %>
                   </td>
                 </tr>
               <% end %>
             </tbody>
           </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="mt-3">
-          <%= paginate @providers %>
         </div>
       <% else %>
         <div class="alert alert-info">
