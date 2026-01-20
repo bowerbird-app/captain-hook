@@ -19,7 +19,7 @@ module CaptainHook
       # GET /captain_hook/admin/providers/:id
       def show
         @recent_events = @provider.incoming_events.recent.limit(10)
-        
+
         # Load registry config for this provider
         discovery = CaptainHook::Services::ProviderDiscovery.new
         provider_definitions = discovery.call

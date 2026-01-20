@@ -53,21 +53,25 @@ module CaptainHook
       # 3. captain_hook.yml defaults (only if stripe.yml is nil)
       if defined?(CaptainHook::Services::GlobalConfigLoader) && kwargs[:name].present?
         provider_name = kwargs[:name]
-        
+
         # Store provider YAML values (from stripe.yml)
         provider_yaml_timestamp = kwargs[:timestamp_tolerance_seconds]
         provider_yaml_max_size = kwargs[:max_payload_size_bytes]
-        
+
         # Check captain_hook.yml for provider-specific overrides ONLY
         config_instance = CaptainHook::Services::GlobalConfigLoader.new
         global_config = config_instance.call
-        
+
         provider_override_timestamp = global_config.dig("providers", provider_name, "timestamp_tolerance_seconds")
         provider_override_max_size = global_config.dig("providers", provider_name, "max_payload_size_bytes")
-        
+
         # Priority: provider override > stripe.yml > global defaults
-        kwargs[:timestamp_tolerance_seconds] = provider_override_timestamp || provider_yaml_timestamp || global_config.dig("defaults", "timestamp_tolerance_seconds")
-        kwargs[:max_payload_size_bytes] = provider_override_max_size || provider_yaml_max_size || global_config.dig("defaults", "max_payload_size_bytes")
+        kwargs[:timestamp_tolerance_seconds] =
+          provider_override_timestamp || provider_yaml_timestamp || global_config.dig("defaults",
+                                                                                      "timestamp_tolerance_seconds")
+        kwargs[:max_payload_size_bytes] =
+          provider_override_max_size || provider_yaml_max_size || global_config.dig("defaults",
+                                                                                    "max_payload_size_bytes")
       end
 
       super(**kwargs)
