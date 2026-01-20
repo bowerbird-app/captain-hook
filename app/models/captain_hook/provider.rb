@@ -2,13 +2,10 @@
 
 module CaptainHook
   # Represents a webhook provider (e.g., Stripe, OpenAI, GitHub)
-  # Stores configuration for receiving webhooks from external services
+  # Stores minimal database configuration: token, rate limits, and active status
+  # Main configuration comes from YAML files in captain_hook/<provider>/ (registry)
   class Provider < ApplicationRecord
     self.table_name = "captain_hook_providers"
-
-    # Encryption enabled - signing secrets are encrypted at rest
-    # See docs/gem_template/SIGNING_SECRET_STORAGE.md for details
-    encrypts :signing_secret, deterministic: false
 
     # Associations
     has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
@@ -19,9 +16,6 @@ module CaptainHook
     validates :name, presence: true, uniqueness: true,
                      format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
     validates :token, presence: true, uniqueness: true
-    validates :verifier_class, presence: true
-    validates :timestamp_tolerance_seconds, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
-    validates :max_payload_size_bytes, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validates :rate_limit_requests, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validates :rate_limit_period, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
 
@@ -45,6 +39,81 @@ module CaptainHook
       rate_limit_requests.present? && rate_limit_period.present?
     end
 
+    # Get the provider config from registry (YAML files)
+    # This is the source of truth for most configuration
+    def registry_config
+      @registry_config ||= begin
+        provider_definitions = CaptainHook::Services::ProviderDiscovery.new.call
+        definition = provider_definitions.find { |p| p["name"] == name }
+        
+        if definition
+          CaptainHook::ProviderConfig.new(
+            name: definition["name"],
+            display_name: definition["display_name"],
+            description: definition["description"],
+            verifier_file: definition["verifier_file"],
+            verifier_class: extract_verifier_class_from_definition(definition),
+            signing_secret: definition["signing_secret"],
+            active: active,
+            token: token,
+            rate_limit_requests: rate_limit_requests,
+            rate_limit_period: rate_limit_period,
+            source: definition["source"],
+            source_file: definition["source_file"]
+          )
+        else
+          # Fallback to basic config if not in registry
+          CaptainHook::ProviderConfig.new(
+            name: name,
+            active: active,
+            token: token,
+            rate_limit_requests: rate_limit_requests,
+            rate_limit_period: rate_limit_period
+          )
+        end
+      end
+    end
+
+    # Get verifier instance from registry config
+    def verifier
+      registry_config.verifier
+    end
+
+    # Get signing secret from ENV (via registry config)
+    def signing_secret
+      registry_config.resolve_signing_secret
+    end
+
+    # Get display_name from registry
+    def display_name
+      registry_config.display_name
+    end
+
+    # Get description from registry  
+    def description
+      registry_config.description
+    end
+
+    # Get verifier_class from registry
+    def verifier_class
+      registry_config.verifier_class
+    end
+
+    # Get verifier_file from registry
+    def verifier_file
+      registry_config.verifier_file
+    end
+
+    # Get timestamp_tolerance_seconds from registry (via global config)
+    def timestamp_tolerance_seconds
+      registry_config.timestamp_tolerance_seconds
+    end
+
+    # Get max_payload_size_bytes from registry (via global config)
+    def max_payload_size_bytes
+      registry_config.max_payload_size_bytes
+    end
+
     # Check if payload size limit is enabled
     def payload_size_limit_enabled?
       max_payload_size_bytes.present?
@@ -55,73 +124,6 @@ module CaptainHook
       timestamp_tolerance_seconds.present?
     end
 
-    # Get signing secret (supports ENV variable override)
-    # This allows storing secrets in ENV instead of DB for sensitive providers
-    # Example: STRIPE_WEBHOOK_SECRET=whsec_abc123
-    def signing_secret
-      return super if name.blank?
-
-      env_key = "#{name.upcase}_WEBHOOK_SECRET"
-      ENV[env_key].presence || super
-    end
-
-    # Get the verifier instance
-    def verifier
-      # Try to constantize the verifier class first (it might be a built-in verifier)
-      begin
-        return verifier_class.constantize.new
-      rescue NameError
-        # Class doesn't exist yet, try to load from file
-      end
-
-      # Try to find and load the verifier file if the class doesn't exist yet
-      load_verifier_file
-
-      verifier_class.constantize.new
-    rescue NameError => e
-      Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
-      raise CaptainHook::VerifierNotFoundError,
-            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use a built-in verifier (CaptainHook::Verifiers::Base, Stripe, Square, Paypal, WebhookSite)."
-    end
-
-    # Load the verifier file from the filesystem
-    def load_verifier_file
-      return if verifier_file.blank?
-
-      # Try to find the verifier file in common locations
-      possible_paths = [
-        # Application providers directory (nested structure)
-        Rails.root.join("captain_hook", "providers", name, verifier_file),
-        # Application providers directory (flat structure)
-        Rails.root.join("captain_hook", "providers", verifier_file)
-      ]
-
-      # Check in CaptainHook gem's built-in verifiers
-      # Use __dir__ to get the directory of this file, then navigate to lib/captain_hook/verifiers
-      gem_verifiers_path = File.expand_path("../../lib/captain_hook/verifiers", __dir__)
-      possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
-
-      # Also check in other loaded gems
-      Bundler.load.specs.each do |spec|
-        gem_providers_path = File.join(spec.full_gem_path, "captain_hook", "providers")
-        next unless Dir.exist?(gem_providers_path)
-
-        possible_paths << File.join(gem_providers_path, name, verifier_file)
-        possible_paths << File.join(gem_providers_path, verifier_file)
-      end
-
-      file_path = possible_paths.find { |path| File.exist?(path) }
-
-      if file_path
-        load file_path
-        Rails.logger.debug("Loaded verifier from #{file_path}")
-      else
-        Rails.logger.warn("Verifier file not found for #{name}, tried: #{possible_paths.inspect}")
-      end
-    rescue StandardError => e
-      Rails.logger.error("Failed to load verifier file: #{e.message}")
-    end
-
     # Activate provider
     def activate!
       update!(active: true)
@@ -130,6 +132,43 @@ module CaptainHook
     # Deactivate provider
     def deactivate!
       update!(active: false)
+    end
+
+    # Extract verifier class name from provider definition
+    def extract_verifier_class_from_definition(definition)
+      return definition["verifier_class"] if definition["verifier_class"].present?
+      
+      verifier_file = definition["verifier_file"]
+      return nil if verifier_file.blank?
+
+      # Find the file in possible locations
+      possible_paths = [
+        Rails.root.join("captain_hook", name, verifier_file),
+        Rails.root.join("captain_hook", "providers", name, verifier_file),
+        Rails.root.join("captain_hook", "providers", verifier_file)
+      ]
+
+      # Check in CaptainHook gem's built-in verifiers
+      gem_verifiers_path = File.expand_path("../../lib/captain_hook/verifiers", __dir__)
+      possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
+
+      # Also check in other gems
+      Bundler.load.specs.each do |spec|
+        gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+        next unless File.directory?(gem_captain_hook_path)
+
+        possible_paths << File.join(gem_captain_hook_path, name, verifier_file)
+        possible_paths << File.join(gem_captain_hook_path, "providers", name, verifier_file)
+        possible_paths << File.join(gem_captain_hook_path, "providers", verifier_file)
+      end
+
+      file_path = possible_paths.find { |path| File.exist?(path) }
+
+      if file_path
+        self.class.extract_verifier_class_from_file(file_path)
+      else
+        nil
+      end
     end
 
     # Extract verifier class name from loaded file

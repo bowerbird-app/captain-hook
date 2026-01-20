@@ -57,35 +57,13 @@ module CaptainHook
           return
         end
 
-        # Assign attributes from YAML
-        provider.display_name = definition["display_name"]
-        provider.description = definition["description"]
-        provider.verifier_file = definition["verifier_file"]
+        # Only sync database-managed fields: active, rate_limit_requests, rate_limit_period
+        # Note: token is auto-generated if blank via before_validation callback
         provider.active = definition.fetch("active", true)
 
-        # Extract verifier_class from file if verifier_file is provided
-        if definition["verifier_file"].present? && (is_new || provider.verifier_class.blank?)
-          verifier_class = extract_verifier_class(definition)
-          provider.verifier_class = verifier_class if verifier_class.present?
-        end
-
-        # Optional attributes
-        provider.timestamp_tolerance_seconds = definition["timestamp_tolerance_seconds"]
-        provider.max_payload_size_bytes = definition["max_payload_size_bytes"]
-        provider.rate_limit_requests = definition["rate_limit_requests"]
-        provider.rate_limit_period = definition["rate_limit_period"]
-
-        # Handle signing secret with ENV variable support
-        if definition["signing_secret"].present?
-          signing_secret = resolve_signing_secret(definition["signing_secret"])
-
-          # Only update signing secret if:
-          # 1. It's a new record, OR
-          # 2. The resolved secret is different from current (and not nil)
-          if is_new || (signing_secret.present? && signing_secret != provider.signing_secret)
-            provider.signing_secret = signing_secret
-          end
-        end
+        # Optional rate limiting attributes
+        provider.rate_limit_requests = definition["rate_limit_requests"] if definition["rate_limit_requests"].present?
+        provider.rate_limit_period = definition["rate_limit_period"] if definition["rate_limit_period"].present?
 
         if provider.save
           if is_new
@@ -150,58 +128,6 @@ module CaptainHook
       # Validate provider definition has required fields
       def valid_provider_definition?(definition)
         definition["name"].present?
-      end
-
-      # Extract verifier class name from the verifier file
-      def extract_verifier_class(definition)
-        name = definition["name"]
-        verifier_file = definition["verifier_file"]
-
-        return nil if verifier_file.blank?
-
-        # Find the file in possible locations
-        possible_paths = [
-          Rails.root.join("captain_hook", name, verifier_file),
-          Rails.root.join("captain_hook", "providers", name, verifier_file),
-          Rails.root.join("captain_hook", "providers", verifier_file)
-        ]
-
-        # Check in CaptainHook gem's built-in verifiers
-        gem_verifiers_path = File.expand_path("../../verifiers", __dir__)
-        possible_paths << File.join(gem_verifiers_path, verifier_file) if Dir.exist?(gem_verifiers_path)
-
-        # Also check in other gems
-        Bundler.load.specs.each do |spec|
-          gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
-          next unless File.directory?(gem_captain_hook_path)
-
-          possible_paths << File.join(gem_captain_hook_path, name, verifier_file)
-          possible_paths << File.join(gem_captain_hook_path, "providers", name, verifier_file)
-          possible_paths << File.join(gem_captain_hook_path, "providers", verifier_file)
-        end
-
-        file_path = possible_paths.find { |path| File.exist?(path) }
-
-        if file_path
-          CaptainHook::Provider.extract_verifier_class_from_file(file_path)
-        else
-          Rails.logger.warn("⚠️  Verifier file '#{verifier_file}' not found for provider '#{name}'")
-          nil
-        end
-      end
-
-      # Resolve signing secret from ENV variable reference or direct value
-      # Supports format: ENV[VARIABLE_NAME] or direct value
-      def resolve_signing_secret(secret_value)
-        return nil if secret_value.blank?
-
-        # Check if it's an ENV variable reference
-        if secret_value.is_a?(String) && secret_value.match?(/\AENV\[([^\]]+)\]\z/)
-          env_var = secret_value.match(/\AENV\[([^\]]+)\]\z/)[1]
-          ENV.fetch(env_var, nil)
-        else
-          secret_value
-        end
       end
     end
   end

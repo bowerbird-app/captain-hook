@@ -41,13 +41,28 @@ module CaptainHook
       end
 
       super(**kwargs)
+      
+      # Set defaults
       self.display_name ||= name&.titleize unless display_name.nil? # Keep explicit nil
       self.active = true if active.nil?
-      self.timestamp_tolerance_seconds ||= 300 # 5 minutes default
-      self.max_payload_size_bytes ||= 1_048_576 # 1MB default
+      self.verifier_class ||= "CaptainHook::Verifiers::Base"
+      
+      # Load global config defaults for settings not provided
+      # These come from config/captain_hook.yml in the host application
+      if defined?(CaptainHook::Services::GlobalConfigLoader)
+        self.timestamp_tolerance_seconds ||= 
+          CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :timestamp_tolerance_seconds) || 300
+        self.max_payload_size_bytes ||= 
+          CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :max_payload_size_bytes) || 1_048_576
+      else
+        # Fallback to defaults if GlobalConfigLoader not available
+        self.timestamp_tolerance_seconds ||= 300 # 5 minutes default
+        self.max_payload_size_bytes ||= 1_048_576 # 1MB default
+      end
+      
+      # Rate limiting defaults (not in global config, provider-specific)
       self.rate_limit_requests ||= 100 # 100 requests
       self.rate_limit_period ||= 60 # per 60 seconds
-      self.verifier_class ||= "CaptainHook::Verifiers::Base"
     end
 
     # Check if provider is active

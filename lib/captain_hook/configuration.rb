@@ -24,14 +24,14 @@ module CaptainHook
       @providers[name.to_s] = ProviderConfig.new(name: name.to_s, **)
     end
 
-    # Get a provider configuration (checks both DB and in-memory registrations)
+    # Get a provider configuration (checks registry and DB)
     def provider(name)
-      # First check database
+      # Get provider from database for token and rate limits
       db_provider = CaptainHook::Provider.find_by(name: name.to_s)
-      return provider_config_from_model(db_provider) if db_provider
-
-      # Fall back to in-memory registration
-      @providers[name.to_s]
+      return nil unless db_provider
+      
+      # Use registry_config which pulls from YAML files (source of truth)
+      db_provider.registry_config
     end
 
     def to_h
@@ -52,22 +52,6 @@ module CaptainHook
         setter = "#{key}="
         public_send(setter, v) if respond_to?(setter)
       end
-    end
-
-    private
-
-    # Convert Provider model to ProviderConfig for backward compatibility
-    def provider_config_from_model(provider)
-      ProviderConfig.new(
-        name: provider.name,
-        token: provider.token,
-        signing_secret: provider.signing_secret,
-        verifier_class: provider.verifier_class,
-        timestamp_tolerance_seconds: provider.timestamp_tolerance_seconds,
-        max_payload_size_bytes: provider.max_payload_size_bytes,
-        rate_limit_requests: provider.rate_limit_requests,
-        rate_limit_period: provider.rate_limit_period
-      )
     end
   end
 end
