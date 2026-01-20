@@ -1502,12 +1502,20 @@ Create action files in `captain_hook/<provider>/actions/` directory:
 # captain_hook/stripe/actions/payment_intent_succeeded_action.rb
 module Stripe
   class PaymentIntentSucceededAction
+    def self.provider
+      "stripe"
+    end
+    
     def self.event_type
       "payment_intent.succeeded"
     end
     
-    def self.provider
-      "stripe"
+    def self.async
+      true  # Optional, defaults to true
+    end
+    
+    def self.priority
+      100  # Optional, defaults to 100
     end
     
     def perform(event)
@@ -1517,7 +1525,23 @@ module Stripe
 end
 ```
 
-When placed in the actions directory, these are automatically:
+**When placed in the `captain_hook/<provider>/actions/` directory**, these files are automatically:
+1. Loaded by ProviderDiscovery service during boot
+2. Registered in ActionRegistry (equivalent to calling `ActionRegistry.register`)
+3. Synced to database
+
+**This is functionally equivalent to**:
+```ruby
+CaptainHook::ActionRegistry.register(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::PaymentIntentSucceededAction",
+  async: true,
+  priority: 100
+)
+```
+
+**Important**: Auto-discovery only works for files in `captain_hook/<provider>/actions/`. If your action class is defined elsewhere (like `app/actions/`), you must use Method 1 or Method 3 to explicitly register it.
 1. Loaded by ProviderDiscovery service
 2. Registered in ActionRegistry
 3. Synced to database
