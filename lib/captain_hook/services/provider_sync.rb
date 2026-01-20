@@ -59,7 +59,7 @@ module CaptainHook
 
         # Only sync database-managed fields: active, rate_limit_requests, rate_limit_period
         # Note: token is auto-generated if blank via before_validation callback
-        
+
         # For new providers, set defaults
         # For existing providers, only update if YAML explicitly specifies a value (preserve manual DB changes)
         if is_new
