@@ -18,31 +18,31 @@ Instead of implementing webhook handling from scratch in every gem, CaptainHook 
 - **Admin UI**: Provides visibility into webhook traffic and processing status
 - **Reliability**: Built-in retry logic, background job processing, and error tracking
 
+### Built-in Verifiers
+
+**CaptainHook ships with verifiers for common webhook providers:**
+- **Stripe** - `CaptainHook::Verifiers::Stripe`
+- **Square** - `CaptainHook::Verifiers::Square`
+- **PayPal** - `CaptainHook::Verifiers::Paypal`
+- **WebhookSite** - `CaptainHook::Verifiers::WebhookSite` (testing only)
+
+These verifiers are maintained within the CaptainHook gem and provide secure, tested webhook signature verification. If you need a verifier for a provider not listed above, see the "Contributing New Verifiers" section at the end of this guide.
+
 ### How It Works
 
-Your gem provides three key components:
+Your gem provides two key components:
 
-1. **Provider Config** - YAML file with webhook endpoint settings (configuration)
-2. **Verifier** - Ruby class that verifies webhook signatures (security)
-3. **Actions** - Job classes that process specific event types (business logic)
+1. **Provider Config** - YAML file specifying which built-in verifier to use
+2. **Actions** - Job classes that process specific event types (your business logic)
 
 When installed in a Rails app, CaptainHook:
-- Discovers your provider configuration and verifier
+- Discovers your provider configuration
+- Uses the specified built-in verifier for signature verification
 - Registers your actions
 - Routes incoming webhooks to your code
 - Manages the entire webhook lifecycle
 
 This keeps your gem focused on **what to do** with webhook data, while CaptainHook handles **how to receive it safely**.
-
-## Example Provider Verifiers
-
-**CaptainHook includes example verifiers you can reference or copy:**
-- Stripe - See test/dummy examples
-- Square - See test/dummy examples
-- PayPal - See test/dummy examples
-- WebhookSite - See test/dummy examples (testing only)
-
-**You can create custom verifiers for any provider!** Verifiers are now provider-specific and ship with your gem.
 
 ## Important: One Provider, Many Actions
 
@@ -117,8 +117,7 @@ your_gem/
 ├── captain_hook/                      # Provider configuration (REQUIRED)
 │   └── providers/
 │       └── your_provider/             # Provider-specific directory
-│           ├── your_provider.yml      # Configuration (e.g., stripe.yml)
-│           └── your_provider.rb       # Verifier implementation (e.g., stripe.rb)
+│           └── your_provider.yml      # Configuration (e.g., stripe.yml)
 ├── lib/
 │   └── your_gem/
 │       └── engine.rb                  # Action registration (REQUIRED)
@@ -127,9 +126,7 @@ your_gem/
 
 ### Why Each File?
 
-- **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which verifier to use, where to get secrets from environment variables, and security settings.
-
-- **Verifier (`stripe.rb`)**: Ruby class that verifies webhook signatures specific to your provider. Uses `CaptainHook::VerifierHelpers` for security methods like HMAC generation and constant-time comparison.
+- **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which built-in verifier to use, where to get secrets from environment variables, and security settings.
 
 - **Actions (`*_action.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
 
@@ -137,87 +134,18 @@ your_gem/
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
-## Step 1: Create Your Provider Verifier
+## Step 1: Create Provider Configuration (YAML)
 
-Create an verifier class that handles webhook signature verification for your provider. CaptainHook provides the `VerifierHelpers` module with all the security utilities you need.
+**CaptainHook includes built-in verifiers for common providers!** You only need to create a YAML configuration file that references the appropriate built-in verifier.
 
-**Example: Stripe Verifier**
+### Available Built-in Verifiers:
 
-Create `captain_hook/providers/stripe/stripe.rb` in your gem:
+- **`stripe`** - For Stripe webhooks (`CaptainHook::Verifiers::Stripe`)
+- **`square`** - For Square webhooks (`CaptainHook::Verifiers::Square`)
+- **`paypal`** - For PayPal webhooks (`CaptainHook::Verifiers::Paypal`)
+- **`webhook_site`** - For WebhookSite testing (`CaptainHook::Verifiers::WebhookSite`)
 
-```ruby
-# frozen_string_literal: true
-
-# Stripe webhook verifier
-# Implements Stripe's webhook signature verification scheme
-# https://stripe.com/docs/webhooks/signatures
-class StripeVerifier
-  include CaptainHook::VerifierHelpers
-
-  SIGNATURE_HEADER = "Stripe-Signature"
-  TIMESTAMP_TOLERANCE = 300 # 5 minutes
-
-  # Verify Stripe webhook signature
-  # Stripe sends signature as: t=timestamp,v1=signature
-  def verify_signature(payload:, headers:, provider_config:)
-    signature_header = extract_header(headers, SIGNATURE_HEADER)
-    return false if signature_header.blank?
-
-    # Parse signature header: t=timestamp,v1=signature,v0=old_signature
-    parsed = parse_kv_header(signature_header)
-    timestamp = parsed["t"]
-    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
-    
-    return false if timestamp.blank? || signatures.empty?
-
-    # Check timestamp tolerance
-    if provider_config.timestamp_validation_enabled?
-      tolerance = provider_config.timestamp_tolerance_seconds || TIMESTAMP_TOLERANCE
-      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
-    end
-
-    # Generate expected signature
-    signed_payload = "#{timestamp}.#{payload}"
-    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
-
-    # Check if any of the signatures match
-    signatures.any? { |sig| secure_compare(sig, expected_signature) }
-  end
-
-  # Extract timestamp from Stripe signature header
-  def extract_timestamp(headers)
-    signature_header = extract_header(headers, SIGNATURE_HEADER)
-    return nil if signature_header.blank?
-
-    parsed = parse_kv_header(signature_header)
-    parsed["t"]&.to_i
-  end
-
-  # Extract event ID from Stripe payload
-  def extract_event_id(payload)
-    payload["id"]
-  end
-
-  # Extract event type from Stripe payload
-  def extract_event_type(payload)
-    payload["type"]
-  end
-end
-```
-
-**Available Helper Methods from `CaptainHook::VerifierHelpers`:**
-- `secure_compare(a, b)` - Constant-time string comparison
-- `generate_hmac(secret, data)` - Hex-encoded HMAC-SHA256
-- `generate_hmac_base64(secret, data)` - Base64-encoded HMAC-SHA256
-- `extract_header(headers, *keys)` - Case-insensitive header extraction
-- `parse_kv_header(value)` - Parse "k1=v1,k2=v2" format
-- `timestamp_within_tolerance?(timestamp, tolerance)` - Timestamp validation
-- `skip_verification?(secret)` - Check if verification should be skipped
-- `log_verification(provider, details)` - Debug logging
-
-See [docs/VERIFIER_HELPERS.md](VERIFIER_HELPERS.md) for complete helper documentation.
-
-## Step 2: Create Provider Configuration
+### Step 1: Create Provider Configuration
 
 Create a YAML file that defines your provider's webhook settings. The `name` field should be lowercase and URL-friendly (it becomes part of the webhook endpoint).
 
@@ -232,8 +160,8 @@ name: stripe                                    # URL-friendly identifier (lower
 display_name: Stripe                            # Human-readable name
 description: Stripe payment processing webhooks # Brief description
 
-# Reference your verifier file (in same directory)
-verifier_file: stripe.rb                         # Your verifier file (class will be auto-detected)
+# Reference the built-in Stripe verifier
+verifier_class: stripe                          # Use built-in Stripe verifier (CaptainHook::Verifiers::Stripe)
 
 # Signing secret from environment variable
 # Set this in your .env file or environment:
@@ -252,6 +180,30 @@ rate_limit_period: 60  # 60 seconds
 active: true
 ```
 
+### Other Provider Examples:
+
+**PayPal Configuration** (`captain_hook/providers/paypal/paypal.yml`):
+```yaml
+name: paypal
+display_name: PayPal
+description: PayPal payment webhooks
+verifier_class: paypal  # Uses CaptainHook::Verifiers::Paypal
+signing_secret: ENV[PAYPAL_WEBHOOK_ID]
+timestamp_tolerance_seconds: 300
+active: true
+```
+
+**Square Configuration** (`captain_hook/providers/square/square.yml`):
+```yaml
+name: square
+display_name: Square
+description: Square payment webhooks
+verifier_class: square  # Uses CaptainHook::Verifiers::Square
+signing_secret: ENV[SQUARE_SIGNATURE_KEY]
+timestamp_tolerance_seconds: 300
+active: true
+```
+
 ### Multi-Tenant Support
 
 If you need multiple instances of the same provider (e.g., supporting multiple Stripe accounts), create separate provider directories:
@@ -260,19 +212,19 @@ If you need multiple instances of the same provider (e.g., supporting multiple S
 # captain_hook/providers/stripe_primary/stripe_primary.yml
 name: stripe_primary
 display_name: Stripe (Primary Account)
-verifier_file: stripe_primary.rb
+verifier_class: stripe  # Both use the same built-in Stripe verifier
 signing_secret: ENV[STRIPE_PRIMARY_SECRET]
 
 # captain_hook/providers/stripe_secondary/stripe_secondary.yml
 name: stripe_secondary
 display_name: Stripe (Secondary Account)
-verifier_file: stripe_secondary.rb
+verifier_class: stripe  # Both use the same built-in Stripe verifier
 signing_secret: ENV[STRIPE_SECONDARY_SECRET]
 ```
 
-Each instance gets its own webhook URL and actions.
+Each instance gets its own webhook URL and actions, but they share the same signature verification logic from the built-in verifier.
 
-## Step 3: Create Action Classes
+## Step 2: Create Action Classes
 
 Create action classes for each event type you want to process. Actions are plain Ruby classes with a `handle` method that receives the webhook data.
 
@@ -396,7 +348,7 @@ def handle(event:, payload:, metadata:)
 end
 ```
 
-## Step 4: Register Actions in Your Engine
+## Step 3: Register Actions in Your Engine
 
 ⚠️ **CRITICAL STEP**: Without this step, your actions won't be called!
 
@@ -504,7 +456,7 @@ If actions aren't showing up:
 3. Verify the action class names are correct (full namespace)
 4. Ensure CaptainHook is loaded before your gem (it usually is)
 
-## Step 5: Update Your Gemspec
+## Step 4: Update Your Gemspec
 
 Make sure your gemspec includes the necessary files:
 
@@ -533,7 +485,7 @@ Gem::Specification.new do |spec|
 end
 ```
 
-## Step 6: Install in Your Rails App
+## Step 5: Install in Your Rails App
 
 In your Rails application:
 
@@ -589,7 +541,7 @@ sync = CaptainHook::Services::ProviderSync.new(definitions, update_existing: tru
 sync.call
 ```
 
-## Step 7: Configure Your Provider's Webhook Settings
+## Step 6: Configure Your Provider's Webhook Settings
 
 ### Generic Steps
 
@@ -621,7 +573,7 @@ sync.call
 5. Copy the Webhook ID
 6. Set: `PAYPAL_WEBHOOK_ID=...`
 
-## Step 8: Testing Locally
+## Step 7: Testing Locally
 
 ### Option A: Using Provider CLI Tools (e.g., Stripe CLI)
 
@@ -821,10 +773,53 @@ CaptainHook.register_action(
 
 1. **Provider sends webhook** → Your Rails app at `/captain_hook/[provider]/[TOKEN]`
    - Example: `/captain_hook/stripe/abc123` or `/captain_hook/paypal/xyz789`
-2. **CaptainHook receives** → Verifies signature using your custom verifier
+2. **CaptainHook receives** → Verifies signature using the built-in verifier
 3. **Creates IncomingEvent** → Stores event in database for audit trail
 4. **Finds registered actions** → Looks up actions for `provider` + `event_type`
    - Example: `stripe` + `payment_intent.succeeded`
 5. **Enqueues action jobs** → Adds jobs to background queue (Sidekiq/Solid Queue)
 6. **Actions execute** → Your business logic runs in background jobs
 7. **Updates action status** → Marks as completed or failed, with retry logic
+
+---
+
+## Contributing New Verifiers
+
+**Need a verifier for a provider not currently supported?**
+
+Verifiers can only be created within the CaptainHook gem itself to ensure consistent security verification across all installations. To add support for a new provider:
+
+1. **Check if it already exists**: Review the list of built-in verifiers in `lib/captain_hook/verifiers/`
+
+2. **Submit a Pull Request** to the CaptainHook repository:
+   - Create a new verifier class in `lib/captain_hook/verifiers/your_provider.rb`
+   - Inherit from `CaptainHook::Verifiers::Base`
+   - Implement the required methods (see [docs/VERIFIERS.md](VERIFIERS.md))
+   - Add comprehensive tests
+   - Include documentation about the provider's webhook signature scheme
+
+3. **Example verifier structure**:
+   ```ruby
+   # lib/captain_hook/verifiers/your_provider.rb
+   module CaptainHook
+     module Verifiers
+       class YourProvider < Base
+         def verify_signature(payload:, headers:, provider_config:)
+           # Implementation here
+         end
+         
+         def extract_event_id(payload)
+           # Extract unique event ID
+         end
+         
+         def extract_event_type(payload)
+           # Extract event type string
+         end
+       end
+     end
+   end
+   ```
+
+4. **Reference documentation**: See existing verifiers (Stripe, Square, PayPal) in `lib/captain_hook/verifiers/` for examples
+
+For detailed information about creating verifiers, see [docs/VERIFIERS.md](VERIFIERS.md).
