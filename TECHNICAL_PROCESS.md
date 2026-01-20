@@ -207,6 +207,142 @@ timestamp_tolerance_seconds: 300
 
 **Note**: When a provider exists in both the host app and a gem, the **host app version takes precedence**.
 
+### Global Configuration File (captain_hook.yml)
+
+The optional `config/captain_hook.yml` file provides **global defaults** and **provider-specific overrides** that apply across all providers.
+
+#### File Location
+
+```
+config/captain_hook.yml
+```
+
+If this file doesn't exist, CaptainHook uses built-in defaults (1MB payload limit, 300 seconds timestamp tolerance).
+
+#### Configuration Structure
+
+```yaml
+# Global defaults applied to all providers unless overridden
+defaults:
+  max_payload_size_bytes: 1048576      # 1MB default
+  timestamp_tolerance_seconds: 300     # 5 minutes default
+
+# Per-provider overrides (optional)
+providers:
+  stripe:
+    max_payload_size_bytes: 2097152    # 2MB for Stripe
+    timestamp_tolerance_seconds: 600    # 10 minutes for Stripe
+  
+  square:
+    max_payload_size_bytes: 524288     # 512KB for Square
+    timestamp_tolerance_seconds: 180    # 3 minutes for Square
+```
+
+#### Configuration Priority (Highest to Lowest)
+
+CaptainHook uses a **three-tier priority system** for configuration values:
+
+1. **`captain_hook.yml` provider-specific override** (highest priority)
+   - Example: `providers.stripe.max_payload_size_bytes`
+2. **Provider YAML file value** 
+   - Example: `captain_hook/stripe/stripe.yml` → `max_payload_size_bytes: 1048576`
+3. **`captain_hook.yml` global defaults** (lowest priority, only if provider YAML is empty/nil)
+   - Example: `defaults.max_payload_size_bytes`
+
+#### Example Scenarios
+
+**Scenario 1: Provider YAML has value, no override**
+
+```yaml
+# captain_hook/stripe/stripe.yml
+max_payload_size_bytes: 2097152  # 2MB
+
+# config/captain_hook.yml
+defaults:
+  max_payload_size_bytes: 1048576  # 1MB
+```
+
+**Result**: Stripe uses **2MB** (from its provider YAML file).
+
+---
+
+**Scenario 2: Provider override takes precedence**
+
+```yaml
+# captain_hook/stripe/stripe.yml
+max_payload_size_bytes: 2097152  # 2MB
+
+# config/captain_hook.yml
+defaults:
+  max_payload_size_bytes: 1048576  # 1MB
+providers:
+  stripe:
+    max_payload_size_bytes: 5242880  # 5MB override
+```
+
+**Result**: Stripe uses **5MB** (override wins).
+
+---
+
+**Scenario 3: Provider YAML empty, falls back to global default**
+
+```yaml
+# captain_hook/stripe/stripe.yml
+# max_payload_size_bytes not specified
+
+# config/captain_hook.yml
+defaults:
+  max_payload_size_bytes: 1048576  # 1MB
+```
+
+**Result**: Stripe uses **1MB** (global default).
+
+---
+
+**Scenario 4: No captain_hook.yml, uses built-in defaults**
+
+```yaml
+# config/captain_hook.yml doesn't exist
+
+# captain_hook/stripe/stripe.yml
+# max_payload_size_bytes not specified
+```
+
+**Result**: Stripe uses **1MB** (built-in default).
+
+#### Configurable Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `max_payload_size_bytes` | Maximum webhook payload size in bytes | `1048576` (1MB) |
+| `timestamp_tolerance_seconds` | Seconds to allow for clock skew in timestamp validation | `300` (5 minutes) |
+
+**Note**: Settings like `signing_secret`, `verifier_file`, `rate_limit_requests`, and `rate_limit_period` are NOT configurable via `captain_hook.yml` and must be set in individual provider YAML files or the database.
+
+#### When to Use captain_hook.yml
+
+**Use global defaults when**:
+- You want consistent security settings across all providers
+- Multiple providers need the same configuration
+- You want to centralize default values
+
+**Use provider overrides when**:
+- A specific provider needs different limits (e.g., Stripe allows larger payloads)
+- A provider has stricter/looser timestamp requirements
+- You want to override gem-provided provider settings
+
+#### Creating the Configuration File
+
+```bash
+# Copy example file
+cp config/captain_hook.yml.example config/captain_hook.yml
+
+# Edit as needed
+nano config/captain_hook.yml
+```
+
+**Important**: Changes to `captain_hook.yml` require an application restart to take effect.
+
 ---
 
 ## File Structure
