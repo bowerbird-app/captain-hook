@@ -39,6 +39,16 @@ module CaptainHook
       rate_limit_requests.present? && rate_limit_period.present?
     end
 
+    # Check if timestamp validation is enabled
+    def timestamp_validation_enabled?
+      timestamp_tolerance_seconds.present? && timestamp_tolerance_seconds.positive?
+    end
+
+    # Check if payload size limit is enabled
+    def payload_size_limit_enabled?
+      max_payload_size_bytes.present? && max_payload_size_bytes.positive?
+    end
+
     # Activate provider
     def activate!
       update!(active: true)

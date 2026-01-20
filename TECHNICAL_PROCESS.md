@@ -1,2891 +1,2801 @@
-# Technical Process: Providers and Verifiers
-
-This document provides a deep technical explanation of how CaptainHook's provider system works, from file discovery to webhook verification.
+# CaptainHook Technical Documentation - Part 1: Providers & Verifiers
 
 ## Table of Contents
 
-1. [Provider Setup & Discovery](#provider-setup--discovery)
-2. [The Scanning Process](#the-scanning-process)
-3. [Provider Table Schema](#provider-table-schema)
-4. [Webhook Processing Flow](#webhook-processing-flow)
-5. [Verifier Verification Methods](#verifier-verification-methods)
-6. [Why YAML + Ruby Files](#why-yaml--ruby-files)
-7. [Scenarios & Limitations (Providers)](#scenarios--limitations-providers)
-8. [Actions: Business Logic Execution](#actions-business-logic-execution)
-9. [Action Registration](#action-registration)
-10. [Action Discovery & Sync](#action-discovery--sync)
-11. [Action Table Schema](#action-table-schema)
-12. [Action Execution Flow](#action-execution-flow)
-13. [Action Scenarios & Limitations](#action-scenarios--limitations)
+1. [Overview](#overview)
+2. [Architecture](#architecture)
+3. [Provider Setup & Configuration](#provider-setup--configuration)
+4. [File Structure](#file-structure)
+5. [Provider Discovery Process](#provider-discovery-process)
+6. [Webhook Request Flow](#webhook-request-flow)
+7. [Signature Verification](#signature-verification)
+8. [Signing Secrets Management](#signing-secrets-management)
+9. [Built-in Verifiers](#built-in-verifiers)
+10. [Custom Verifiers](#custom-verifiers)
+11. [Examples](#examples)
 
 ---
 
-## Provider Setup & Discovery
+## Overview
 
-### File Hierarchy
+CaptainHook is a Rails engine for receiving and processing webhooks from external providers. It uses a **registry-based architecture** where provider configurations are stored in YAML files and automatically discovered at application boot.
 
-Providers can be discovered from two locations:
+### Key Concepts
 
-1. **Host Application**: `Rails.root/captain_hook/providers/`
-2. **Loaded Gems**: `<gem_root>/captain_hook/providers/`
+- **Provider**: An external service that sends webhooks (e.g., Stripe, PayPal, Square)
+- **Verifier**: A Ruby class that handles signature verification for a specific provider
+- **Registry**: YAML-based configuration files that define provider settings
+- **Discovery**: Automatic scanning of `captain_hook/` directories for provider configurations
+- **Signing Secret**: A secret key used to verify webhook signatures (stored as ENV variable references)
 
-Both locations support two file structure patterns:
+### Design Philosophy
 
-#### Pattern 1: Flat Structure
+1. **Configuration as Code**: Provider settings live in YAML files, not the database
+2. **Convention over Configuration**: Standard file structure (`captain_hook/<provider>/<provider>.yml`)
+3. **Zero Database Configuration**: Database only stores runtime data (tokens, active status)
+4. **ENV-based Secrets**: Signing secrets reference environment variables, never committed to version control
+5. **Auto-Discovery**: Providers automatically detected from host app and gems
+
+---
+
+## Architecture
+
+### Registry vs Database
+
+CaptainHook uses a **two-layer architecture**:
+
+**Registry (YAML Files)** - Source of Truth:
+- Provider name, display name, description
+- Verifier class and file location
+- Signing secret (as ENV reference)
+- Security settings (timestamp tolerance, payload limits, rate limits)
+- Active/inactive status
+- Source metadata (where the config was loaded from)
+
+**Database (Runtime Data Only)**:
+- Unique token (auto-generated for webhook URLs)
+- Active/inactive toggle (can be changed at runtime)
+- Rate limiting overrides (optional)
+- Creation/update timestamps
+
+### Data Flow
+
 ```
-captain_hook/providers/
-├── stripe.yml          # Provider configuration
-├── stripe.rb           # Verifier implementation (optional)
-├── square.yml
-└── square.rb
+YAML Files (captain_hook/<provider>/)
+    ↓
+Provider Discovery Service (on boot)
+    ↓
+Provider Configs (in-memory structs)
+    ↓
+Database Sync (tokens, active status)
+    ↓
+Incoming Webhooks (use both registry + DB)
 ```
 
-#### Pattern 2: Nested Structure (Recommended)
+---
+
+## Provider Setup & Configuration
+
+### For Host Applications
+
+Host applications can add webhook providers by creating configuration files in their `captain_hook/` directory.
+
+#### Step 1: Create Directory Structure
+
+```bash
+# In your Rails app root
+mkdir -p captain_hook/stripe
 ```
-captain_hook/providers/
-├── stripe/
-│   ├── stripe.yml      # Provider configuration
-│   └── stripe.rb       # Verifier implementation
-├── square/
-│   ├── square.yml
-│   └── square.rb
-└── paypal/
-    ├── paypal.yml
-    └── paypal.rb
-```
 
-**Nested structure is preferred because:**
-- Keeps provider-related files grouped together
-- Makes it easy to copy/move entire providers
-- Avoids filename conflicts between providers
-- Clearer organization when managing multiple providers
+#### Step 2: Create Provider YAML File
 
-### YAML Configuration Structure
-
-Each provider needs a YAML file with these fields:
+Create `captain_hook/stripe/stripe.yml`:
 
 ```yaml
-# captain_hook/providers/stripe/stripe.yml
-name: stripe                                  # Required: Unique identifier (lowercase, underscores only)
-display_name: Stripe                          # Optional: Human-readable name
-description: Stripe payment webhooks          # Optional: Description
-verifier_file: stripe.rb                       # Optional: Ruby file with verifier class for signature verification
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]    # Optional: HMAC secret (supports ENV[] syntax)
-active: true                                  # Optional: Enable/disable (default: true)
+# Stripe webhook provider configuration
+name: stripe
+display_name: Stripe
+description: Stripe payment webhooks
+verifier_file: stripe.rb
+active: true
 
-# Security settings (optional)
-timestamp_tolerance_seconds: 300              # Time window for timestamp validation (default: 300)
-max_payload_size_bytes: 1048576              # Max payload size in bytes (default: 1MB)
+# Security settings
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
 
 # Rate limiting (optional)
-rate_limit_requests: 100                      # Max requests (default: 100)
-rate_limit_period: 60                         # Period in seconds (default: 60)
+rate_limit_requests: 100
+rate_limit_period: 60
+
+# Payload size limit (optional, in bytes)
+max_payload_size_bytes: 1048576
 ```
 
-### Ruby Verifier Structure
+#### Step 3: Create Verifier File
 
-If your provider needs signature verification, create a corresponding `.rb` file:
+Create `captain_hook/stripe/stripe.rb`:
 
 ```ruby
-# captain_hook/providers/stripe/stripe.rb
-class StripeVerifier
-  include CaptainHook::VerifierHelpers
+# frozen_string_literal: true
 
-  # Required: Verify webhook signature
-  def verify_signature(payload:, headers:, provider_config:)
-    # Provider-specific verification logic
-    signature = extract_header(headers, "Stripe-Signature")
-    # ... verification code
-  end
-
-  # Required: Extract timestamp from headers
-  def extract_timestamp(headers)
-    # Return Unix timestamp integer
-  end
-
-  # Required: Extract unique event ID from payload
-  def extract_event_id(payload)
-    payload["id"]
-  end
-
-  # Required: Extract event type from payload
-  def extract_event_type(payload)
-    payload["type"]
-  end
-end
-```
-
----
-
-## The Scanning Process
-
-### What Happens During a Scan
-
-When you click "Scan for Providers" in the admin UI or run the discovery service, here's the detailed flow:
-
-#### Step 1: File Discovery
-
-```ruby
-# lib/captain_hook/services/provider_discovery.rb
-
-1. Scan application directory: Rails.root/captain_hook/providers/
-   - Find all *.yml and *.yaml files in root
-   - Find all subdirectories, then look for matching YAML files
-   
-2. Scan loaded gems via Bundler
-   - Iterate through all gems in Gemfile
-   - Check if <gem_root>/captain_hook/providers/ exists
-   - Scan using same pattern as application
-```
-
-**Discovery Order:**
-1. Flat YAML files (`.yml`, `.yaml`) in the providers directory
-2. Nested subdirectories matching pattern: `provider_name/provider_name.yml`
-3. Nested subdirectories with any YAML file (fallback)
-
-#### Step 2: YAML Parsing
-
-For each discovered YAML file:
-
-```ruby
-content = File.read(file_path)
-yaml_data = YAML.safe_load(content, 
-  permitted_classes: [], 
-  permitted_symbols: [], 
-  aliases: false
-)
-
-# Add metadata
-yaml_data.merge!(
-  "source_file" => file_path,
-  "source" => "application" or "gem:gem_name"
-)
-```
-
-**Source tracking** helps identify where providers came from:
-- `"application"` = Your Rails app
-- `"gem:example-stripe"` = From a specific gem
-
-#### Step 3: Verifier Auto-loading
-
-If using nested structure, the verifier `.rb` file is automatically loaded:
-
-```ruby
-# If stripe/stripe.yml exists, also load stripe/stripe.rb
-verifier_file = File.join(subdir, "#{provider_name}.rb")
-
-if File.exist?(verifier_file)
-  load verifier_file  # Loads the Ruby class
-  Rails.logger.debug("Loaded verifier from #{verifier_file}")
-end
-```
-
-This happens **during discovery**, so the verifier class is available when needed.
-
-#### Step 4: Database Synchronization
-
-The controller compares discovered providers with database records:
-
-```ruby
-# app/controllers/captain_hook/admin/providers_controller.rb
-
-provider_definitions.each do |provider_def|
-  existing = Provider.find_by(name: provider_def['name'])
-  
-  if existing
-    # Update existing provider (if using "Full Sync" mode)
-    existing.update!(provider_def) if sync_mode == :full
-  else
-    # Create new provider
-    Provider.create!(provider_def.merge(token: SecureRandom.urlsafe_base64(32)))
-  end
-end
-```
-
-**Two Scan Modes:**
-
-1. **Discover New** (default):
-   - Only creates providers that don't exist
-   - Doesn't modify existing providers
-   - Safe for adding new providers without affecting current setup
-
-2. **Full Sync**:
-   - Creates new providers
-   - Updates existing providers with YAML values
-   - Overwrites database with file definitions
-   - Use when you've updated YAML configs
-
-#### Step 5: Token Generation
-
-Each provider gets a unique, cryptographically secure token:
-
-```ruby
-self.token = SecureRandom.urlsafe_base64(32)
-# Example: "yJ8fK9mNpQrS7tUvWxYz-A2B3C4D5E6F"
-```
-
-This token becomes part of the webhook URL: `/captain_hook/stripe/yJ8fK9mNpQrS7tUvWxYz-A2B3C4D5E6F`
-
----
-
-## Provider Table Schema
-
-### Table: `captain_hook_providers`
-
-```sql
-CREATE TABLE captain_hook_providers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Identity fields
-  name VARCHAR NOT NULL UNIQUE,              -- Provider identifier (e.g., "stripe")
-  display_name VARCHAR,                      -- Human-readable name (e.g., "Stripe")
-  description TEXT,                          -- Optional description
-  token VARCHAR NOT NULL UNIQUE,             -- Secure URL token
-  
-  -- Security configuration
-  signing_secret VARCHAR,                    -- Encrypted HMAC secret
-  verifier_class VARCHAR DEFAULT NULL,        -- Verifier class name (NULL = no verification, auto-extracted)
-  verifier_file VARCHAR,                      -- Ruby file containing verifier (added in 20260117000002)
-  timestamp_tolerance_seconds INTEGER DEFAULT 300,  -- Replay attack protection
-  
-  -- Resource limits
-  max_payload_size_bytes INTEGER DEFAULT 1048576,   -- DoS protection (1MB default)
-  rate_limit_requests INTEGER DEFAULT 100,          -- Rate limit threshold
-  rate_limit_period INTEGER DEFAULT 60,             -- Rate limit window (seconds)
-  
-  -- State management
-  active BOOLEAN NOT NULL DEFAULT true,      -- Enable/disable provider
-  metadata JSONB DEFAULT '{}',               -- Flexible additional data
-  
-  -- Timestamps
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
--- Indexes
-CREATE UNIQUE INDEX ON captain_hook_providers(name);
-CREATE UNIQUE INDEX ON captain_hook_providers(token);
-CREATE INDEX ON captain_hook_providers(active);
-```
-
-### Column Explanations
-
-#### Identity Fields
-
-**`name`** (VARCHAR, NOT NULL, UNIQUE)
-- Primary identifier used in URLs and code
-- Must be lowercase with underscores only: `^[a-z0-9_]+$`
-- Example: `stripe`, `square`, `paypal_production`
-- Used in webhook URL: `/captain_hook/{name}/{token}`
-- Used as foreign key in `incoming_events` table
-
-**`display_name`** (VARCHAR, NULLABLE)
-- Human-readable name shown in admin UI
-- Auto-generated from `name` if not provided (titleized)
-- Example: `name: "stripe"` → `display_name: "Stripe"`
-- Not used in any logic, purely cosmetic
-
-**`description`** (TEXT, NULLABLE)
-- Optional documentation about the provider
-- Shown in admin UI for reference
-- Useful for multi-instance providers: "Stripe - Production Account"
-
-**`token`** (VARCHAR, NOT NULL, UNIQUE)
-- Cryptographically secure random string (32 bytes, base64-encoded)
-- Acts as authentication for incoming webhooks
-- Generated automatically on provider creation
-- Never shown in logs for security
-- Cannot be changed after creation (would break provider's webhook config)
-
-#### Security Configuration
-
-**`signing_secret`** (VARCHAR, NULLABLE, ENCRYPTED)
-- HMAC secret key used for signature verification
-- **Encrypted at rest** using ActiveRecord Encryption (AES-256-GCM)
-- Can be `NULL` if provider doesn't support signature verification
-- Supports two storage methods:
-  1. **Database storage**: Encrypted value stored directly
-  2. **Environment variable**: YAML value `ENV[STRIPE_SECRET]` resolved at runtime
-- Environment variables override database values
-- Model getter checks: `ENV["#{name.upcase}_WEBHOOK_SECRET"]` first
-
-**`verifier_class`** (VARCHAR, NULLABLE)
-- **Changed from NOT NULL to NULLABLE in migration 20260117000001**
-- **Auto-extracted from verifier_file during provider sync (migration 20260117000002)**
-- Class name of verifier (e.g., `"StripeVerifier"`)
-- `NULL` means no signature verification (token-only authentication)
-- Class must exist and be loadable when webhook arrives
-- Auto-detected from verifier_file specified in YAML during provider scan
-- Used to instantiate verifier: `verifier_class.constantize.new`
-
-**`timestamp_tolerance_seconds`** (INTEGER, DEFAULT 300)
-- Maximum age of webhook timestamps (5 minutes default)
-- Prevents replay attacks (attacker resending old webhooks)
-- `NULL` or `0` disables timestamp validation
-- Checked using verifier's `extract_timestamp(headers)` method
-- Formula: `(current_time - timestamp).abs <= tolerance`
-
-#### Resource Limits
-
-**`max_payload_size_bytes`** (INTEGER, DEFAULT 1048576)
-- Maximum allowed payload size in bytes (1MB default)
-- Protects against DoS attacks with huge payloads
-- Checked before JSON parsing: `request.raw_post.bytesize`
-- `NULL` or `0` disables limit
-- Returns HTTP 413 Payload Too Large if exceeded
-
-**`rate_limit_requests`** (INTEGER, DEFAULT 100)
-- Maximum number of requests allowed per period
-- Works with `rate_limit_period` for sliding window rate limiting
-- `NULL` disables rate limiting
-- Tracked in Redis (if available) or memory
-- Returns HTTP 429 Too Many Requests if exceeded
-
-**`rate_limit_period`** (INTEGER, DEFAULT 60)
-- Time window in seconds for rate limiting
-- Default: 100 requests per 60 seconds
-- Must be > 0 if rate limiting is enabled
-- Sliding window implementation (not fixed buckets)
-
-#### State Management
-
-**`active`** (BOOLEAN, NOT NULL, DEFAULT true)
-- Enable/disable webhook reception without deleting provider
-- Inactive providers return HTTP 403 Forbidden
-- Useful for temporarily pausing webhooks
-- Actions are not deleted when deactivating
-
-**`metadata`** (JSONB, DEFAULT '{}')
-- Flexible storage for provider-specific data
-- Not used by CaptainHook core
-- Available for custom extensions
-- Example uses:
-  - Last successful webhook timestamp
-  - Provider account identifiers
-  - Custom configuration flags
-
----
-
-## Webhook Processing Flow
-
-### Complete Request Lifecycle
-
-```
-External Provider → POST → IncomingController → Verification → Event Storage → Action Dispatch
-```
-
-Here's the detailed flow when a webhook arrives at `/captain_hook/stripe/abc123token`:
-
-### 1. Route Matching
-
-```ruby
-# config/routes.rb
-post "/captain_hook/:provider/:token", to: "captain_hook/incoming#create"
-
-# params[:provider] = "stripe"
-# params[:token] = "abc123token"
-```
-
-### 2. Provider Lookup
-
-```ruby
-# app/controllers/captain_hook/incoming_controller.rb
-
-provider = CaptainHook::Provider.find_by(name: params[:provider])
-
-# Returns HTTP 404 if provider doesn't exist
-# Returns HTTP 403 if provider.active == false
-```
-
-### 3. Token Verification
-
-```ruby
-unless provider.token == params[:token]
-  render json: { error: "Invalid token" }, status: :unauthorized
-  return
-end
-```
-
-**Why token-based URLs?**
-- Prevents unauthorized webhook submissions
-- Each provider gets a unique URL
-- No need to check origin IP addresses
-- Simple and secure authentication layer
-
-### 4. Rate Limiting Check
-
-```ruby
-if provider.rate_limiting_enabled?
-  rate_limiter = CaptainHook::Services::RateLimiter.new
-  
-  rate_limiter.record!(
-    provider: provider_name,
-    limit: provider.rate_limit_requests,
-    period: provider.rate_limit_period
-  )
-  # Raises RateLimitExceeded if limit hit
-end
-```
-
-Uses Redis (preferred) or in-memory storage for tracking request counts.
-
-### 5. Payload Size Check
-
-```ruby
-if provider.payload_size_limit_enabled?
-  payload_size = request.raw_post.bytesize
-  
-  if payload_size > provider.max_payload_size_bytes
-    render json: { error: "Payload too large" }, status: :payload_too_large
-    return
-  end
-end
-```
-
-Checked **before** JSON parsing to prevent memory exhaustion attacks.
-
-### 6. Signature Verification (The Critical Step)
-
-```ruby
-raw_payload = request.raw_post  # Original body as string
-headers = extract_headers(request)  # HTTP headers as hash
-
-verifier = provider.verifier  # Instantiate verifier class
-
-unless verifier.verify_signature(
-  payload: raw_payload,
-  headers: headers,
-  provider_config: provider
-)
-  render json: { error: "Invalid signature" }, status: :unauthorized
-  return
-end
-```
-
-**What happens in verifier:**
-
-```ruby
-# Example: Stripe verifier
-def verify_signature(payload:, headers:, provider_config:)
-  # 1. Extract signature from headers
-  signature_header = extract_header(headers, "Stripe-Signature")
-  # => "t=1609459200,v1=abc123def456,v0=older789"
-  
-  # 2. Parse into components
-  parsed = parse_kv_header(signature_header)
-  # => {"t" => "1609459200", "v1" => ["abc123def456"], "v0" => ["older789"]}
-  
-  # 3. Check timestamp
-  timestamp = parsed["t"].to_i
-  if provider_config.timestamp_validation_enabled?
-    return false unless timestamp_within_tolerance?(timestamp, 300)
-  end
-  
-  # 4. Reconstruct signed payload
-  signed_payload = "#{timestamp}.#{payload}"
-  
-  # 5. Calculate expected signature
-  expected_signature = generate_hmac(
-    provider_config.signing_secret,
-    signed_payload
-  )
-  
-  # 6. Constant-time comparison (prevents timing attacks)
-  signatures = [parsed["v1"], parsed["v0"]].flatten.compact
-  signatures.any? { |sig| secure_compare(sig, expected_signature) }
-end
-```
-
-**Why signature verification matters:**
-- Proves webhook came from the actual provider
-- Prevents webhook spoofing/forgery
-- Validates payload hasn't been tampered with
-- Essential for production security
-
-### 7. JSON Parsing
-
-```ruby
-begin
-  parsed_payload = JSON.parse(raw_payload)
-rescue JSON::ParserError => e
-  render json: { error: "Invalid JSON" }, status: :bad_request
-  return
-end
-```
-
-Parsing happens **after** signature verification to ensure we only parse trusted data.
-
-### 8. Metadata Extraction
-
-```ruby
-external_id = verifier.extract_event_id(parsed_payload)
-# => "evt_1JqXyZ2eZvKYlo2C8"
-
-event_type = verifier.extract_event_type(parsed_payload)
-# => "payment_intent.succeeded"
-
-timestamp = verifier.extract_timestamp(headers)
-# => 1609459200
-```
-
-Verifiers normalize provider-specific formats into CaptainHook's standard fields.
-
-### 9. Timestamp Validation
-
-```ruby
-if provider.timestamp_validation_enabled? && timestamp
-  validator = CaptainHook::TimeWindowValidator.new(
-    tolerance_seconds: provider.timestamp_tolerance_seconds
-  )
-  
-  unless validator.valid?(timestamp)
-    render json: { error: "Timestamp outside tolerance window" }, 
-           status: :bad_request
-    return
-  end
-end
-```
-
-Prevents replay attacks where attackers resend old webhooks.
-
-### 10. Event Storage (Idempotency)
-
-```ruby
-event = CaptainHook::IncomingEvent.find_or_create_by_external!(
-  provider: provider_name,
-  external_id: external_id,
-  event_type: event_type,
-  payload: parsed_payload,
-  headers: headers,
-  metadata: { received_at: Time.current.iso8601 },
-  status: :received,
-  dedup_state: :unique
-)
-```
-
-**Idempotency mechanism:**
-```sql
--- Unique index prevents duplicate events
-CREATE UNIQUE INDEX idx_captain_hook_incoming_events_idempotency 
-  ON captain_hook_incoming_events(provider, external_id);
-```
-
-If the same `(provider, external_id)` arrives twice:
-- First time: Creates event, returns HTTP 201 Created
-- Second time: Finds existing event, marks as duplicate, returns HTTP 200 OK
-- **No re-processing happens** (actions are not re-queued)
-
-### 11. Action Dispatch
-
-```ruby
-if event.previously_new_record?
-  # New event - create action records
-  create_actions_for_event(event)
-  
-  render json: { id: event.id, status: "received" }, status: :created
-else
-  # Duplicate event
-  event.mark_duplicate!
-  render json: { id: event.id, status: "duplicate" }, status: :ok
-end
-```
-
-**Note:** For complete details on action creation, registration, and execution flow, see [Actions: Business Logic Execution](#actions-business-logic-execution) below.
-
----
-
-## Verifier Verification Methods
-
-The `CaptainHook::VerifierHelpers` module provides battle-tested security methods for verifiers.
-
-### Core Verification Methods
-
-#### 1. `secure_compare(a, b)`
-
-**Purpose:** Constant-time string comparison to prevent timing attacks
-
-```ruby
-def secure_compare(a, b)
-  return false if a.blank? || b.blank?
-  return false if a.bytesize != b.bytesize
-
-  l = a.unpack("C*")  # Convert to byte arrays
-  r = b.unpack("C*")
-
-  result = 0
-  l.zip(r) { |x, y| result |= x ^ y }  # XOR all bytes
-  result.zero?  # True if all bytes matched
-end
-```
-
-**Why constant-time?**
-- Normal string comparison (`==`) returns as soon as a mismatch is found
-- Attacker can measure response time to guess signature byte-by-byte
-- Constant-time comparison always checks all bytes
-- Makes timing attacks impractical
-
-**Usage:**
-```ruby
-expected = generate_hmac(secret, data)
-actual = extract_header(headers, "X-Signature")
-
-secure_compare(expected, actual)  # Safe
-actual == expected  # UNSAFE - vulnerable to timing attacks
-```
-
-#### 2. `generate_hmac(secret, data)`
-
-**Purpose:** Generate HMAC-SHA256 signature (hex-encoded)
-
-```ruby
-def generate_hmac(secret, data)
-  OpenSSL::HMAC.hexdigest("SHA256", secret, data)
-end
-```
-
-**Returns:** Lowercase hex string (64 characters)
-**Example:** `"a3b4c5d6e7f8..."`
-
-**Usage:**
-```ruby
-secret = "whsec_abc123"
-payload = "#{timestamp}.#{request_body}"
-signature = generate_hmac(secret, payload)
-```
-
-#### 3. `generate_hmac_base64(secret, data)`
-
-**Purpose:** Generate HMAC-SHA256 signature (Base64-encoded)
-
-```ruby
-def generate_hmac_base64(secret, data)
-  Base64.strict_encode64(
-    OpenSSL::HMAC.digest("SHA256", secret, data)
-  )
-end
-```
-
-**Returns:** Base64 string (44 characters with padding)
-**Example:** `"o7TF1u348...=="`
-
-**When to use:** Some providers (Square, PayPal) use Base64 instead of hex encoding.
-
-#### 4. `extract_header(headers, *keys)`
-
-**Purpose:** Case-insensitive header extraction
-
-```ruby
-def extract_header(headers, *keys)
-  keys.each do |key|
-    value = headers[key] || 
-            headers[key.downcase] || 
-            headers[key.upcase]
-    return value if value.present?
-  end
-  nil
-end
-```
-
-**Why needed?**
-- HTTP headers are case-insensitive per RFC
-- Rails normalizes to `Title-Case`
-- Some providers send `lowercase` or `UPPERCASE`
-- This method tries all variations
-
-**Usage:**
-```ruby
-# Try multiple possible header names
-sig = extract_header(headers, 
-  "X-Square-Signature", 
-  "X-Square-Hmacsha256-Signature"
-)
-```
-
-#### 5. `parse_kv_header(header_value)`
-
-**Purpose:** Parse key-value pair headers (e.g., Stripe's signature format)
-
-```ruby
-def parse_kv_header(header_value)
-  # Input: "t=1609459200,v1=abc123,v0=def456"
-  # Output: {"t" => "1609459200", "v1" => ["abc123"], "v0" => ["def456"]}
-  
-  header_value.split(",").each_with_object({}) do |pair, hash|
-    key, value = pair.split("=", 2)
-    next if key.blank? || value.blank?
-    
-    key = key.strip
-    value = value.strip
-    
-    # Handle multiple values for same key
-    if hash.key?(key)
-      hash[key] = [hash[key]] unless hash[key].is_a?(Array)
-      hash[key] << value
-    else
-      hash[key] = value
-    end
-  end
-end
-```
-
-**Handles:**
-- Multiple values: `v1=sig1,v1=sig2` → `{"v1" => ["sig1", "sig2"]}`
-- Whitespace: `t = 123 , v1 = abc` → `{"t" => "123", "v1" => "abc"}`
-- Empty pairs: `t=123,,v1=abc` → Skips empty pair
-
-#### 6. `timestamp_within_tolerance?(timestamp, tolerance)`
-
-**Purpose:** Check if timestamp is within acceptable age
-
-```ruby
-def timestamp_within_tolerance?(timestamp, tolerance)
-  return false if timestamp.nil?
-  
-  current_time = Time.current.to_i
-  age = (current_time - timestamp).abs  # Absolute value handles future timestamps
-  age <= tolerance
-end
-```
-
-**Tolerates:**
-- Old timestamps (within window)
-- Future timestamps (clock skew between servers)
-- Uses absolute value to handle both directions
-
-**Example:**
-```ruby
-# Current time: 2024-01-01 12:00:00 (timestamp: 1704110400)
-# Tolerance: 300 seconds (5 minutes)
-
-timestamp_within_tolerance?(1704110100, 300)  # 12:05 ago → true
-timestamp_within_tolerance?(1704109000, 300)  # 25 min ago → false
-timestamp_within_tolerance?(1704110700, 300)  # 5 min future → true
-```
-
-#### 7. `parse_timestamp(time_string)`
-
-**Purpose:** Parse various timestamp formats to Unix timestamp
-
-```ruby
-def parse_timestamp(time_string)
-  return nil if time_string.blank?
-  return time_string.to_i if time_string.is_a?(Integer)
-  return time_string.to_i if time_string.to_s.match?(/^\d+$/)
-  
-  # Try parsing as ISO8601/RFC3339
-  Time.parse(time_string).to_i
-rescue ArgumentError
-  nil
-end
-```
-
-**Handles:**
-- Unix timestamps: `1609459200` → `1609459200`
-- String integers: `"1609459200"` → `1609459200`
-- ISO8601: `"2024-01-01T12:00:00Z"` → `1704110400`
-- Invalid formats: Returns `nil` instead of raising
-
-### Example: Complete Verifier Implementation
-
-```ruby
 class StripeVerifier
   include CaptainHook::VerifierHelpers
 
   SIGNATURE_HEADER = "Stripe-Signature"
+  TIMESTAMP_TOLERANCE = 300
 
   def verify_signature(payload:, headers:, provider_config:)
-    # 1. Extract signature header
     signature_header = extract_header(headers, SIGNATURE_HEADER)
     return false if signature_header.blank?
 
-    # 2. Parse components
+    # Parse signature header: t=timestamp,v1=signature
+    parsed = parse_kv_header(signature_header)
+    timestamp = parsed["t"]
+    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+
+    return false if timestamp.blank? || signatures.empty?
+
+    # Check timestamp tolerance
+    if provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds || TIMESTAMP_TOLERANCE
+      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+    end
+
+    # Generate expected signature
+    signed_payload = "#{timestamp}.#{payload}"
+    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
+
+    # Check if any signature matches
+    signatures.any? { |sig| secure_compare(sig, expected_signature) }
+  end
+end
+```
+
+#### Step 4: Set Environment Variable
+
+```bash
+# .env (use dotenv-rails gem)
+STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
+
+# Or set directly in environment
+export STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
+```
+
+#### Step 5: Restart Application
+
+```bash
+rails server
+# Provider will be automatically discovered and synced to database
+```
+
+### For Gem Authors
+
+Gems can provide webhook integrations by including `captain_hook/` directories.
+
+#### Directory Structure in Gem
+
+```
+your_gem/
+├── lib/
+│   └── your_gem.rb
+├── captain_hook/
+│   ├── stripe/
+│   │   ├── stripe.yml
+│   │   ├── stripe.rb
+│   │   └── actions/
+│   │       └── payment_succeeded_action.rb
+│   └── paypal/
+│       ├── paypal.yml
+│       ├── paypal.rb
+│       └── actions/
+│           └── payment_captured_action.rb
+└── your_gem.gemspec
+```
+
+#### Example Gem Integration
+
+```ruby
+# your_gem/captain_hook/stripe/stripe.yml
+name: stripe
+display_name: Stripe (via YourGem)
+description: Stripe webhooks provided by YourGem
+verifier_file: stripe.rb
+active: true
+signing_secret: ENV[YOUR_GEM_STRIPE_SECRET]
+timestamp_tolerance_seconds: 300
+```
+
+**Note**: When a provider exists in both the host app and a gem, the **host app version takes precedence**.
+
+---
+
+## File Structure
+
+### Standard Provider Structure
+
+```
+captain_hook/
+└── <provider_name>/
+    ├── <provider_name>.yml       # Required: Provider configuration
+    ├── <provider_name>.rb         # Required: Verifier class
+    └── actions/                   # Optional: Action classes
+        ├── event_type_one_action.rb
+        └── event_type_two_action.rb
+```
+
+### YAML Configuration Schema
+
+```yaml
+# Required fields
+name: string                          # Provider identifier (lowercase, underscores)
+verifier_file: string                 # Verifier Ruby file name
+
+# Optional fields
+display_name: string                  # Human-readable name
+description: string                   # Provider description
+active: boolean                       # Default: true
+
+# Security settings
+signing_secret: string                # ENV[VARIABLE_NAME] or literal value
+timestamp_tolerance_seconds: integer  # Seconds to allow for clock skew
+max_payload_size_bytes: integer       # Maximum webhook payload size
+
+# Rate limiting
+rate_limit_requests: integer          # Number of requests allowed
+rate_limit_period: integer            # Time period in seconds
+```
+
+### Example: Complete Provider Setup
+
+```
+captain_hook/
+└── stripe/
+    ├── stripe.yml
+    ├── stripe.rb
+    └── actions/
+        ├── payment_intent_succeeded_action.rb
+        ├── charge_refunded_action.rb
+        └── customer_subscription_updated_action.rb
+```
+
+---
+
+## Provider Discovery Process
+
+### When Discovery Happens
+
+Provider discovery runs automatically during:
+1. **Application Boot** (via Rails engine initializer)
+2. **Manual Trigger** (via `CaptainHook.scan_providers` or admin UI)
+
+### Discovery Algorithm
+
+```ruby
+# Step 1: Scan Application Directory
+# Looks in Rails.root/captain_hook/*
+def scan_application_providers
+  app_captain_hook_path = Rails.root.join("captain_hook")
+  return unless File.directory?(app_captain_hook_path)
+  
+  scan_directory(app_captain_hook_path, source: "application")
+end
+
+# Step 2: Scan All Loaded Gems
+# Uses Bundler to find gems with captain_hook/ directories
+def scan_gem_providers
+  Bundler.load.specs.each do |spec|
+    gem_captain_hook_path = File.join(spec.gem_dir, "captain_hook")
+    next unless File.directory?(gem_captain_hook_path)
+    
+    scan_directory(gem_captain_hook_path, source: "gem:#{spec.name}")
+  end
+end
+
+# Step 3: Scan Directory for Provider Configs
+def scan_directory(directory_path, source:)
+  Dir.glob(File.join(directory_path, "*")).each do |subdir|
+    next unless File.directory?(subdir)
+    
+    provider_name = File.basename(subdir)
+    next if provider_name.start_with?(".")
+    
+    # Look for YAML file matching provider name
+    yaml_file = Dir.glob(File.join(subdir, "#{provider_name}.{yml,yaml}")).first
+    next unless yaml_file
+    
+    # Load provider configuration
+    provider_def = load_provider_file(yaml_file, source: source)
+    next unless provider_def
+    
+    # Autoload verifier file if exists
+    verifier_file = File.join(subdir, "#{provider_name}.rb")
+    load verifier_file if File.exist?(verifier_file)
+    
+    # Autoload actions from actions/ directory
+    actions_dir = File.join(subdir, "actions")
+    load_actions_from_directory(actions_dir) if File.directory?(actions_dir)
+    
+    @discovered_providers << provider_def
+  end
+end
+
+# Step 4: Deduplicate Providers
+# Application providers take precedence over gem providers
+def deduplicate_providers
+  seen = {}
+  @discovered_providers.each do |provider|
+    name = provider["name"]
+    next unless name
+    
+    # Priority: application > gem
+    if !seen[name] || (provider["source"] == "application" && seen[name]["source"] != "application")
+      seen[name] = provider
+    end
+  end
+  
+  @discovered_providers = seen.values
+end
+```
+
+### Discovery Flow Diagram
+
+```
+Application Boot
+    ↓
+Engine Initializer Runs
+    ↓
+ProviderDiscovery.new.call
+    ↓
+┌─────────────────────────────────┐
+│ Scan Rails.root/captain_hook/   │
+│ - Find stripe/stripe.yml        │
+│ - Load stripe.rb                │
+│ - Load stripe/actions/*.rb      │
+└─────────────────────────────────┘
+    ↓
+┌─────────────────────────────────┐
+│ Scan All Gems                   │
+│ - Check each gem for            │
+│   captain_hook/ directory       │
+│ - Load provider configs         │
+│ - Load verifiers and actions    │
+└─────────────────────────────────┘
+    ↓
+┌─────────────────────────────────┐
+│ Deduplicate                     │
+│ - Remove duplicate providers    │
+│ - Prioritize app over gems      │
+└─────────────────────────────────┘
+    ↓
+┌─────────────────────────────────┐
+│ Sync to Database                │
+│ - Create/update Provider records│
+│ - Generate tokens if needed     │
+│ - Preserve active status        │
+└─────────────────────────────────┘
+    ↓
+Providers Ready to Receive Webhooks
+```
+
+### Discovery Service Usage
+
+```ruby
+# Manual discovery (in console or code)
+discovery = CaptainHook::Services::ProviderDiscovery.new
+provider_definitions = discovery.call
+
+# Returns array of hashes:
+# [
+#   {
+#     "name" => "stripe",
+#     "display_name" => "Stripe",
+#     "description" => "Stripe payment webhooks",
+#     "verifier_file" => "stripe.rb",
+#     "verifier_class" => "StripeVerifier",
+#     "active" => true,
+#     "signing_secret" => "ENV[STRIPE_WEBHOOK_SECRET]",
+#     "timestamp_tolerance_seconds" => 300,
+#     "rate_limit_requests" => 100,
+#     "rate_limit_period" => 60,
+#     "max_payload_size_bytes" => 1048576,
+#     "source_file" => "/app/captain_hook/stripe/stripe.yml",
+#     "source" => "application"
+#   },
+#   # ... more providers
+# ]
+
+# Create ProviderConfig structs
+configs = provider_definitions.map do |definition|
+  CaptainHook::ProviderConfig.new(definition)
+end
+```
+
+---
+
+## Webhook Request Flow
+
+### Complete Request Lifecycle
+
+```
+External Provider (Stripe, PayPal, etc.)
+    ↓
+POST /captain_hook/:provider/:token
+    ↓
+┌──────────────────────────────────────────┐
+│ 1. Route Matching                        │
+│    - Match provider name from URL        │
+│    - Extract token                       │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 2. Provider Lookup (Database)            │
+│    - Find provider by name               │
+│    - Return 404 if not found             │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 3. Token Verification                    │
+│    - Compare URL token with DB token     │
+│    - Return 401 if mismatch              │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 4. Rate Limiting Check                   │
+│    - Check requests per time period      │
+│    - Return 429 if exceeded              │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 5. Payload Size Check                    │
+│    - Verify payload within limits        │
+│    - Return 413 if too large             │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 6. Load Provider Config (Registry)       │
+│    - Discover providers from YAML        │
+│    - Find matching provider config       │
+│    - Resolve signing secret from ENV     │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 7. Signature Verification                │
+│    - Load verifier class                 │
+│    - Call verify_signature method        │
+│    - Return 401 if verification fails    │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 8. Timestamp Validation (Optional)       │
+│    - Check webhook timestamp             │
+│    - Verify within tolerance window      │
+│    - Prevents replay attacks             │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 9. Store IncomingEvent                   │
+│    - Parse external_id from payload      │
+│    - Check for duplicates (idempotency)  │
+│    - Save event to database              │
+│    - Return 200 if duplicate             │
+└──────────────────────────────────────────┘
+    ↓
+┌──────────────────────────────────────────┐
+│ 10. Action Discovery                     │
+│     - Look up actions for event_type     │
+│     - Create action execution records    │
+│     - Enqueue background jobs            │
+└──────────────────────────────────────────┘
+    ↓
+Return 200 OK
+    ↓
+Background Jobs Process Actions
+```
+
+### Controller Code Flow
+
+```ruby
+# app/controllers/captain_hook/incoming_controller.rb
+def create
+  # 1. Provider lookup (database)
+  provider = Provider.find_by(name: params[:provider])
+  return render_not_found unless provider
+  
+  # 2. Token verification
+  return render_unauthorized unless provider.token == params[:token]
+  
+  # 3. Rate limiting
+  return render_rate_limited if rate_limit_exceeded?(provider)
+  
+  # 4. Read raw payload
+  raw_payload = request.raw_post
+  headers = extract_headers(request)
+  
+  # 5. Payload size check
+  if provider_config.payload_size_limit_enabled?
+    max_size = provider_config.max_payload_size_bytes
+    return render_payload_too_large if raw_payload.bytesize > max_size
+  end
+  
+  # 6. Load provider config from registry
+  provider_definitions = ProviderDiscovery.new.call
+  provider_def = provider_definitions.find { |p| p["name"] == provider.name }
+  provider_config = ProviderConfig.new(provider_def)
+  
+  # 7. Signature verification
+  verifier = provider_config.verifier
+  unless verifier.verify_signature(
+    payload: raw_payload,
+    headers: headers,
+    provider_config: provider_config
+  )
+    return render_unauthorized
+  end
+  
+  # 8. Parse payload
+  payload = parse_payload(raw_payload)
+  event_type = extract_event_type(payload, provider)
+  external_id = extract_external_id(payload, provider)
+  
+  # 9. Create incoming event (with idempotency)
+  event = IncomingEvent.create_with(
+    event_type: event_type,
+    payload: payload,
+    headers: headers,
+    status: "received"
+  ).find_or_create_by(
+    provider: provider.name,
+    external_id: external_id
+  )
+  
+  # Return early if duplicate
+  if event.previously_persisted?
+    event.update(dedup_state: "duplicate")
+    return render json: { status: "ok", message: "Duplicate event" }, status: :ok
+  end
+  
+  # 10. Enqueue actions
+  IncomingActionService.new(event).enqueue_actions
+  
+  render json: { status: "ok" }, status: :ok
+end
+```
+
+---
+
+## Signature Verification
+
+### How Signature Verification Works
+
+Webhook providers sign their requests to prove authenticity. Each provider uses different algorithms and header formats.
+
+### Common Signature Schemes
+
+**HMAC-SHA256 (Stripe, Square, PayPal)**:
+1. Provider creates signature: `HMAC-SHA256(secret_key, payload_data)`
+2. Signature sent in HTTP header
+3. Receiver recomputes signature with same secret
+4. Compare signatures using constant-time comparison
+
+**Example Flow**:
+```
+Provider Side:
+  payload = '{"event":"payment.succeeded"}'
+  secret = "whsec_abc123"
+  timestamp = "1234567890"
+  signed_payload = "#{timestamp}.#{payload}"
+  signature = HMAC-SHA256(secret, signed_payload)
+  # => "a1b2c3d4..."
+  
+  Send HTTP POST with header:
+    Stripe-Signature: t=1234567890,v1=a1b2c3d4...
+
+Receiver Side (CaptainHook):
+  1. Extract signature and timestamp from header
+  2. Reconstruct signed payload: "#{timestamp}.#{payload}"
+  3. Load signing secret from ENV: ENV["STRIPE_WEBHOOK_SECRET"]
+  4. Compute expected signature: HMAC-SHA256(secret, signed_payload)
+  5. Compare using secure_compare(received_sig, expected_sig)
+  6. Accept if match, reject if mismatch
+```
+
+### Verifier Interface
+
+All verifiers must implement the `verify_signature` method:
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  # payload:         Raw request body (String)
+  # headers:         Request headers (Hash)
+  # provider_config: ProviderConfig struct with settings
+  
+  # Returns: Boolean (true if valid, false otherwise)
+end
+```
+
+### VerifierHelpers Module
+
+CaptainHook provides helper methods for common verification tasks:
+
+```ruby
+module CaptainHook::VerifierHelpers
+  # Generate HMAC-SHA256 signature (hex-encoded)
+  def generate_hmac(secret, data)
+    OpenSSL::HMAC.hexdigest("SHA256", secret, data)
+  end
+  
+  # Generate HMAC-SHA256 signature (base64-encoded)
+  def generate_hmac_base64(secret, data)
+    Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", secret, data))
+  end
+  
+  # Extract header value (case-insensitive)
+  def extract_header(headers, *keys)
+    keys.each do |key|
+      value = headers[key] || headers[key.downcase] || headers[key.upcase]
+      return value if value.present?
+    end
+    nil
+  end
+  
+  # Parse key-value header (e.g., "t=123,v1=abc")
+  def parse_kv_header(header_value)
+    return {} if header_value.blank?
+    
+    header_value.split(",").each_with_object({}) do |pair, hash|
+      key, value = pair.split("=", 2)
+      next if key.blank? || value.blank?
+      
+      key = key.strip
+      value = value.strip
+      
+      if hash[key]
+        hash[key] = [hash[key]].flatten << value
+      else
+        hash[key] = value
+      end
+    end
+  end
+  
+  # Constant-time string comparison (prevents timing attacks)
+  def secure_compare(a, b)
+    return false if a.blank? || b.blank?
+    return false if a.bytesize != b.bytesize
+    
+    l = a.unpack("C*")
+    r = b.unpack("C*")
+    
+    result = 0
+    l.zip(r) { |x, y| result |= x ^ y }
+    result == 0
+  end
+  
+  # Check if timestamp is within tolerance
+  def timestamp_within_tolerance?(timestamp, tolerance)
+    now = Time.current.to_i
+    (now - timestamp).abs <= tolerance
+  end
+  
+  # Check if signing secret is missing
+  def missing_signing_secret?(provider_config)
+    provider_config.signing_secret.blank? ||
+      provider_config.signing_secret.start_with?("ENV[")
+  end
+end
+```
+
+---
+
+## Signing Secrets Management
+
+### ENV Variable Pattern
+
+CaptainHook uses a special pattern to reference environment variables in YAML files:
+
+```yaml
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+```
+
+This pattern:
+- Never commits secrets to version control
+- Allows different secrets per environment
+- Supports multiple providers with unique secrets
+- Enables secret rotation without code changes
+
+### How ENV Resolution Works
+
+```ruby
+# In YAML file
+signing_secret: "ENV[STRIPE_WEBHOOK_SECRET]"
+
+# ProviderConfig resolution
+def signing_secret
+  raw_secret = instance_variable_get(:@raw_signing_secret)
+  return nil if raw_secret.blank?
+  
+  # Check if it matches ENV[VARIABLE_NAME] pattern
+  if raw_secret.match?(/\AENV\[(\w+)\]\z/)
+    # Extract variable name
+    var_name = raw_secret.match(/\AENV\[(\w+)\]\z/)[1]
+    # => "STRIPE_WEBHOOK_SECRET"
+    
+    # Fetch from environment
+    ENV.fetch(var_name, nil)
+    # => "whsec_abc123..." or nil if not set
+  else
+    # Return literal value
+    raw_secret
+  end
+end
+```
+
+### Setting Environment Variables
+
+**Development (dotenv-rails)**:
+```bash
+# .env file
+STRIPE_WEBHOOK_SECRET=whsec_abc123
+PAYPAL_WEBHOOK_SECRET=paypal_secret_456
+SQUARE_WEBHOOK_SECRET=square_secret_789
+```
+
+**Production**:
+```bash
+# Heroku
+heroku config:set STRIPE_WEBHOOK_SECRET=whsec_abc123
+
+# Docker
+docker run -e STRIPE_WEBHOOK_SECRET=whsec_abc123 myapp
+
+# Kubernetes Secret
+kubectl create secret generic webhook-secrets \
+  --from-literal=STRIPE_WEBHOOK_SECRET=whsec_abc123
+```
+
+**Rails Credentials (Alternative)**:
+```yaml
+# config/credentials.yml.enc
+stripe_webhook_secret: whsec_abc123
+paypal_webhook_secret: paypal_secret_456
+
+# Access in initializer
+ENV["STRIPE_WEBHOOK_SECRET"] = Rails.application.credentials.stripe_webhook_secret
+```
+
+### Multi-Tenant Scenarios
+
+For apps with multiple accounts of the same provider:
+
+```yaml
+# captain_hook/stripe_account_a/stripe_account_a.yml
+name: stripe_account_a
+display_name: Stripe (Account A)
+signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
+
+# captain_hook/stripe_account_b/stripe_account_b.yml  
+name: stripe_account_b
+display_name: Stripe (Account B)
+signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
+```
+
+```bash
+# .env
+STRIPE_SECRET_ACCOUNT_A=whsec_account_a_secret
+STRIPE_SECRET_ACCOUNT_B=whsec_account_b_secret
+```
+
+### Security Best Practices
+
+1. **Never commit `.env` files**: Add to `.gitignore`
+2. **Use different secrets per environment**: dev, staging, production
+3. **Rotate secrets periodically**: Update ENV and provider dashboard
+4. **Restrict secret access**: Use secret management systems (Vault, AWS Secrets Manager)
+5. **Validate secrets on boot**: Check that required ENV variables are set
+
+```ruby
+# config/initializers/captain_hook.rb
+required_secrets = %w[
+  STRIPE_WEBHOOK_SECRET
+  PAYPAL_WEBHOOK_SECRET
+]
+
+required_secrets.each do |secret|
+  if ENV[secret].blank?
+    Rails.logger.warn("Missing webhook secret: #{secret}")
+  end
+end
+```
+
+---
+
+## Built-in Verifiers
+
+CaptainHook includes verifiers for popular webhook providers.
+
+### Stripe Verifier
+
+**Signature Format**: `Stripe-Signature: t=1234567890,v1=abc123...`
+
+```ruby
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
+  
+  SIGNATURE_HEADER = "Stripe-Signature"
+  
+  def verify_signature(payload:, headers:, provider_config:)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature_header.blank?
+    
     parsed = parse_kv_header(signature_header)
     timestamp = parsed["t"]
     signatures = [parsed["v1"], parsed["v0"]].flatten.compact
     
     return false if timestamp.blank? || signatures.empty?
-
-    # 3. Validate timestamp
+    
+    # Timestamp validation
     if provider_config.timestamp_validation_enabled?
-      tolerance = provider_config.timestamp_tolerance_seconds || 300
+      tolerance = provider_config.timestamp_tolerance_seconds
+      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+    end
+    
+    # Signature validation
+    signed_payload = "#{timestamp}.#{payload}"
+    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
+    
+    signatures.any? { |sig| secure_compare(sig, expected_signature) }
+  end
+end
+```
+
+### Square Verifier
+
+**Signature Format**: `X-Square-Signature: abc123...` or `X-Square-HmacSha256-Signature: abc123...`
+
+```ruby
+class SquareVerifier
+  include CaptainHook::VerifierHelpers
+  
+  SIGNATURE_HEADER = "X-Square-Signature"
+  SIGNATURE_HMACSHA256_HEADER = "X-Square-HmacSha256-Signature"
+  
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HMACSHA256_HEADER, SIGNATURE_HEADER)
+    return false if signature.blank?
+    
+    # Generate signature: HMAC-SHA256(webhook_url + payload)
+    webhook_url = extract_webhook_url(headers, provider_config)
+    data_to_sign = "#{webhook_url}#{payload}"
+    
+    expected_signature = generate_hmac_base64(provider_config.signing_secret, data_to_sign)
+    
+    secure_compare(signature, expected_signature)
+  end
+  
+  private
+  
+  def extract_webhook_url(headers, provider_config)
+    # Try to get from header first
+    url = extract_header(headers, "X-Square-Webhook-Url")
+    return url if url.present?
+    
+    # Fallback to configured URL
+    ENV["SQUARE_WEBHOOK_URL"] || provider_config.webhook_url
+  end
+end
+```
+
+### PayPal Verifier
+
+**Signature Format**: Multiple headers with transmission ID, timestamp, certificate, etc.
+
+```ruby
+class PaypalVerifier
+  include CaptainHook::VerifierHelpers
+  
+  SIGNATURE_HEADER = "Paypal-Transmission-Sig"
+  CERT_URL_HEADER = "Paypal-Cert-Url"
+  TRANSMISSION_ID_HEADER = "Paypal-Transmission-Id"
+  TRANSMISSION_TIME_HEADER = "Paypal-Transmission-Time"
+  AUTH_ALGO_HEADER = "Paypal-Auth-Algo"
+  WEBHOOK_ID_HEADER = "Paypal-Webhook-Id"
+  
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    transmission_id = extract_header(headers, TRANSMISSION_ID_HEADER)
+    transmission_time = extract_header(headers, TRANSMISSION_TIME_HEADER)
+    webhook_id = provider_config.signing_secret
+    
+    return false if signature.blank? || transmission_id.blank? || transmission_time.blank?
+    
+    # Timestamp validation
+    if provider_config.timestamp_validation_enabled?
+      time = Time.parse(transmission_time).to_i rescue nil
+      return false if time.nil?
+      
+      tolerance = provider_config.timestamp_tolerance_seconds
+      return false unless timestamp_within_tolerance?(time, tolerance)
+    end
+    
+    # Build expected payload
+    expected_payload = "#{transmission_id}|#{transmission_time}|#{webhook_id}|#{crc32(payload)}"
+    expected_signature = generate_hmac_base64(webhook_id, expected_payload)
+    
+    secure_compare(signature, expected_signature)
+  end
+  
+  private
+  
+  def crc32(data)
+    Zlib.crc32(data).to_s
+  end
+end
+```
+
+### WebhookSite Verifier
+
+**No Signature**: Used for testing, always returns true.
+
+```ruby
+class WebhookSiteVerifier
+  def verify_signature(payload:, headers:, provider_config:)
+    # No signature verification for webhook.site
+    true
+  end
+end
+```
+
+---
+
+## Custom Verifiers
+
+### Creating a Custom Verifier
+
+```ruby
+# captain_hook/custom_provider/custom_provider.rb
+class CustomProviderVerifier
+  include CaptainHook::VerifierHelpers
+  
+  def verify_signature(payload:, headers:, provider_config:)
+    # 1. Extract signature from headers
+    signature = extract_header(headers, "X-Custom-Signature")
+    return false if signature.blank?
+    
+    # 2. Extract other required data
+    timestamp = extract_header(headers, "X-Custom-Timestamp")
+    request_id = extract_header(headers, "X-Custom-Request-Id")
+    
+    # 3. Validate timestamp (optional)
+    if provider_config.timestamp_validation_enabled? && timestamp.present?
+      return false unless timestamp_within_tolerance?(timestamp.to_i, provider_config.timestamp_tolerance_seconds)
+    end
+    
+    # 4. Build data to sign (provider-specific)
+    data_to_sign = "#{request_id}:#{timestamp}:#{payload}"
+    
+    # 5. Compute expected signature
+    expected_signature = generate_hmac(provider_config.signing_secret, data_to_sign)
+    
+    # 6. Compare signatures
+    secure_compare(signature, expected_signature)
+  end
+end
+```
+
+### Verifier with API Validation
+
+Some providers require API calls to validate webhooks:
+
+```ruby
+class ApiValidatingVerifier
+  include CaptainHook::VerifierHelpers
+  
+  def verify_signature(payload:, headers:, provider_config:)
+    webhook_id = extract_header(headers, "X-Webhook-Id")
+    return false if webhook_id.blank?
+    
+    # Call provider API to validate webhook
+    begin
+      response = HTTP.get(
+        "https://api.provider.com/webhooks/#{webhook_id}/verify",
+        headers: { "Authorization" => "Bearer #{provider_config.signing_secret}" }
+      )
+      
+      response.code == 200 && JSON.parse(response.body)["valid"] == true
+    rescue => e
+      Rails.logger.error("Webhook verification failed: #{e.message}")
+      false
+    end
+  end
+end
+```
+
+---
+
+## Examples
+
+### Example 1: Complete Stripe Setup
+
+**File: `captain_hook/stripe/stripe.yml`**
+```yaml
+name: stripe
+display_name: Stripe Payments
+description: Stripe payment and subscription webhooks
+verifier_file: stripe.rb
+active: true
+
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
+rate_limit_requests: 100
+rate_limit_period: 60
+max_payload_size_bytes: 2097152  # 2MB
+```
+
+**File: `captain_hook/stripe/stripe.rb`**
+```ruby
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "Stripe-Signature"
+  TIMESTAMP_TOLERANCE = 300
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature_header.blank?
+
+    parsed = parse_kv_header(signature_header)
+    timestamp = parsed["t"]
+    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+
+    return false if timestamp.blank? || signatures.empty?
+
+    if provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds || TIMESTAMP_TOLERANCE
       return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
     end
 
-    # 4. Generate expected signature
     signed_payload = "#{timestamp}.#{payload}"
-    expected_signature = generate_hmac(
-      provider_config.signing_secret, 
-      signed_payload
-    )
+    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
 
-    # 5. Compare signatures (constant-time)
     signatures.any? { |sig| secure_compare(sig, expected_signature) }
   end
-
-  def extract_timestamp(headers)
-    signature_header = extract_header(headers, SIGNATURE_HEADER)
-    return nil if signature_header.blank?
-    parse_kv_header(signature_header)["t"]&.to_i
-  end
-
-  def extract_event_id(payload)
-    payload["id"]
-  end
-
-  def extract_event_type(payload)
-    payload["type"]
-  end
 end
 ```
 
----
-
-## Why YAML + Ruby Files
-
-### The Dual-File Pattern
-
-Every provider requires **two files**:
-1. **YAML file** (`.yml` or `.yaml`) - Configuration data
-2. **Ruby file** (`.rb`) - Verifier implementation (optional if no verification)
-
-This might seem redundant, but there are important architectural reasons.
-
-### Separation of Concerns
-
-**YAML = Data**
-- Configuration values
-- Provider settings
-- No executable code
-- Safe to version control
-- Easy to read/edit without Ruby knowledge
-- Can be parsed without loading Ruby classes
-
-**Ruby = Behavior**
-- Signature verification logic
-- Data extraction methods
-- Provider-specific algorithms
-- Requires Ruby knowledge
-- Contains executable code
-
-### Why Not Just Ruby?
-
-**Option 1: Everything in Ruby**
-```ruby
-# BAD: Mixing data and behavior
-class StripeProvider
-  def self.config
-    {
-      name: "stripe",
-      display_name: "Stripe",
-      signing_secret: ENV["STRIPE_SECRET"],
-      timestamp_tolerance: 300
-    }
-  end
-  
-  def verify_signature(...)
-    # ...
-  end
-end
+**Environment Setup:**
+```bash
+# .env
+STRIPE_WEBHOOK_SECRET=whsec_abc123xyz789
 ```
 
-**Problems:**
-- Must load Ruby file to read configuration
-- Can't scan configs without executing code
-- Hard to override settings per environment
-- Mixing data and behavior
-- Can't use configs without loading verifiers
-- Dangerous if verifier has errors or side effects
+**Webhook URL:**
+```
+https://yourapp.com/captain_hook/stripe/ABC123TOKEN
+```
 
-**Option 2: YAML + Ruby (Current Design)**
+### Example 2: Custom Provider
+
+**File: `captain_hook/github/github.yml`**
 ```yaml
-# GOOD: Data in YAML
-name: stripe
-display_name: Stripe
-signing_secret: ENV[STRIPE_SECRET]
+name: github
+display_name: GitHub
+description: GitHub repository webhooks
+verifier_file: github.rb
+active: true
+
+signing_secret: ENV[GITHUB_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 0  # GitHub doesn't use timestamps
+rate_limit_requests: 200
+rate_limit_period: 60
+```
+
+**File: `captain_hook/github/github.rb`**
+```ruby
+class GithubVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "X-Hub-Signature-256"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature.blank?
+
+    # GitHub format: "sha256=abc123..."
+    signature = signature.sub(/^sha256=/, '')
+
+    expected_signature = generate_hmac(provider_config.signing_secret, payload)
+
+    secure_compare(signature, expected_signature)
+  end
+end
+```
+
+### Example 3: Multi-Account Setup
+
+**File: `captain_hook/stripe_main/stripe_main.yml`**
+```yaml
+name: stripe_main
+display_name: Stripe (Main Account)
+description: Main Stripe account webhooks
+verifier_file: stripe.rb
+active: true
+signing_secret: ENV[STRIPE_MAIN_WEBHOOK_SECRET]
 timestamp_tolerance_seconds: 300
 ```
 
+**File: `captain_hook/stripe_partner/stripe_partner.yml`**
+```yaml
+name: stripe_partner
+display_name: Stripe (Partner Account)
+description: Partner Stripe account webhooks
+verifier_file: stripe.rb
+active: true
+signing_secret: ENV[STRIPE_PARTNER_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
+```
+
+**File: `captain_hook/stripe_main/stripe.rb` and `captain_hook/stripe_partner/stripe.rb`**
 ```ruby
-# GOOD: Behavior in Ruby
+# Same verifier can be used for both
 class StripeVerifier
-  def verify_signature(...)
-    # ...
-  end
+  include CaptainHook::VerifierHelpers
+  # ... (same implementation)
 end
 ```
 
-**Benefits:**
-- Read configuration without loading Ruby
-- Scan all providers quickly
-- Override configs per environment (dev vs prod)
-- Verifier errors don't break provider discovery
-- Clear separation of concerns
-
-### From Third-Party Gems
-
-When a gem like `example-stripe` provides webhooks:
-
+**Environment Setup:**
+```bash
+# .env
+STRIPE_MAIN_WEBHOOK_SECRET=whsec_main_account_secret
+STRIPE_PARTNER_WEBHOOK_SECRET=whsec_partner_account_secret
 ```
-example-stripe/
-├── lib/
-│   └── example/
-│       └── stripe.rb               # Main gem code (NOT webhook-related)
-└── captain_hook/                   # CaptainHook-specific files (scanned)
-    └── providers/
-        └── stripe/
-            ├── stripe.yml          # Webhook config (scanned)
-            └── stripe.rb           # Webhook verifier (loaded by CaptainHook)
-```
-
-**Important:** The `lib/example/stripe.rb` file is the gem's main business logic (API client, payment processing, etc.) and is NOT scanned by CaptainHook. Only files in the `captain_hook/providers/` directory are discovered during provider scanning.
-
-**Why gems need both locations:**
-
-1. **YAML provides defaults**: Gem can ship sensible defaults
-2. **Host can override**: Application can create its own `stripe.yml` with environment-specific settings
-3. **Verifier is reusable**: Same verifier class works for all instances
-4. **Discovery works automatically**: CaptainHook finds gem providers without configuration
-
-**Discovery precedence:**
-```
-Application YAML > Gem YAML (per source)
-```
-
-If both exist, both are discovered with different `source` values. The admin UI shows which source each provider came from.
-
-### Multi-Instance Providers
-
-For multiple instances of the same provider type:
-
-```
-captain_hook/providers/
-├── stripe_prod/
-│   ├── stripe_prod.yml         # verifier_file: stripe_prod.rb
-│   └── stripe_prod.rb
-├── stripe_test/
-│   ├── stripe_test.yml         # verifier_file: stripe_test.rb
-│   └── stripe_test.rb
-└── stripe_dev/
-    ├── stripe_dev.yml          # verifier_file: stripe_dev.rb
-    └── stripe_dev.rb
-```
-
-Each gets:
-- Unique name (`stripe_prod`, `stripe_test`)
-- Own YAML configuration
-- Own verifier class (or shared verifier with different class name)
-- Separate webhook URLs
-- Independent settings
-
-### Providers Without Verification
-
-**Since migration 20260117000001**, `verifier_class` can be `NULL`:
-
-```yaml
-# captain_hook/providers/internal_service/internal_service.yml
-name: internal_service
-display_name: Internal Service
-# No verifier_file - relies on token-only auth
-signing_secret: null  # No HMAC verification
-```
-
-**In this case:**
-- YAML file is still required (defines provider)
-- Ruby file is not needed (no verifier)
-- Only token authentication is used
-- Suitable for trusted internal services
 
 ---
 
-## Scenarios & Limitations (Providers)
+# Part 2: Actions & Event Processing
 
-### Supported Provider Scenarios
+## Table of Contents
 
-#### ✅ Host Application Providers
+1. [Actions Overview](#actions-overview)
+2. [Action Architecture](#action-architecture)
+3. [Action Registration](#action-registration)
+4. [Action Discovery](#action-discovery)
+5. [Action Configuration](#action-configuration)
+6. [Event Processing Lifecycle](#event-processing-lifecycle)
+7. [Background Job Execution](#background-job-execution)
+8. [Retry Logic & Error Handling](#retry-logic--error-handling)
+9. [Action Examples](#action-examples)
+10. [Testing Actions](#testing-actions)
+11. [Best Practices](#best-practices)
 
-```
-your-rails-app/
-└── captain_hook/
-    └── providers/
-        └── custom_provider/
-            ├── custom_provider.yml
-            └── custom_provider.rb
-```
+---
 
-**Works:** Fully supported, auto-discovered on scan
+## Actions Overview
 
-#### ✅ Gem-Bundled Providers
+Actions are Ruby classes that process webhook events. When a webhook is received and verified, CaptainHook looks up registered actions for that event type and executes them.
 
-```
-# Gemfile
-gem 'example-stripe'
+### Key Concepts
 
-# Inside example-stripe gem:
-example-stripe/
-└── captain_hook/
-    └── providers/
-        └── stripe/
-            ├── stripe.yml
-            └── stripe.rb
-```
+- **Action**: A Ruby class that processes a specific event type
+- **Event Type**: A string identifier for the webhook event (e.g., `payment_intent.succeeded`)
+- **Execution**: An individual action execution tracked in the database
+- **Priority**: Determines the order in which actions are executed
+- **Async/Sync**: Whether actions run in background jobs or inline
+- **Retry Policy**: Configuration for retrying failed actions
 
-**Works:** Auto-discovered from any gem in Gemfile
-
-#### ✅ Multiple Instances (Same Provider Type)
+### Action Lifecycle
 
 ```
-captain_hook/providers/
-├── stripe_account_a/
-│   ├── stripe_account_a.yml    # verifier_file: stripe_account_a.rb
-│   └── stripe_account_a.rb
-└── stripe_account_b/
-    ├── stripe_account_b.yml    # verifier_file: stripe_account_b.rb
-    └── stripe_account_b.rb
+Webhook Received & Verified
+    ↓
+IncomingEvent Created
+    ↓
+Action Lookup (by provider + event_type)
+    ↓
+Action Execution Records Created
+    ↓
+Jobs Enqueued (if async) OR Execute Inline (if sync)
+    ↓
+Background Job Processes Action
+    ↓
+Action#perform Called with Event
+    ↓
+Success → Mark Complete | Failure → Retry
 ```
 
-**Works:** Each gets unique name, URL, and configuration
+---
 
-#### ✅ Shared Verifier Class
+## Action Architecture
 
-```
-captain_hook/providers/
-├── stripe_prod/
-│   ├── stripe_prod.yml         # verifier_file: stripe_verifier.rb
-│   └── stripe_verifier.rb       # Shared implementation
-└── stripe_test/
-    └── stripe_test.yml         # verifier_file: ../stripe_prod/stripe_verifier.rb (reuses)
-```
+### Action Registry
 
-**Works:** Multiple providers can reference the same verifier class
-
-#### ✅ No Verification Providers
-
-```yaml
-# captain_hook/providers/internal/internal.yml
-name: internal
-# verifier_file: (not specified - no verification)
-```
-
-**Works:** Token-only authentication, no signature verification
-
-#### ✅ ENV-Based Secrets
-
-```yaml
-name: stripe
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
-```
-
-**Works:** Resolved at runtime, not stored in database
-
-#### ✅ Mixed Sources (App + Gems)
-
-```
-Application:
-  captain_hook/providers/custom/custom.yml
-
-Gem 1 (example-stripe):
-  captain_hook/providers/stripe/stripe.yml
-
-Gem 2 (example-square):
-  captain_hook/providers/square/square.yml
-```
-
-**Works:** All discovered, tracked by `source` field
-
-### Unsupported Provider Scenarios
-
-#### ❌ Database-Only Providers
+CaptainHook uses a **thread-safe in-memory registry** for actions, synced to the database on boot.
 
 ```ruby
-# Cannot create provider without YAML file
-Provider.create!(
-  name: "custom",
-  verifier_file: "custom.rb"
+# Global action registry
+CaptainHook::ActionRegistry.register(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::PaymentIntentSucceededAction",
+  async: true,
+  priority: 100,
+  max_attempts: 5,
+  retry_delays: [30, 60, 300, 900, 3600]
 )
-# Discovery won't find this on next scan
 ```
 
-**Limitation:** Providers must have YAML files for persistence
+### Action vs Execution
 
-**Workaround:** Create YAML file, then scan
+**Action (Database Record)**:
+- Defines the handler for a provider + event_type combination
+- Stored once in `captain_hook_actions` table
+- Configuration: async, priority, retry settings
+- Soft-deletable (deleted_at timestamp)
 
-#### ❌ Dynamic Verifier Loading from Gems
+**IncomingEventAction (Execution Record)**:
+- Tracks individual execution of an action
+- One per action per incoming event
+- Status: pending, processing, completed, failed
+- Tracks attempts, errors, locking
+
+### Database Schema
 
 ```ruby
-# In gem: lib/example/stripe_verifier.rb
-# Trying to use: verifier_class: "Example::StripeVerifier"
-```
+# captain_hook_actions table
+create_table :captain_hook_actions do |t|
+  t.string :provider, null: false
+  t.string :event_type, null: false
+  t.string :action_class, null: false
+  t.boolean :async, default: true, null: false
+  t.integer :priority, default: 100, null: false
+  t.integer :max_attempts, default: 5, null: false
+  t.jsonb :retry_delays, default: [30, 60, 300, 900, 3600], null: false
+  t.datetime :deleted_at
+  t.timestamps
+  
+  t.index [:provider, :event_type, :action_class], unique: true, name: "idx_captain_hook_actions_unique"
+  t.index :deleted_at
+end
 
-**Limitation:** Verifier must be in `captain_hook/providers/` directory, not `lib/`
-
-**Reason:** Auto-loading looks in specific provider directories
-
-**Workaround:** Put verifier in `captain_hook/providers/stripe/stripe.rb` inside gem
-
-#### ❌ Verifier Without YAML
-
-```
-captain_hook/providers/
-└── stripe.rb  # No stripe.yml
-```
-
-**Limitation:** YAML file is required for discovery
-
-**Reason:** Discovery scans for YAML files, then loads matching Ruby files
-
-**Workaround:** Create minimal YAML file
-
-#### ❌ Remote/HTTP Provider Configs
-
-```yaml
-# Not supported
-provider_config_url: https://example.com/stripe.yml
-```
-
-**Limitation:** Only local file system scanning
-
-**Reason:** Security (executing remote code is dangerous)
-
-**Workaround:** Fetch remotely, save locally, then scan
-
-#### ❌ Provider Names with Special Characters
-
-```yaml
-name: stripe-prod  # Invalid (contains hyphen)
-name: Stripe Prod  # Invalid (contains space)
-name: stripe.prod  # Invalid (contains dot)
-```
-
-**Limitation:** Only `^[a-z0-9_]+$` allowed
-
-**Reason:** Used in URLs and as identifiers
-
-**Valid:** `stripe_prod`, `stripe123`, `stripe`
-
-#### ❌ Changing Token After Creation
-
-```ruby
-provider = Provider.find_by(name: "stripe")
-provider.update!(token: "new-token")
-# Old webhook URL is now broken
-```
-
-**Limitation:** Token changes break existing webhook configurations
-
-**Reason:** Provider has already configured old URL
-
-**Workaround:** Don't change tokens; create new provider instead
-
-#### ❌ Duplicate Provider Names
-
-```
-App:       captain_hook/providers/stripe/stripe.yml
-Gem 1:     captain_hook/providers/stripe/stripe.yml
-Gem 2:     captain_hook/providers/stripe/stripe.yml
-```
-
-**Limitation:** All discovered, but database unique constraint prevents duplicates
-
-**Warning:** Admin UI shows duplicate warning
-
-**Resolution:** Manual intervention required (disable sources or rename)
-
-### Edge Cases
-
-#### Verifier Class Not Found
-
-```yaml
-verifier_class: NonExistentVerifier
-```
-
-**Behavior:**
-- YAML loads successfully
-- Provider created in database
-- Error when webhook arrives: `VerifierNotFoundError`
-
-**Solution:** Ensure Ruby file defines the verifier class
-
-#### Signing Secret ENV Variable Missing
-
-```yaml
-signing_secret: ENV[MISSING_VAR]
-```
-
-**Behavior:**
-- Provider created successfully
-- Signature verification fails (secret is nil)
-- Webhooks return 401 Unauthorized
-
-**Solution:** Set environment variable or update YAML
-
-#### Circular Verifier Dependencies
-
-```ruby
-# stripe.rb
-class StripeVerifier
-  def verify_signature(...)
-    PaypalVerifier.new.verify_signature(...)  # BAD: Circular
-  end
+# captain_hook_incoming_event_actions table
+create_table :captain_hook_incoming_event_actions do |t|
+  t.uuid :incoming_event_id, null: false
+  t.string :action_class, null: false
+  t.integer :priority, default: 100, null: false
+  t.string :status, default: "pending", null: false
+  t.integer :attempt_count, default: 0, null: false
+  t.datetime :last_attempt_at
+  t.text :error_message
+  t.integer :lock_version, default: 0, null: false
+  t.datetime :locked_at
+  t.string :locked_by
+  t.timestamps
+  
+  t.index [:status, :priority, :action_class], name: "idx_captain_hook_handlers_processing_order"
+  t.index :locked_at
 end
 ```
 
-**Behavior:** Potential infinite loop or load errors
-
-**Solution:** Keep verifiers independent
-
-#### Malformed YAML
-
-```yaml
-name: stripe
-display_name: Stripe
-  description: This is indented wrong
-```
-
-**Behavior:**
-- YAML parsing fails
-- Provider not discovered
-- Error logged: `Failed to parse provider YAML`
-
-**Solution:** Validate YAML syntax
-
-#### Very Large Payloads
-
-```yaml
-max_payload_size_bytes: 10485760  # 10MB
-```
-
-**Behavior:**
-- Large payloads accepted
-- May cause memory issues
-- JSON parsing may be slow
-
-**Recommendation:** Keep limit at 1MB unless required
-
----
-
-## Actions: Business Logic Execution
-
-### What Are Actions?
-
-Actions are **Ruby classes that contain your business logic** for processing webhooks. While providers and verifiers handle the security and verification of incoming webhooks, actions contain the actual application-specific code that runs in response to webhook events.
-
-**Key Concepts:**
-
-- **Separation of Concerns**: Security (verifiers) vs. Business Logic (actions)
-- **Event-Driven**: Actions react to specific event types
-- **Asynchronous by Default**: Execute in background jobs for reliability
-- **Retryable**: Automatic retry with exponential backoff on failures
-- **Priority-Based**: Multiple actions can process the same event in order
-
-**Example Use Cases:**
-- Update payment status when Stripe sends `payment_intent.succeeded`
-- Send notification email when Square sends `order.created`
-- Sync customer data when PayPal sends `customer.updated`
-- Log analytics events for any webhook
-- Trigger internal workflows based on external events
-
-### Action Anatomy
-
-A action is a simple Ruby class with a single required method: `handle`
+### Action Class Interface
 
 ```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
-class StripePaymentSucceededAction
-  # Required method signature
-  # @param event [CaptainHook::IncomingEvent] Database record of the webhook
-  # @param payload [Hash] Parsed JSON payload from provider
-  # @param metadata [Hash] Additional metadata (received_at, headers, etc.)
-  def handle(event:, payload:, metadata:)
-    # Your business logic here
-    payment_intent_id = payload.dig("data", "object", "id")
-    amount = payload.dig("data", "object", "amount")
-    
-    # Update your database
-    payment = Payment.find_by(stripe_id: payment_intent_id)
-    payment&.mark_succeeded!
-    
-    # Send notifications
-    PaymentMailer.success(payment).deliver_later
-    
-    # Log analytics
-    Analytics.track("payment_succeeded", amount: amount)
+class BaseAction
+  # Required: Process the event
+  def perform(event)
+    # event: IncomingEvent instance
+    # Implement your business logic here
+  end
+  
+  # Optional: Determine if action should run
+  def should_process?(event)
+    true
+  end
+  
+  # Optional: Handle errors
+  def on_error(event, error)
+    Rails.logger.error("Action failed: #{error.message}")
+  end
+  
+  # Optional: Handle success
+  def on_success(event)
+    Rails.logger.info("Action succeeded")
   end
 end
 ```
-
-**Method Parameters:**
-
-1. **`event`**: The `CaptainHook::IncomingEvent` record
-   - `event.id` - UUID of the event
-   - `event.provider` - Provider name (e.g., "stripe")
-   - `event.event_type` - Event type (e.g., "payment_intent.succeeded")
-   - `event.external_id` - Provider's event ID
-   - `event.payload` - Full JSON payload
-   - `event.created_at` - When CaptainHook received the webhook
-
-2. **`payload`**: Hash of the parsed JSON
-   - Already parsed, no need for `JSON.parse`
-   - Provider-specific structure
-   - Example (Stripe): `payload.dig("data", "object", "id")`
-
-3. **`metadata`**: Additional information
-   - `metadata[:received_at]` - ISO8601 timestamp
-   - `metadata[:headers]` - HTTP headers (optional)
-   - Custom fields you might add
-
-**Action Responsibilities:**
-- Execute business logic quickly (or enqueue more jobs)
-- Raise exceptions on errors (triggers automatic retry)
-- Be idempotent (same event might be processed multiple times)
-- Log important actions for debugging
-
-**Action Don'ts:**
-- Don't do signature verification (already done)
-- Don't parse JSON (already parsed)
-- Don't handle retries manually (automatic)
-- Don't save the event (already saved)
 
 ---
 
 ## Action Registration
 
-### Where to Register Actions
+### Registration Methods
 
-Actions must be registered in your application's initializer:
+**Method 1: Initializer (Recommended)**
 
 ```ruby
 # config/initializers/captain_hook.rb
-
 CaptainHook.configure do |config|
-  # Configuration options here
-end
-
-# IMPORTANT: Must be inside after_initialize block
-Rails.application.config.after_initialize do
-  # Register actions here
-  
-  CaptainHook.register_action(
+  # Register Stripe actions
+  config.register_action(
     provider: "stripe",
     event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentSucceededAction",
-    priority: 100,
+    action_class: "Stripe::PaymentIntentSucceededAction",
     async: true,
-    max_attempts: 3,
-    retry_delays: [30, 60, 300]
+    priority: 100,
+    max_attempts: 5,
+    retry_delays: [30, 60, 300, 900, 3600]
+  )
+  
+  config.register_action(
+    provider: "stripe",
+    event_type: "charge.refunded",
+    action_class: "Stripe::ChargeRefundedAction",
+    async: true,
+    priority: 50
+  )
+  
+  # Register PayPal actions
+  config.register_action(
+    provider: "paypal",
+    event_type: "PAYMENT.CAPTURE.COMPLETED",
+    action_class: "Paypal::PaymentCapturedAction"
   )
 end
 ```
 
-**Why `after_initialize`?**
-- Ensures CaptainHook engine is fully loaded
-- Prevents circular dependency issues
-- Guarantees action registry is available
-- Required for proper initialization order
+**Method 2: Auto-Discovery from Files**
 
-### Registration Options
+Create action files in `captain_hook/<provider>/actions/` directory:
 
 ```ruby
-CaptainHook.register_action(
-  # REQUIRED FIELDS
-  provider: "stripe",                          # Provider name (must match provider)
-  event_type: "payment_intent.succeeded",     # Exact event type or wildcard
-  action_class: "StripePaymentSucceededAction",  # Class name as string
-  
-  # OPTIONAL FIELDS (with defaults)
-  priority: 100,                               # Execution order (lower = higher priority)
-  async: true,                                 # Run in background job (true) or synchronously (false)
-  max_attempts: 5,                             # Maximum retry attempts
-  retry_delays: [30, 60, 300, 900, 3600]      # Delays between retries (seconds)
-)
+# captain_hook/stripe/actions/payment_intent_succeeded_action.rb
+module Stripe
+  class PaymentIntentSucceededAction
+    def self.event_type
+      "payment_intent.succeeded"
+    end
+    
+    def self.provider
+      "stripe"
+    end
+    
+    def perform(event)
+      # Process the event
+    end
+  end
+end
 ```
 
-**Field Details:**
+When placed in the actions directory, these are automatically:
+1. Loaded by ProviderDiscovery service
+2. Registered in ActionRegistry
+3. Synced to database
 
-**`provider`** (String, required)
-- Must match an existing provider name exactly
-- Case-sensitive
-- Example: `"stripe"`, `"square"`, `"paypal"`
-
-**`event_type`** (String, required)
-- Exact event type: `"payment_intent.succeeded"`
-- Wildcard patterns: `"payment_intent.*"` (matches all payment_intent events)
-- Wildcards use glob matching patterns
-- Note: Wildcard matching is currently planned but not fully implemented
-
-**`action_class`** (String, required)
-- Class name as a string (not the actual class)
-- Must be loadable via `constantize`
-- Example: `"StripePaymentSucceededAction"`
-- Can include namespaces: `"Webhooks::Stripe::PaymentAction"`
-
-**`priority`** (Integer, default: 100)
-- Determines execution order when multiple actions exist
-- Lower numbers = higher priority (execute first)
-- Example: priority 10 runs before priority 100
-- Actions with same priority are sorted by class name (alphabetically)
-
-**`async`** (Boolean, default: true)
-- `true`: Execute in background job (recommended)
-- `false`: Execute synchronously (blocks webhook response)
-- Synchronous actions should be fast (<100ms)
-- Async actions can take minutes (with retries)
-
-**`max_attempts`** (Integer, default: 5)
-- Maximum number of execution attempts
-- Includes initial attempt + retries
-- Example: max_attempts=3 means 1 initial + 2 retries
-- After max attempts, action is marked as "failed"
-
-**`retry_delays`** (Array of Integers, default: [30, 60, 300, 900, 3600])
-- Delays in seconds between retry attempts
-- Array position = attempt number (0-indexed for retries)
-- Example: `[30, 60, 300]` means:
-  - After 1st failure: wait 30 seconds
-  - After 2nd failure: wait 60 seconds
-  - After 3rd failure: wait 300 seconds
-- If more attempts than delays, uses last delay value
-
-### Multiple Actions for One Event
-
-You can register multiple actions for the same event:
+**Method 3: Direct Registry Access**
 
 ```ruby
-# High priority: Update database (runs first)
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "UpdatePaymentAction",
-  priority: 10
-)
-
-# Medium priority: Send notification
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "PaymentNotificationAction",
-  priority: 50
-)
-
-# Low priority: Analytics (runs last)
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "PaymentAnalyticsAction",
+# Anywhere in your code (before server starts)
+CaptainHook::ActionRegistry.register(
+  provider: "github",
+  event_type: "push",
+  action_class: "Github::PushAction",
+  async: true,
   priority: 100
 )
 ```
 
-**Execution Order:**
-1. `UpdatePaymentAction` (priority 10)
-2. `PaymentNotificationAction` (priority 50)
-3. `PaymentAnalyticsAction` (priority 100)
-
-**Independence:**
-- Each action runs independently
-- If one fails, others still execute
-- Each has its own retry logic
-- Failures don't cascade
-
-### Wildcard Event Types
-
-Register a single action for multiple event types:
+### Registration Flow
 
 ```ruby
-# Handle all payment_intent events
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.*",
-  action_class: "StripePaymentIntentAction"
-)
+# 1. Application Boot
+# config/initializers/captain_hook.rb runs
 
-# Handle all Square bank account events
-CaptainHook.register_action(
-  provider: "square",
-  event_type: "bank_account.*",
-  action_class: "SquareBankAccountAction"
+CaptainHook.configure do |config|
+  config.register_action(...)
+end
+
+# 2. Engine Initializer Runs
+# lib/captain_hook/engine.rb
+
+initializer "captain_hook.sync_actions" do
+  ActiveSupport.on_load(:active_record) do
+    # Discover providers and load action files
+    provider_definitions = CaptainHook::Services::ProviderDiscovery.new.call
+    
+    # Actions are now registered in ActionRegistry
+    # Sync registry to database
+    CaptainHook::Services::ActionSync.new.call
+  end
+end
+
+# 3. ActionSync Service
+# Compares registry with database
+# Creates/updates/soft-deletes action records
+
+def sync
+  registry_actions = ActionRegistry.all
+  db_actions = Action.all.index_by { |a| [a.provider, a.event_type, a.action_class] }
+  
+  registry_actions.each do |reg_action|
+    key = [reg_action[:provider], reg_action[:event_type], reg_action[:action_class]]
+    
+    if db_action = db_actions[key]
+      # Update existing
+      db_action.update!(
+        async: reg_action[:async],
+        priority: reg_action[:priority],
+        max_attempts: reg_action[:max_attempts],
+        retry_delays: reg_action[:retry_delays],
+        deleted_at: nil  # Restore if soft-deleted
+      )
+    else
+      # Create new
+      Action.create!(reg_action)
+    end
+  end
+  
+  # Soft-delete actions not in registry
+  orphaned_actions = db_actions.values - synced_actions
+  orphaned_actions.each { |action| action.update(deleted_at: Time.current) }
+end
+```
+
+---
+
+## Action Discovery
+
+### Auto-Discovery from Action Files
+
+CaptainHook automatically discovers action files in provider directories:
+
+```
+captain_hook/
+└── stripe/
+    └── actions/
+        ├── payment_intent_succeeded_action.rb
+        ├── payment_intent_failed_action.rb
+        ├── charge_refunded_action.rb
+        └── customer_subscription_updated_action.rb
+```
+
+### Discovery Rules
+
+1. **File Location**: `captain_hook/<provider>/actions/**/*.rb`
+2. **Naming Convention**: `<event_type>_action.rb` (optional, but recommended)
+3. **Class Definition**: Must respond to `event_type` and `provider` class methods
+4. **Auto-Loading**: Files are `load`ed (not `require`d) during provider discovery
+
+### Action Class Conventions
+
+**Option 1: Class Methods (Explicit)**
+
+```ruby
+module Stripe
+  class PaymentIntentSucceededAction
+    def self.provider
+      "stripe"
+    end
+    
+    def self.event_type
+      "payment_intent.succeeded"
+    end
+    
+    def self.async
+      true
+    end
+    
+    def self.priority
+      100
+    end
+    
+    def perform(event)
+      # Implementation
+    end
+  end
+end
+```
+
+**Option 2: DSL Style**
+
+```ruby
+module Stripe
+  class PaymentIntentSucceededAction
+    include CaptainHook::ActionDSL
+    
+    provider "stripe"
+    event_type "payment_intent.succeeded"
+    async true
+    priority 100
+    max_attempts 3
+    retry_delays [60, 300, 1800]
+    
+    def perform(event)
+      # Implementation
+    end
+  end
+end
+```
+
+**Option 3: Inherit from Base**
+
+```ruby
+module Stripe
+  class PaymentIntentSucceededAction < CaptainHook::BaseAction
+    self.provider = "stripe"
+    self.event_type = "payment_intent.succeeded"
+    
+    def perform(event)
+      # Implementation
+    end
+  end
+end
+```
+
+### Discovery Process
+
+```ruby
+# During provider discovery
+def scan_directory(directory_path, source:)
+  # ... provider discovery code ...
+  
+  # Autoload actions from actions/ directory
+  actions_dir = File.join(subdir, "actions")
+  if File.directory?(actions_dir)
+    load_actions_from_directory(actions_dir)
+  end
+end
+
+def load_actions_from_directory(directory)
+  Dir.glob(File.join(directory, "**", "*.rb")).each do |action_file|
+    load action_file
+    Rails.logger.debug("Loaded action from #{action_file}")
+    
+    # Action class should self-register via inherited hook or class method
+  rescue StandardError => e
+    Rails.logger.error("Failed to load action #{action_file}: #{e.message}")
+  end
+end
+```
+
+---
+
+## Action Configuration
+
+### Configuration Options
+
+```ruby
+CaptainHook::ActionRegistry.register(
+  # Required
+  provider: "stripe",              # Provider name
+  event_type: "payment_intent.succeeded",  # Event type string
+  action_class: "Stripe::PaymentIntentSucceededAction",  # Fully qualified class name
+  
+  # Optional (with defaults)
+  async: true,                     # Run in background job (default: true)
+  priority: 100,                   # Execution priority (lower = higher priority, default: 100)
+  max_attempts: 5,                 # Maximum retry attempts (default: 5)
+  retry_delays: [30, 60, 300, 900, 3600]  # Seconds between retries (default: exponential)
 )
 ```
 
-**Action Implementation:**
+### Async vs Sync Execution
+
+**Async (Default)**:
+- Action runs in background job (Sidekiq, Solid Queue, etc.)
+- Webhook returns 200 OK immediately
+- Action execution tracked in database
+- Supports retries and error handling
+- Recommended for most use cases
 
 ```ruby
-class StripePaymentIntentAction
-  def handle(event:, payload:, metadata:)
-    # Check actual event type
-    case event.event_type
-    when "payment_intent.succeeded"
-      handle_success(payload)
-    when "payment_intent.failed"
-      handle_failure(payload)
-    when "payment_intent.canceled"
-      handle_cancellation(payload)
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::PaymentIntentSucceededAction",
+  async: true  # Background job
+)
+```
+
+**Sync**:
+- Action runs inline before webhook response
+- Webhook waits for action to complete
+- Slower webhook response time
+- Errors bubble up to webhook response
+- Use for critical actions that must complete before acknowledgment
+
+```ruby
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::CriticalAction",
+  async: false  # Inline execution
+)
+```
+
+### Priority
+
+Lower numbers = higher priority (executed first):
+
+```ruby
+# High priority (runs first)
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::RecordPaymentAction",
+  priority: 10
+)
+
+# Normal priority
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::SendEmailAction",
+  priority: 100
+)
+
+# Low priority (runs last)
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::AnalyticsAction",
+  priority: 500
+)
+```
+
+### Retry Configuration
+
+```ruby
+# Quick retries
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::QuickAction",
+  max_attempts: 3,
+  retry_delays: [10, 30, 60]  # Retry after 10s, 30s, 60s
+)
+
+# Exponential backoff (default)
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::StandardAction",
+  max_attempts: 5,
+  retry_delays: [30, 60, 300, 900, 3600]  # 30s, 1m, 5m, 15m, 1h
+)
+
+# Aggressive retries
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::ImportantAction",
+  max_attempts: 10,
+  retry_delays: [60, 120, 300, 600, 1800, 3600, 7200, 14400, 28800, 86400]
+)
+
+# No retries
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::OneTimeAction",
+  max_attempts: 1,
+  retry_delays: []
+)
+```
+
+---
+
+## Event Processing Lifecycle
+
+### Complete Flow
+
+```
+1. Webhook Received
+   POST /captain_hook/stripe/abc123token
+   ↓
+
+2. Security Validation
+   - Token check
+   - Rate limiting
+   - Payload size
+   - Signature verification
+   - Timestamp validation
+   ↓
+
+3. IncomingEvent Created
+   - Parse event_type, external_id
+   - Store payload, headers
+   - Check idempotency (unique: provider + external_id)
+   - Status: "received"
+   ↓
+
+4. Action Lookup
+   IncomingActionService.new(event).enqueue_actions
+   ↓
+   - Query: Action.where(provider: "stripe", event_type: "payment_intent.succeeded")
+   - Filter: active actions (deleted_at: nil)
+   - Order by: priority ASC
+   ↓
+
+5. Create Execution Records
+   For each action:
+   - Create IncomingEventAction record
+   - Status: "pending"
+   - priority: from action config
+   - attempt_count: 0
+   ↓
+
+6. Enqueue Jobs (if async)
+   For each action:
+   - IncomingActionJob.perform_later(execution.id)
+   - Job scheduled immediately or after delay
+   ↓
+
+7. Job Processing
+   IncomingActionJob#perform(execution_id)
+   ↓
+   - Load execution record
+   - Check if already processed (status != "pending")
+   - Acquire optimistic lock (lock_version)
+   - Update status: "processing"
+   - Load action class
+   - Call action.perform(event)
+   ↓
+
+8. Action Execution
+   Stripe::PaymentIntentSucceededAction.new.perform(event)
+   ↓
+   Business Logic:
+   - Access event.payload (parsed JSON)
+   - Access event.headers
+   - Call application models/services
+   - Make API calls
+   - Update database
+   ↓
+
+9. Success or Failure
+   
+   SUCCESS:
+   - Update execution status: "completed"
+   - Set completed_at timestamp
+   - Clear error_message
+   - Call action.on_success(event) if defined
+   
+   FAILURE:
+   - Increment attempt_count
+   - Store error_message
+   - Set last_attempt_at
+   - Calculate retry delay
+   - If attempts < max_attempts:
+     - Enqueue job with delay
+     - Status remains "pending"
+   - Else:
+     - Status: "failed"
+     - Call action.on_error(event, error) if defined
+   ↓
+
+10. Retry (if needed)
+    wait retry_delays[attempt_count - 1] seconds
+    ↓
+    Enqueue job again
+    ↓
+    Repeat from step 7
+```
+
+### IncomingActionService
+
+```ruby
+class IncomingActionService
+  def initialize(event)
+    @event = event
+  end
+  
+  def enqueue_actions
+    # Find actions for this provider + event_type
+    actions = Action.where(
+      provider: @event.provider,
+      event_type: @event.event_type
+    ).where(deleted_at: nil).order(priority: :asc)
+    
+    return if actions.empty?
+    
+    # Create execution records
+    actions.each do |action|
+      execution = @event.incoming_event_actions.create!(
+        action_class: action.action_class,
+        priority: action.priority,
+        status: "pending",
+        attempt_count: 0
+      )
+      
+      if action.async
+        # Enqueue background job
+        IncomingActionJob.perform_later(execution.id)
+      else
+        # Execute inline
+        IncomingActionJob.perform_now(execution.id)
+      end
     end
+  end
+end
+```
+
+### Event Data Access
+
+```ruby
+class MyAction
+  def perform(event)
+    # Event attributes
+    event.id                # UUID
+    event.provider          # "stripe"
+    event.event_type        # "payment_intent.succeeded"
+    event.external_id       # Provider's event ID
+    event.status            # "received", "processing", "completed", "failed"
+    event.created_at        # When webhook was received
+    
+    # Event data
+    event.payload           # Parsed JSON hash
+    event.headers           # Request headers hash
+    event.metadata          # Custom metadata (editable)
+    
+    # Related records
+    event.incoming_event_actions  # All action executions
+    event.provider_record         # Provider database record (if needed)
+    
+    # Example: Access nested payload data
+    payment_intent_id = event.payload.dig("data", "object", "id")
+    amount = event.payload.dig("data", "object", "amount")
+    customer_id = event.payload.dig("data", "object", "customer")
+    
+    # Example: Check headers
+    idempotency_key = event.headers["Idempotency-Key"]
+    
+    # Your business logic
+    Payment.find_by(stripe_payment_intent_id: payment_intent_id).update!(
+      status: "succeeded",
+      amount: amount / 100.0  # Convert cents to dollars
+    )
+  end
+end
+```
+
+---
+
+## Background Job Execution
+
+### IncomingActionJob
+
+```ruby
+class IncomingActionJob < ApplicationJob
+  queue_as :captain_hook
+  
+  def perform(execution_id)
+    execution = IncomingEventAction.find(execution_id)
+    
+    # Skip if already processed
+    return if execution.completed? || execution.failed?
+    
+    # Optimistic locking
+    execution.with_lock do
+      execution.update!(
+        status: "processing",
+        locked_at: Time.current,
+        locked_by: "#{Socket.gethostname}-#{Process.pid}"
+      )
+    end
+    
+    # Load action class
+    action_class = execution.action_class.constantize
+    action = action_class.new
+    
+    # Load event
+    event = execution.incoming_event
+    
+    # Execute action
+    action.perform(event)
+    
+    # Mark as completed
+    execution.update!(
+      status: "completed",
+      error_message: nil
+    )
+    
+    # Call success callback
+    action.on_success(event) if action.respond_to?(:on_success)
+    
+  rescue StandardError => e
+    handle_error(execution, action, event, e)
   end
   
   private
   
-  def handle_success(payload)
-    # Success logic
-  end
-  
-  def handle_failure(payload)
-    # Failure logic
-  end
-  
-  def handle_cancellation(payload)
-    # Cancellation logic
-  end
-end
-```
-
-**Note:** Wildcard matching is registered in the ActionRegistry but full glob-pattern matching in event lookups is not yet fully implemented. Currently, exact matches work reliably.
-
----
-
-## Action Discovery & Sync
-
-### The Two-Phase System
-
-CaptainHook uses a **hybrid approach** for action management:
-
-1. **In-Memory Registry** (`ActionRegistry`)
-   - Actions registered at application startup
-   - Stored in memory (RAM)
-   - Fast lookups during webhook processing
-   - Cleared on application restart
-
-2. **Database Storage** (`captain_hook_actions` table)
-   - Persistent storage of action configurations
-   - Synced from registry during provider scans
-   - Visible in admin UI
-   - Editable via admin interface
-   - Survives application restarts
-
-**Why Both?**
-
-- **Registry** = Fast runtime lookups (milliseconds)
-- **Database** = Persistent configuration + Admin UI
-- **Sync Process** = Keeps them in sync
-
-### Action Discovery Process
-
-Discovery happens when you click "Scan for Providers" or "Scan Actions" in admin UI:
-
-#### Step 1: Registry Inspection
-
-```ruby
-# lib/captain_hook/services/action_discovery.rb
-
-registry = CaptainHook.action_registry
-
-# Access internal registry structure
-registry.instance_variable_get(:@registry).each do |key, configs|
-  provider, event_type = key.split(":", 2)
-  
-  configs.each do |config|
-    discovered_actions << {
-      "provider" => provider,
-      "event_type" => event_type,
-      "action_class" => config.action_class.to_s,
-      "async" => config.async,
-      "max_attempts" => config.max_attempts,
-      "priority" => config.priority,
-      "retry_delays" => config.retry_delays
-    }
-  end
-end
-```
-
-**What's Discovered:**
-- All actions registered via `CaptainHook.register_action`
-- From main application's initializer
-- From gems' initializers (if they register actions)
-
-**Not Discovered:**
-- Actions in the database but not in registry
-- Actions that were registered after initialization
-- Commented-out action registrations
-
-#### Step 2: Provider Matching
-
-For each discovered action:
-
-```ruby
-provider = definition["provider"]
-
-# Check if provider exists in database
-db_provider = CaptainHook::Provider.find_by(name: provider)
-
-if db_provider.nil?
-  # Action registered for non-existent provider
-  # Skipped or error logged
-end
-```
-
-**Critical Behavior: Duplicate Provider Names**
-
-If multiple providers have the same name (from different sources):
-
-```
-Application:  captain_hook/providers/stripe/stripe.yml
-Gem 1:        captain_hook/providers/stripe/stripe.yml
-```
-
-**What Happens:**
-1. Both YAML files are discovered (different `source` values)
-2. Only ONE provider record is created (database unique constraint on `name`)
-3. **Actions are registered to whichever provider exists in the database**
-4. Admin UI shows warning about duplicate provider definitions
-
-**Example Scenario:**
-
-```ruby
-# In your app initializer
-CaptainHook.register_action(
-  provider: "stripe",          # Matches provider name
-  event_type: "payment_intent.succeeded",
-  action_class: "AppPaymentAction"
-)
-
-# In gem initializer (e.g., example-stripe)
-CaptainHook.register_action(
-  provider: "stripe",          # Same provider name
-  event_type: "charge.succeeded",
-  action_class: "Example::ChargeAction"
-)
-```
-
-**Result:**
-- Both actions registered to the same `stripe` provider
-- Provider settings come from whichever was created first
-- All actions for "stripe" will work
-- No conflicts, actions are independent
-
-**Best Practice:**
-- Use unique provider names if you need separate configurations
-- Example: `"stripe_app"` vs `"stripe_gem"`
-- Or use same name intentionally to share one provider
-
-#### Step 3: Database Synchronization
-
-```ruby
-# lib/captain_hook/services/action_sync.rb
-
-action_definitions.each do |definition|
-  provider = definition["provider"]
-  event_type = definition["event_type"]
-  action_class = definition["action_class"]
-  
-  # Find existing action by unique key
-  action = Action.find_by(
-    provider: provider,
-    event_type: event_type,
-    action_class: action_class
-  )
-  
-  # Check if soft-deleted
-  if action&.deleted?
-    # SKIP - User manually deleted this action
-    next
-  end
-  
-  # Create or update action
-  if action
-    action.update!(definition)  # Update if changed
-  else
-    Action.create!(definition)   # Create new
-  end
-end
-```
-
-**Sync Modes:**
-
-1. **Discover New** (default):
-   - Creates actions that don't exist
-   - Skips existing actions (doesn't update)
-   - Safe for adding new actions
-
-2. **Full Sync**:
-   - Creates new actions
-   - Updates existing actions with registry values
-   - Overwrites database configuration
-
-**Soft Delete Protection:**
-
-If a action has `deleted_at` timestamp:
-- It's skipped during sync
-- Won't be re-created automatically
-- User must manually restore via admin UI or delete the timestamp
-
-This prevents:
-- Unwanted action re-addition
-- Sync overriding manual deletions
-- Forcing users to comment out code
-
-### Where Actions Live
-
-Actions can exist in two locations:
-
-#### Option 1: Host Application
-
-```
-your-rails-app/
-├── captain_hook/
-│   └── actions/
-│       ├── stripe_payment_succeeded_action.rb
-│       ├── square_order_created_action.rb
-│       └── paypal_payment_captured_action.rb
-└── config/
-    └── initializers/
-        └── captain_hook.rb    # Register actions here
-```
-
-**Recommended structure:**
-- Actions in `captain_hook/<provider>/actions/` (keeps webhook code together with provider config)
-- Can also use `app/actions/` (standard Rails location)
-
-#### Option 2: Third-Party Gems
-
-```
-example-stripe/
-├── captain_hook/
-│   └── stripe/
-│       ├── stripe.yml
-│       ├── stripe.rb        # (Optional) Custom verifier if not built-in
-│       └── actions/         # Actions auto-loaded from here
-│           ├── charge_action.rb
-│           └── payment_intent_action.rb
-└── lib/
-    └── example/
-        └── stripe/
-            └── engine.rb    # Register actions in initializer
-```
-
-**Gem Registration:**
-
-```ruby
-# example-stripe/lib/example/stripe/engine.rb
-
-module Example
-  module Stripe
-    class Engine < ::Rails::Engine
-      initializer "example.stripe.register_actions" do
-        Rails.application.config.after_initialize do
-          CaptainHook.register_action(
-            provider: "stripe",
-            event_type: "charge.succeeded",
-            action_class: "Example::Stripe::ChargeAction"
-          )
-        end
-      end
-    end
-  end
-end
-```
-
-**Loading Actions from Gems:**
-
-Action classes must be autoloadable:
-
-```ruby
-# Option 1: Standard autoload paths
-# example-stripe/app/actions/example/stripe/charge_action.rb
-module Example
-  module Stripe
-    class ChargeAction
-      def handle(event:, payload:, metadata:)
-        # ...
-      end
-    end
-  end
-end
-
-# Option 2: Manual require in gem
-# example-stripe/lib/example/stripe.rb
-require "example/stripe/actions/charge_action"
-```
-
-### Action Discovery from Gems
-
-**How It Works:**
-
-1. Gem defines initializer with `register_action` calls
-2. Initializer runs during Rails startup
-3. Actions added to in-memory registry
-4. User clicks "Scan Actions" in admin UI
-5. Discovery service reads from registry
-6. Actions synced to database
-
-**Example: Full Gem Integration**
-
-```ruby
-# example-stripe/lib/example/stripe/engine.rb
-
-module Example
-  module Stripe
-    class Engine < ::Rails::Engine
-      isolate_namespace Example::Stripe
+  def handle_error(execution, action, event, error)
+    # Increment attempt counter
+    execution.increment!(:attempt_count)
+    execution.update!(
+      error_message: "#{error.class}: #{error.message}\n#{error.backtrace.first(5).join("\n")}",
+      last_attempt_at: Time.current
+    )
+    
+    # Load retry config
+    action_config = Action.find_by(
+      provider: event.provider,
+      event_type: event.event_type,
+      action_class: execution.action_class
+    )
+    
+    max_attempts = action_config&.max_attempts || 5
+    retry_delays = action_config&.retry_delays || [30, 60, 300, 900, 3600]
+    
+    if execution.attempt_count < max_attempts
+      # Schedule retry
+      delay_index = [execution.attempt_count - 1, retry_delays.length - 1].min
+      retry_delay = retry_delays[delay_index]
       
-      initializer "example.stripe.register_actions", after: :load_config_initializers do
-        Rails.application.config.after_initialize do
-          # Register multiple actions
-          [
-            { event: "charge.succeeded", action: "Example::Stripe::ChargeSucceededAction" },
-            { event: "charge.failed", action: "Example::Stripe::ChargeFailedAction" },
-            { event: "payment_intent.*", action: "Example::Stripe::PaymentIntentAction" }
-          ].each do |config|
-            CaptainHook.register_action(
-              provider: "stripe",
-              event_type: config[:event],
-              action_class: config[:action],
-              priority: 100,
-              async: true
-            )
-          end
-        end
-      end
-    end
-  end
-end
-```
-
-**Host Application Override:**
-
-App can override gem action behavior:
-
-```ruby
-# config/initializers/captain_hook.rb
-
-Rails.application.config.after_initialize do
-  # Override gem's action with your own
-  CaptainHook.register_action(
-    provider: "stripe",
-    event_type: "charge.succeeded",
-    action_class: "CustomChargeAction",  # Your custom action
-    priority: 10  # Higher priority than gem's action
-  )
-end
-```
-
-Both actions will execute (gem's and yours), prioritized by priority value.
-
----
-
-## Action Table Schema
-
-### Table: `captain_hook_actions`
-
-```sql
-CREATE TABLE captain_hook_actions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Action identification (unique together)
-  provider VARCHAR NOT NULL,              -- Provider name (matches providers.name)
-  event_type VARCHAR NOT NULL,            -- Event type (exact or wildcard pattern)
-  action_class VARCHAR NOT NULL,         -- Action class name
-  
-  -- Execution configuration
-  async BOOLEAN NOT NULL DEFAULT true,    -- Background job (true) or synchronous (false)
-  priority INTEGER NOT NULL DEFAULT 100,  -- Execution order (lower = higher priority)
-  
-  -- Retry configuration
-  max_attempts INTEGER NOT NULL DEFAULT 5,                -- Maximum retry attempts
-  retry_delays JSONB NOT NULL DEFAULT '[30,60,300,900,3600]',  -- Delay array in seconds
-  
-  -- Soft delete
-  deleted_at TIMESTAMP,                   -- Soft delete timestamp
-  
-  -- Timestamps
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  
-  -- Unique constraint
-  CONSTRAINT idx_captain_hook_actions_unique 
-    UNIQUE (provider, event_type, action_class)
-);
-
--- Indexes
-CREATE INDEX idx_captain_hook_actions_provider ON captain_hook_actions(provider);
-CREATE INDEX idx_captain_hook_actions_deleted_at ON captain_hook_actions(deleted_at);
-```
-
-### Column Explanations
-
-#### Identification Columns
-
-**`provider`** (VARCHAR, NOT NULL)
-- Provider name this action responds to
-- Must match an existing provider's `name` field
-- Example: `"stripe"`, `"square"`, `"paypal"`
-- Case-sensitive
-- Part of unique constraint
-
-**`event_type`** (VARCHAR, NOT NULL)
-- Event type this action processes
-- Exact match: `"payment_intent.succeeded"`
-- Wildcard pattern: `"payment_intent.*"` (planned feature)
-- Provider-specific format
-- Part of unique constraint
-
-**`action_class`** (VARCHAR, NOT NULL)
-- Fully-qualified class name as string
-- Must be loadable via `"ClassName".constantize`
-- Example: `"StripePaymentSucceededAction"`
-- Can include modules: `"Webhooks::StripePaymentAction"`
-- Part of unique constraint
-
-**Unique Constraint**: `(provider, event_type, action_class)`
-- Prevents duplicate action registrations
-- Same action can't be registered twice for same provider+event
-- Different actions can process same event (multi-action support)
-
-#### Configuration Columns
-
-**`async`** (BOOLEAN, NOT NULL, DEFAULT true)
-- **true**: Execute in background job (via `IncomingActionJob`)
-- **false**: Execute synchronously (blocks webhook response)
-
-**When to use sync (false):**
-- Very fast operations (<50ms)
-- Need immediate response to provider
-- Side-effect-free operations
-- Testing/debugging
-
-**When to use async (true):**
-- Database writes
-- External API calls
-- Email sending
-- Any operation >50ms
-- Most production actions
-
-**`priority`** (INTEGER, NOT NULL, DEFAULT 100)
-- Determines execution order among multiple actions
-- Lower number = higher priority (executes first)
-- Range: typically 1-1000
-- Default: 100 (medium priority)
-
-**Example priorities:**
-- `1-10`: Critical actions (payment updates, order creation)
-- `50-100`: Normal actions (notifications, logging)
-- `500-1000`: Low priority (analytics, cleanup)
-
-**`max_attempts`** (INTEGER, NOT NULL, DEFAULT 5)
-- Maximum execution attempts (initial + retries)
-- Must be > 0
-- Example: `max_attempts: 3` = 1 try + 2 retries
-- After exhaustion, action marked as "failed"
-
-**`retry_delays`** (JSONB, NOT NULL, DEFAULT [30, 60, 300, 900, 3600])
-- Array of integers representing seconds between retries
-- Index corresponds to retry attempt (0-based)
-- Example: `[30, 60, 300]`
-  - After 1st failure: wait 30 seconds before retry
-  - After 2nd failure: wait 60 seconds before retry
-  - After 3rd failure: wait 300 seconds before retry
-- If attempts exceed array length, uses last value
-- Implements exponential backoff pattern
-
-**Typical patterns:**
-```json
-[30, 60, 300, 900, 3600]        // Conservative: 30s, 1m, 5m, 15m, 1h
-[10, 30, 60, 120]                // Aggressive: 10s, 30s, 1m, 2m
-[60, 300, 1800]                  // Slow: 1m, 5m, 30m
-```
-
-#### State Management
-
-**`deleted_at`** (TIMESTAMP, NULLABLE)
-- Soft delete timestamp
-- `NULL` = active action
-- `NOT NULL` = soft-deleted action
-- Soft-deleted actions:
-  - Not visible in admin UI by default
-  - Skipped during action sync
-  - Won't be auto-recreated
-  - Can be restored by setting to `NULL`
-
-**Why soft delete?**
-- Prevents unwanted re-creation during sync
-- Preserves action history
-- Allows restoration if needed
-- User intent is preserved
-
----
-
-## Action Execution Flow
-
-### Complete Action Lifecycle
-
-When a webhook arrives and creates an `IncomingEvent`, here's the action execution process:
-
-### 1. Action Record Creation
-
-After event is saved to database:
-
-```ruby
-# app/controllers/captain_hook/incoming_controller.rb
-
-if event.previously_new_record?
-  # New event - create action execution records
-  create_actions_for_event(event)
-end
-
-def create_actions_for_event(event)
-  # Lookup actions from in-memory registry
-  action_configs = CaptainHook.action_registry.actions_for(
-    provider: event.provider,
-    event_type: event.event_type
-  )
-  
-  # Create execution record for each action
-  action_configs.each do |config|
-    action = event.incoming_event_actions.create!(
-      action_class: config.action_class.to_s,
-      status: :pending,
-      priority: config.priority,
-      attempt_count: 0
-    )
-    
-    # Enqueue job
-    if config.async
-      CaptainHook::IncomingActionJob.perform_later(action.id)
+      IncomingActionJob.set(wait: retry_delay.seconds).perform_later(execution.id)
+      
+      Rails.logger.warn(
+        "Action failed, will retry in #{retry_delay}s " \
+        "(attempt #{execution.attempt_count}/#{max_attempts}): #{error.message}"
+      )
     else
-      CaptainHook::IncomingActionJob.new.perform(action.id)
+      # Max attempts reached
+      execution.update!(status: "failed")
+      
+      # Call error callback
+      action.on_error(event, error) if action.respond_to?(:on_error)
+      
+      Rails.logger.error(
+        "Action failed permanently after #{execution.attempt_count} attempts: #{error.message}"
+      )
+      
+      # Optional: Send alert/notification
+      ActionFailureNotifier.notify(execution, error)
     end
   end
 end
 ```
 
-**Key points:**
-- Uses in-memory registry for fast lookup
-- Creates one `IncomingEventAction` record per action
-- Immediate job enqueue for async actions
-- Synchronous execution for sync actions
-
-### 2. Job Enqueueing
+### Job Queue Configuration
 
 ```ruby
-# Async action
-CaptainHook::IncomingActionJob.perform_later(action.id)
-# => Queued to :captain_hook_incoming queue
-# => Processed by background job worker (Sidekiq, Delayed Job, etc.)
+# config/application.rb
+config.active_job.queue_adapter = :sidekiq  # or :solid_queue, :delayed_job, etc.
 
-# Sync action
-CaptainHook::IncomingActionJob.new.perform(action.id)
-# => Executes immediately in web process
-# => Blocks webhook response until complete
-```
-
-**Queue**: `:captain_hook_incoming`
-- Can be customized in job class
-- Allows priority queue management
-- Separate from application jobs
-
-### 3. Lock Acquisition (Optimistic Locking)
-
-Job attempts to acquire lock on action record:
-
-```ruby
-# app/jobs/captain_hook/incoming_action_job.rb
-
-def perform(action_id, worker_id: SecureRandom.uuid)
-  action = IncomingEventAction.find(action_id)
-  
-  # Try to acquire lock
-  return unless action.acquire_lock!(worker_id)
-  
-  # Continue processing...
-end
-
-# app/models/captain_hook/incoming_event_action.rb
-
-def acquire_lock!(worker_id)
-  update!(
-    locked_at: Time.current,
-    locked_by: worker_id,
-    status: :processing
-  )
-rescue ActiveRecord::StaleObjectError
-  # Someone else got the lock first
-  false
+# config/initializers/captain_hook.rb
+CaptainHook.configure do |config|
+  config.job_queue = :captain_hook  # Custom queue name
+  config.job_priority = 5           # Job priority (if adapter supports)
 end
 ```
 
-**Optimistic Locking:**
-- Uses `lock_version` column (auto-incremented)
-- Prevents concurrent execution
-- If two workers try simultaneously, only one succeeds
-- Other worker silently exits (job succeeds without work)
-
-**Why needed?**
-- Multiple job workers might grab same job
-- Prevents duplicate processing
-- Ensures exactly-once execution
-- Race condition protection
-
-### 4. Action Lookup
-
-Retrieve action configuration from registry:
+### Monitoring Jobs
 
 ```ruby
-action_config = CaptainHook.action_registry.find_action_config(
-  provider: event.provider,
-  event_type: event.event_type,
-  action_class: action.action_class
-)
-```
+# Check pending executions
+pending = IncomingEventAction.where(status: "pending").count
 
-**Fallback behavior:**
-- If not in registry: Job exits silently
-- Action might have been unregistered
-- Or application restarted without re-registering
+# Check failed executions
+failed = IncomingEventAction.where(status: "failed").count
 
-### 5. Action Execution
+# Recent errors
+recent_errors = IncomingEventAction
+  .where(status: "failed")
+  .where("created_at > ?", 1.hour.ago)
+  .includes(:incoming_event)
+  .map { |e| { event: e.incoming_event.event_type, error: e.error_message } }
 
-```ruby
-begin
-  # Increment attempt counter
-  action.increment_attempts!
-  
-  # Load and instantiate action class
-  action_class = action.action_class.constantize
-  action_instance = action_class.new
-  
-  # Execute handle method
-  action_instance.handle(
-    event: event,
-    payload: event.payload,
-    metadata: event.metadata
-  )
-  
-  # Mark as successful
-  action.mark_processed!
-  
-  # Update event status
-  event.recalculate_status!
-  
-rescue StandardError => e
-  # Handle failure (see next section)
-end
-```
-
-**Instrumentation:**
-- Start event: `action_started`
-- Success event: `action_completed` (with duration)
-- Failure event: `action_failed` (with error)
-
-### 6. Failure Handling
-
-```ruby
-rescue StandardError => e
-  # Mark action as failed
-  action.mark_failed!(e)
-  
-  # Check if retries exhausted
-  if action.max_attempts_reached?(action_config.max_attempts)
-    # No more retries
-    event.recalculate_status!
-  else
-    # Schedule retry
-    delay = action_config.delay_for_attempt(action.attempt_count)
-    action.reset_for_retry!
-    
-    # Enqueue retry job
-    self.class.set(wait: delay.seconds).perform_later(
-      action_id, 
-      worker_id: SecureRandom.uuid
-    )
-  end
-  
-  # Re-raise exception (marks job as failed)
-  raise
-end
-```
-
-**Retry Logic:**
-
-1. **Mark as failed**: Status set to `failed`, error message saved
-2. **Check attempts**: Compare `attempt_count` vs `max_attempts`
-3. **Calculate delay**: Use `retry_delays` array, fallback to last value
-4. **Reset for retry**: Status back to `pending`, lock released
-5. **Schedule retry job**: Use `set(wait: X)` for delayed execution
-
-**Example retry timeline:**
-```
-Attempt 1: Now          -> Fails -> Wait 30s
-Attempt 2: +30s         -> Fails -> Wait 60s
-Attempt 3: +90s         -> Fails -> Wait 300s
-Attempt 4: +390s        -> Fails -> Wait 900s
-Attempt 5: +1290s       -> Fails -> No more retries (max_attempts: 5)
-```
-
-### 7. Event Status Recalculation
-
-```ruby
-event.recalculate_status!
-```
-
-Updates `IncomingEvent.status` based on all action statuses:
-
-```ruby
-# app/models/captain_hook/incoming_event.rb
-
-def recalculate_status!
-  return if incoming_event_actions.empty?
-  
-  if incoming_event_actions.all?(&:status_processed?)
-    update!(status: :processed)
-  elsif incoming_event_actions.any?(&:status_failed?)
-    update!(status: :failed)
-  elsif incoming_event_actions.any?(&:status_processing?)
-    update!(status: :processing)
-  else
-    update!(status: :received)
-  end
-end
-```
-
-**Status meanings:**
-- `received`: Event created, actions not yet started
-- `processing`: At least one action is running
-- `processed`: All actions succeeded
-- `failed`: At least one action exhausted retries
-
-### Complete Flow Diagram
-
-```
-Webhook Arrives
-    ↓
-Event Created (IncomingEvent)
-    ↓
-Create Action Records (IncomingEventAction)
-    ↓
-┌─────────────────────┬─────────────────────┐
-│  Async Action      │  Sync Action       │
-│  Job Enqueued       │  Execute Now        │
-│  Background Worker  │  In Web Process     │
-└──────────┬──────────┴──────────┬──────────┘
-           ↓                     ↓
-      Try Acquire Lock    Try Acquire Lock
-           ↓                     ↓
-      Got Lock?            Got Lock?
-      Yes │   No (Exit)    Yes │   No (Exit)
-          ↓                    ↓
-    Load Action Config   Load Action Config
-          ↓                    ↓
-    Increment Attempts    Increment Attempts
-          ↓                    ↓
-    Execute handle()      Execute handle()
-          ↓                    ↓
-    ┌─────┴─────┐        ┌─────┴─────┐
-    │           │        │           │
-  Success    Failure   Success    Failure
-    │           │        │           │
-    ↓           ↓        ↓           ↓
-Mark         Mark      Mark        Mark
-Processed    Failed    Processed   Failed
-    │           │        │           │
-    ↓           ↓        ↓           ↓
-Release      Check     Release     Check
-Lock         Retries   Lock        Retries
-    │           │        │           │
-    └──────┬────┴────────┴─────┬─────┘
-           ↓                   ↓
-    Recalculate          Schedule Retry
-    Event Status         (if attempts remain)
-           │                   │
-           └─────────┬─────────┘
-                     ↓
-              Job Complete
+# Retry failed actions manually
+failed_execution = IncomingEventAction.find(id)
+failed_execution.update!(status: "pending", attempt_count: 0)
+IncomingActionJob.perform_later(failed_execution.id)
 ```
 
 ---
 
-## Action Scenarios & Limitations
+## Retry Logic & Error Handling
 
-### Supported Scenarios
+### Retry Strategy
 
-#### ✅ Multiple Actions Per Event
-
-```ruby
-# All three actions execute for payment_intent.succeeded
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "PaymentUpdateAction",
-  priority: 10
-)
-
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "NotificationAction",
-  priority: 50
-)
-
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "AnalyticsAction",
-  priority: 100
-)
-```
-
-**Works:** All three execute independently in priority order
-
-#### ✅ Actions in Host Application
-
-```
-app/
-└── captain_hook/
-    └── actions/
-        └── my_action.rb
-
-config/initializers/captain_hook.rb:
-  CaptainHook.register_action(...)
-```
-
-**Works:** Standard pattern, fully supported
-
-#### ✅ Actions in Gems
+CaptainHook uses **exponential backoff** with configurable delays:
 
 ```ruby
-# in gem's engine.rb
-Rails.application.config.after_initialize do
-  CaptainHook.register_action(
-    provider: "stripe",
-    event_type: "charge.succeeded",
-    action_class: "GemNamespace::ChargeAction"
-  )
+# Attempt 1: Immediate (fails)
+# Attempt 2: Wait 30 seconds
+# Attempt 3: Wait 60 seconds (1 minute)
+# Attempt 4: Wait 300 seconds (5 minutes)
+# Attempt 5: Wait 900 seconds (15 minutes)
+# Attempt 6: Wait 3600 seconds (1 hour)
+# Max attempts reached → Mark as failed
+```
+
+### Custom Retry Logic
+
+```ruby
+class CustomAction
+  def perform(event)
+    # Your logic that might fail
+    external_api_call(event.payload)
+  rescue ExternalAPI::RateLimitError => e
+    # Custom retry for specific error
+    if should_retry_rate_limit?(e)
+      raise RetryableError.new("Rate limited, will retry", wait: 60)
+    else
+      # Don't retry, mark as failed
+      raise PermanentError.new("Rate limit exceeded, giving up")
+    end
+  rescue ExternalAPI::NotFoundError => e
+    # Don't retry for 404s
+    Rails.logger.warn("Resource not found: #{e.message}")
+    return  # Success (no error raised)
+  end
+  
+  private
+  
+  def should_retry_rate_limit?(error)
+    retry_after = error.response.headers["Retry-After"]
+    retry_after.present? && retry_after.to_i < 300  # Only retry if < 5 minutes
+  end
 end
 ```
 
-**Works:** Gem actions discovered and synced
-
-#### ✅ Mix of Sync and Async Actions
+### Error Callbacks
 
 ```ruby
-# Fast sync action (updates cache)
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "CacheUpdateAction",
-  async: false  # Synchronous
-)
-
-# Slow async action (emails)
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "EmailAction",
-  async: true  # Asynchronous
-)
-```
-
-**Works:** Sync executes immediately, async queues to background
-
-#### ✅ Duplicate Provider Names (Actions Register to Database Provider)
-
-```
-Application: captain_hook/providers/stripe/stripe.yml
-Gem:         captain_hook/providers/stripe/stripe.yml
-
-# In app initializer
-CaptainHook.register_action(provider: "stripe", ...)
-
-# In gem initializer
-CaptainHook.register_action(provider: "stripe", ...)
-```
-
-**Works:**
-- Both actions registered to same provider
-- Provider configuration from whichever was created first
-- Both actions execute for stripe webhooks
-- No conflicts
-
-#### ✅ Wildcard Event Types (Registered)
-
-```ruby
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.*",  # Wildcard
-  action_class: "PaymentIntentAction"
-)
-```
-
-**Works (Partially):**
-- Action registered successfully
-- Stored in registry and database
-- **Note:** Full wildcard matching in event lookups not yet implemented
-- Exact matches work reliably
-
-#### ✅ Idempotent Actions
-
-```ruby
-class IdempotentPaymentAction
-  def handle(event:, payload:, metadata:)
-    payment_id = payload.dig("data", "object", "id")
+class NotificationAction
+  def perform(event)
+    send_notification(event.payload)
+  end
+  
+  def on_error(event, error)
+    # Called when action fails permanently (max attempts reached)
+    ErrorTracker.report(error, context: {
+      event_id: event.id,
+      provider: event.provider,
+      event_type: event.event_type
+    })
     
-    # Idempotent operation (safe to repeat)
-    payment = Payment.find_or_create_by(stripe_id: payment_id)
-    payment.update(status: "succeeded")  # Safe to repeat
+    SlackNotifier.alert(
+      "Action failed: #{error.message}",
+      event_id: event.id
+    )
+  end
+  
+  def on_success(event)
+    # Called when action completes successfully
+    Rails.logger.info("Successfully processed event #{event.id}")
   end
 end
 ```
 
-**Works:** Recommended pattern for production actions
-
-#### ✅ Action Soft Delete
-
-```ruby
-# Via admin UI or directly
-action = CaptainHook::Action.find_by(action_class: "UnwantedAction")
-action.soft_delete!
-
-# Later: Scan actions
-# Action won't be re-created
-```
-
-**Works:** User deletions are respected during sync
-
-### Unsupported Scenarios
-
-#### ❌ Runtime Action Registration
-
-```ruby
-# Inside controller or model
-class WebhooksController < ApplicationController
-  def create
-    CaptainHook.register_action(...)  # BAD
-  end
-end
-```
-
-**Limitation:** Actions must be registered during initialization
-
-**Reason:** Registry used for fast lookups, not dynamic
-
-**Workaround:** Use database to enable/disable actions, not runtime registration
-
-#### ❌ Action Without Provider
-
-```ruby
-CaptainHook.register_action(
-  provider: "nonexistent",  # Provider doesn't exist
-  event_type: "some.event",
-  action_class: "MyAction"
-)
-```
-
-**Limitation:** Action appears in registry but won't execute
-
-**Reason:** Provider lookup happens first, webhook rejected before actions
-
-**Workaround:** Create provider first, then register action
-
-#### ❌ Actions Modifying Request/Response
-
-```ruby
-class BadAction
-  def handle(event:, payload:, metadata:)
-    # Can't access HTTP request
-    # Can't modify HTTP response
-    # Can't send custom response codes
-  end
-end
-```
-
-**Limitation:** Actions run after webhook response sent
-
-**Reason:** Async execution, webhook already returned 201 Created
-
-**Workaround:** Use controller hooks if you need request/response access
-
-#### ❌ Action Return Values
-
-```ruby
-class BadAction
-  def handle(event:, payload:, metadata:)
-    return { status: "success", data: { ... } }  # Ignored
-  end
-end
-```
-
-**Limitation:** Return values are ignored
-
-**Reason:** Actions run asynchronously, no caller to receive values
-
-**Workaround:** Update database, raise exceptions for failures
-
-#### ❌ Ordered Execution Guarantee Across Async Actions
-
-```ruby
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "Action1",
-  priority: 10,
-  async: true  # Background job
-)
-
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "Action2",
-  priority: 20,
-  async: true  # Background job
-)
-```
-
-**Limitation:** Action2 might execute before Action1 completes
-
-**Reason:** Both enqueued immediately, job workers process in parallel
-
-**Workaround:** 
-- Use synchronous actions for ordering guarantee
-- Or make actions independent
-- Or use job dependencies (Sidekiq Pro, Active Job)
-
-#### ❌ Sharing State Between Actions
-
-```ruby
-class Action1
-  def handle(event:, payload:, metadata:)
-    @shared_data = "value"  # Instance variable
-  end
-end
-
-class Action2
-  def handle(event:, payload:, metadata:)
-    puts @shared_data  # Won't see Action1's value
-  end
-end
-```
-
-**Limitation:** Actions are separate instances, separate processes
-
-**Reason:** Each action instantiated independently
-
-**Workaround:** Use database, Redis, or event metadata to share data
-
-#### ❌ Wildcard Full Matching (Not Yet Implemented)
-
-```ruby
-# Registered
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.*",
-  action_class: "WildcardAction"
-)
-
-# Incoming webhook
-event_type = "payment_intent.succeeded"
-```
-
-**Limitation:** Wildcard action might not match incoming event
-
-**Reason:** Full glob pattern matching not implemented yet
-
-**Current State:** Exact matches work, wildcards stored but not fully functional
-
-**Workaround:** Register actions for each specific event type
-
-#### ❌ Action Discovery from Database Only
-
-```ruby
-# Database has action
-CaptainHook::Action.create!(
-  provider: "stripe",
-  event_type: "charge.succeeded",
-  action_class: "ChargeAction"
-)
-
-# But not registered in initializer
-# Action won't execute
-```
-
-**Limitation:** Actions must be in registry to execute
-
-**Reason:** Lookup uses in-memory registry for performance
-
-**Workaround:** Always register in initializer, database is for admin UI
-
-#### ❌ Conditional Action Execution
+### Conditional Execution
 
 ```ruby
 class ConditionalAction
-  def handle(event:, payload:, metadata:)
-    # Want: Only execute if certain condition
-    return if some_condition?  # Action still marked as "processed"
+  def should_process?(event)
+    # Return false to skip execution entirely
+    # Useful for filtering events based on payload
     
-    # Do work...
+    amount = event.payload.dig("data", "object", "amount")
+    return false if amount.nil? || amount < 1000  # Skip small amounts
+    
+    customer = event.payload.dig("data", "object", "customer")
+    return false unless customer.present?  # Skip without customer
+    
+    true
+  end
+  
+  def perform(event)
+    # Only runs if should_process? returns true
+    process_large_payment(event)
   end
 end
 ```
 
-**Limitation:** Early return still counts as success
-
-**Reason:** No exception raised = success
-
-**Workaround:** Raise custom exception to trigger retry, or use status tracking
-
-### Edge Cases
-
-#### Action Class Not Found
+### Idempotency in Actions
 
 ```ruby
-CaptainHook.register_action(
+class IdempotentAction
+  def perform(event)
+    # Extract unique identifier from payload
+    payment_intent_id = event.payload.dig("data", "object", "id")
+    
+    # Use find_or_create_by for idempotency
+    payment = Payment.find_or_create_by(stripe_payment_intent_id: payment_intent_id) do |p|
+      p.amount = event.payload.dig("data", "object", "amount") / 100.0
+      p.currency = event.payload.dig("data", "object", "currency")
+      p.status = "succeeded"
+      p.customer_id = find_customer(event)
+    end
+    
+    # Update is idempotent
+    payment.update!(
+      webhook_processed_at: Time.current,
+      webhook_event_id: event.external_id
+    )
+  end
+end
+```
+
+---
+
+## Action Examples
+
+### Example 1: Simple Payment Recording
+
+```ruby
+# captain_hook/stripe/actions/payment_intent_succeeded_action.rb
+module Stripe
+  class PaymentIntentSucceededAction
+    def self.provider
+      "stripe"
+    end
+    
+    def self.event_type
+      "payment_intent.succeeded"
+    end
+    
+    def perform(event)
+      payment_intent = event.payload["data"]["object"]
+      
+      payment = Payment.find_by(stripe_payment_intent_id: payment_intent["id"])
+      
+      if payment
+        payment.update!(
+          status: "succeeded",
+          captured_at: Time.current,
+          stripe_charge_id: payment_intent["charges"]["data"].first["id"]
+        )
+        
+        # Send confirmation email
+        PaymentMailer.success_notification(payment).deliver_later
+      else
+        Rails.logger.warn("Payment not found for payment_intent: #{payment_intent['id']}")
+      end
+    end
+    
+    def on_error(event, error)
+      # Alert team of payment processing failure
+      Bugsnag.notify(error) do |report|
+        report.add_metadata(:webhook, {
+          event_id: event.id,
+          external_id: event.external_id,
+          payment_intent_id: event.payload.dig("data", "object", "id")
+        })
+      end
+    end
+  end
+end
+```
+
+### Example 2: Subscription Management
+
+```ruby
+# captain_hook/stripe/actions/customer_subscription_updated_action.rb
+module Stripe
+  class CustomerSubscriptionUpdatedAction
+    def self.provider
+      "stripe"
+    end
+    
+    def self.event_type
+      "customer.subscription.updated"
+    end
+    
+    def perform(event)
+      subscription_data = event.payload["data"]["object"]
+      previous_attributes = event.payload["data"]["previous_attributes"]
+      
+      # Find subscription
+      subscription = Subscription.find_by(
+        stripe_subscription_id: subscription_data["id"]
+      )
+      
+      return unless subscription
+      
+      # Update subscription
+      subscription.update!(
+        status: subscription_data["status"],
+        current_period_start: Time.at(subscription_data["current_period_start"]),
+        current_period_end: Time.at(subscription_data["current_period_end"]),
+        cancel_at_period_end: subscription_data["cancel_at_period_end"]
+      )
+      
+      # Handle specific changes
+      if previous_attributes&.key?("status")
+        handle_status_change(subscription, previous_attributes["status"], subscription_data["status"])
+      end
+      
+      if subscription_data["cancel_at_period_end"]
+        handle_cancellation_scheduled(subscription)
+      end
+    end
+    
+    private
+    
+    def handle_status_change(subscription, old_status, new_status)
+      case new_status
+      when "active"
+        SubscriptionMailer.activated(subscription).deliver_later
+      when "past_due"
+        SubscriptionMailer.payment_failed(subscription).deliver_later
+      when "canceled"
+        SubscriptionMailer.canceled(subscription).deliver_later
+        subscription.user.downgrade_to_free!
+      end
+    end
+    
+    def handle_cancellation_scheduled(subscription)
+      SubscriptionMailer.cancellation_scheduled(
+        subscription,
+        end_date: subscription.current_period_end
+      ).deliver_later
+    end
+  end
+end
+```
+
+### Example 3: Multi-Step Processing
+
+```ruby
+# captain_hook/stripe/actions/invoice_payment_succeeded_action.rb
+module Stripe
+  class InvoicePaymentSucceededAction
+    def self.provider
+      "stripe"
+    end
+    
+    def self.event_type
+      "invoice.payment_succeeded"
+    end
+    
+    def perform(event)
+      invoice_data = event.payload["data"]["object"]
+      
+      # Step 1: Record invoice payment
+      invoice = record_invoice_payment(invoice_data)
+      
+      # Step 2: Update subscription
+      update_subscription_status(invoice)
+      
+      # Step 3: Fulfill order (if applicable)
+      fulfill_pending_orders(invoice)
+      
+      # Step 4: Send receipt
+      send_receipt(invoice)
+      
+      # Step 5: Update analytics
+      track_revenue(invoice)
+    end
+    
+    private
+    
+    def record_invoice_payment(invoice_data)
+      Invoice.find_or_create_by(stripe_invoice_id: invoice_data["id"]) do |inv|
+        inv.customer_id = find_customer_id(invoice_data["customer"])
+        inv.subscription_id = find_subscription_id(invoice_data["subscription"])
+        inv.amount = invoice_data["amount_paid"] / 100.0
+        inv.status = "paid"
+        inv.paid_at = Time.at(invoice_data["status_transitions"]["paid_at"])
+      end
+    end
+    
+    def update_subscription_status(invoice)
+      return unless invoice.subscription
+      
+      invoice.subscription.update!(
+        last_invoice_id: invoice.id,
+        last_payment_at: invoice.paid_at,
+        status: "active"
+      )
+    end
+    
+    def fulfill_pending_orders(invoice)
+      invoice.orders.pending.each do |order|
+        OrderFulfillmentJob.perform_later(order.id)
+      end
+    end
+    
+    def send_receipt(invoice)
+      InvoiceMailer.receipt(invoice).deliver_later
+    end
+    
+    def track_revenue(invoice)
+      AnalyticsService.track(
+        event: "revenue_received",
+        properties: {
+          amount: invoice.amount,
+          customer_id: invoice.customer_id,
+          subscription_id: invoice.subscription_id,
+          invoice_id: invoice.id
+        }
+      )
+    end
+    
+    def find_customer_id(stripe_customer_id)
+      Customer.find_by(stripe_customer_id: stripe_customer_id)&.id
+    end
+    
+    def find_subscription_id(stripe_subscription_id)
+      return nil unless stripe_subscription_id
+      Subscription.find_by(stripe_subscription_id: stripe_subscription_id)&.id
+    end
+  end
+end
+```
+
+### Example 4: External API Integration
+
+```ruby
+# captain_hook/github/actions/push_action.rb
+module Github
+  class PushAction
+    def self.provider
+      "github"
+    end
+    
+    def self.event_type
+      "push"
+    end
+    
+    def perform(event)
+      payload = event.payload
+      
+      repository = payload["repository"]["full_name"]
+      ref = payload["ref"]
+      commits = payload["commits"]
+      
+      # Only process pushes to main branch
+      return unless ref == "refs/heads/main"
+      
+      # Trigger deployment
+      deployment = Deployment.create!(
+        repository: repository,
+        branch: "main",
+        commit_sha: payload["after"],
+        pusher: payload["pusher"]["name"],
+        status: "pending"
+      )
+      
+      # Call deployment service
+      DeploymentService.deploy(
+        repository: repository,
+        commit_sha: payload["after"],
+        deployment_id: deployment.id
+      )
+      
+      # Notify Slack
+      SlackNotifier.send_message(
+        channel: "#deployments",
+        text: "🚀 Deploying #{repository} to production",
+        attachments: [{
+          color: "good",
+          fields: [
+            { title: "Branch", value: "main", short: true },
+            { title: "Commits", value: commits.length, short: true },
+            { title: "Pusher", value: payload["pusher"]["name"], short: true }
+          ]
+        }]
+      )
+    end
+    
+    def on_error(event, error)
+      repository = event.payload["repository"]["full_name"]
+      
+      SlackNotifier.send_message(
+        channel: "#deployments",
+        text: "❌ Deployment failed for #{repository}",
+        attachments: [{
+          color: "danger",
+          text: error.message
+        }]
+      )
+    end
+  end
+end
+```
+
+### Example 5: Batch Processing
+
+```ruby
+# captain_hook/stripe/actions/payment_intent_succeeded_batch_action.rb
+module Stripe
+  class PaymentIntentSucceededBatchAction
+    def self.provider
+      "stripe"
+    end
+    
+    def self.event_type
+      "payment_intent.succeeded"
+    end
+    
+    def self.priority
+      500  # Low priority (runs after other actions)
+    end
+    
+    def perform(event)
+      payment_intent = event.payload["data"]["object"]
+      
+      # Add to batch processing queue
+      BatchProcessor.add_to_queue(:payment_analytics, {
+        payment_intent_id: payment_intent["id"],
+        amount: payment_intent["amount"],
+        currency: payment_intent["currency"],
+        customer_id: payment_intent["customer"],
+        created_at: Time.at(payment_intent["created"])
+      })
+      
+      # Process batch if threshold reached
+      BatchProcessor.process_if_ready(:payment_analytics, threshold: 100)
+    end
+  end
+end
+```
+
+---
+
+## Testing Actions
+
+### RSpec Example
+
+```ruby
+# spec/actions/stripe/payment_intent_succeeded_action_spec.rb
+require "rails_helper"
+
+RSpec.describe Stripe::PaymentIntentSucceededAction do
+  describe "#perform" do
+    let(:payment) { create(:payment, stripe_payment_intent_id: "pi_123") }
+    
+    let(:event) do
+      create(:incoming_event,
+        provider: "stripe",
+        event_type: "payment_intent.succeeded",
+        payload: {
+          "data" => {
+            "object" => {
+              "id" => "pi_123",
+              "amount" => 5000,
+              "currency" => "usd",
+              "status" => "succeeded",
+              "charges" => {
+                "data" => [{ "id" => "ch_123" }]
+              }
+            }
+          }
+        }
+      )
+    end
+    
+    it "updates payment status" do
+      described_class.new.perform(event)
+      
+      expect(payment.reload).to have_attributes(
+        status: "succeeded",
+        stripe_charge_id: "ch_123"
+      )
+    end
+    
+    it "sends confirmation email" do
+      expect {
+        described_class.new.perform(event)
+      }.to have_enqueued_mail(PaymentMailer, :success_notification)
+    end
+    
+    context "when payment not found" do
+      it "logs warning" do
+        allow(Payment).to receive(:find_by).and_return(nil)
+        
+        expect(Rails.logger).to receive(:warn).with(/Payment not found/)
+        
+        described_class.new.perform(event)
+      end
+    end
+  end
+  
+  describe "#on_error" do
+    let(:event) { create(:incoming_event, provider: "stripe") }
+    let(:error) { StandardError.new("Test error") }
+    
+    it "reports error to Bugsnag" do
+      expect(Bugsnag).to receive(:notify).with(error)
+      
+      described_class.new.on_error(event, error)
+    end
+  end
+end
+```
+
+### Minitest Example
+
+```ruby
+# test/actions/stripe/payment_intent_succeeded_action_test.rb
+require "test_helper"
+
+class Stripe::PaymentIntentSucceededActionTest < ActiveSupport::TestCase
+  setup do
+    @payment = payments(:pending_payment)
+    @event = captain_hook_incoming_events(:stripe_payment_succeeded)
+  end
+  
+  test "updates payment status to succeeded" do
+    action = Stripe::PaymentIntentSucceededAction.new
+    action.perform(@event)
+    
+    assert_equal "succeeded", @payment.reload.status
+    assert_not_nil @payment.captured_at
+  end
+  
+  test "sends confirmation email" do
+    action = Stripe::PaymentIntentSucceededAction.new
+    
+    assert_enqueued_email_with PaymentMailer, :success_notification do
+      action.perform(@event)
+    end
+  end
+  
+  test "logs warning when payment not found" do
+    @event.payload["data"]["object"]["id"] = "pi_nonexistent"
+    
+    action = Stripe::PaymentIntentSucceededAction.new
+    
+    assert_logged "Payment not found" do
+      action.perform(@event)
+    end
+  end
+end
+```
+
+### Integration Test
+
+```ruby
+# spec/integration/webhook_processing_spec.rb
+require "rails_helper"
+
+RSpec.describe "Webhook Processing", type: :request do
+  let(:provider) { create(:provider, name: "stripe") }
+  let(:action) { create(:action, provider: "stripe", event_type: "payment_intent.succeeded") }
+  
+  let(:payload) do
+    {
+      id: "evt_123",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: "pi_123",
+          amount: 5000,
+          status: "succeeded"
+        }
+      }
+    }.to_json
+  end
+  
+  let(:signature) do
+    timestamp = Time.current.to_i
+    signed_payload = "#{timestamp}.#{payload}"
+    hmac = OpenSSL::HMAC.hexdigest("SHA256", ENV["STRIPE_WEBHOOK_SECRET"], signed_payload)
+    "t=#{timestamp},v1=#{hmac}"
+  end
+  
+  it "processes webhook end-to-end" do
+    expect {
+      post "/captain_hook/stripe/#{provider.token}",
+        params: payload,
+        headers: {
+          "Content-Type" => "application/json",
+          "Stripe-Signature" => signature
+        }
+    }.to change { IncomingEvent.count }.by(1)
+      .and change { IncomingEventAction.count }.by(1)
+    
+    expect(response).to have_http_status(:ok)
+    
+    # Process background job
+    perform_enqueued_jobs
+    
+    event = IncomingEvent.last
+    execution = event.incoming_event_actions.last
+    
+    expect(execution.status).to eq("completed")
+    expect(execution.error_message).to be_nil
+  end
+end
+```
+
+---
+
+## Best Practices
+
+### 1. Keep Actions Focused
+
+**Good**: Single responsibility
+```ruby
+class RecordPaymentAction
+  def perform(event)
+    payment_intent = event.payload["data"]["object"]
+    Payment.find_by(stripe_payment_intent_id: payment_intent["id"])
+           .update!(status: "succeeded")
+  end
+end
+```
+
+**Bad**: Too many responsibilities
+```ruby
+class DoEverythingAction
+  def perform(event)
+    # Updates payment, sends email, tracks analytics,
+    # updates subscription, generates invoice, etc.
+    # (100+ lines of code)
+  end
+end
+```
+
+### 2. Use Multiple Actions Instead
+
+```ruby
+# Register multiple focused actions
+config.register_action(
   provider: "stripe",
-  event_type: "payment.succeeded",
-  action_class: "NonExistentAction"  # Class doesn't exist
+  event_type: "payment_intent.succeeded",
+  action_class: "RecordPaymentAction",
+  priority: 10  # Run first
+)
+
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "SendReceiptAction",
+  priority: 20  # Run second
+)
+
+config.register_action(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "TrackAnalyticsAction",
+  priority: 100  # Run last
 )
 ```
 
-**Behavior:**
-- Registration succeeds (string stored)
-- Action record created in database
-- Job fails when attempting to constantize
-- Error: `NameError: uninitialized constant NonExistentAction`
-- Job retries according to retry config
-
-**Solution:** Ensure action class exists and is loadable
-
-#### Action Raises Exception
+### 3. Handle Missing Data Gracefully
 
 ```ruby
-class FailingAction
-  def handle(event:, payload:, metadata:)
-    raise StandardError, "Something went wrong"
-  end
-end
-```
-
-**Behavior:**
-- Exception caught by job
-- Action marked as failed
-- Error message saved
-- Retry scheduled automatically
-- After max_attempts, stays failed
-
-**Intentional:** Exceptions trigger retry mechanism
-
-#### Very Long Action Execution
-
-```ruby
-class SlowAction
-  def handle(event:, payload:, metadata:)
-    sleep(600)  # 10 minutes
-  end
-end
-```
-
-**Behavior:**
-- Job worker occupied for 10 minutes
-- Might timeout (depends on job backend)
-- Other actions delayed (if limited workers)
-
-**Recommendation:** Break into smaller jobs or use separate queue
-
-#### Database Lock Contention
-
-```ruby
-# Two actions updating same record
-class Action1
-  def handle(event:, payload:, metadata:)
-    order = Order.find(123)
-    order.lock!  # Acquire row lock
-    order.update(status: "processed")
-  end
-end
-
-class Action2
-  def handle(event:, payload:, metadata:)
-    order = Order.find(123)
-    order.lock!  # Blocks waiting for Action1
-    order.update(notes: "Updated")
-  end
-end
-```
-
-**Behavior:**
-- Action2 blocks waiting for Action1's lock
-- Might timeout
-- Could cause deadlocks
-
-**Solution:** Design actions to be lock-independent
-
-#### Action Execution Order vs Priority
-
-```ruby
-# Both actions for same event
-CaptainHook.register_action(..., action_class: "A", priority: 100)
-CaptainHook.register_action(..., action_class: "Z", priority: 100)
-```
-
-**Behavior:**
-- Same priority = sorted by class name alphabetically
-- "A" executes before "Z" (deterministic)
-- Ensures consistent ordering
-
-#### Memory Leaks in Actions
-
-```ruby
-class LeakyAction
-  @@data = []  # Class variable
+def perform(event)
+  payment_intent_id = event.payload.dig("data", "object", "id")
+  return unless payment_intent_id  # Guard clause
   
-  def handle(event:, payload:, metadata:)
-    @@data << payload  # Accumulates in memory
+  payment = Payment.find_by(stripe_payment_intent_id: payment_intent_id)
+  return unless payment  # Skip if not found
+  
+  # Process payment
+end
+```
+
+### 4. Use Idempotent Operations
+
+```ruby
+def perform(event)
+  # Use find_or_create_by
+  payment = Payment.find_or_create_by(stripe_payment_intent_id: payment_intent_id) do |p|
+    p.amount = amount
+    p.status = "succeeded"
+  end
+  
+  # Use update! (idempotent)
+  payment.update!(processed_at: Time.current)
+end
+```
+
+### 5. Log Meaningful Messages
+
+```ruby
+def perform(event)
+  Rails.logger.info("Processing payment_intent.succeeded for #{event.external_id}")
+  
+  # ... processing ...
+  
+  Rails.logger.info("Successfully updated payment #{payment.id}")
+end
+
+def on_error(event, error)
+  Rails.logger.error(
+    "Failed to process payment: #{error.message}\n" \
+    "Event ID: #{event.id}\n" \
+    "Payment Intent: #{event.payload.dig('data', 'object', 'id')}"
+  )
+end
+```
+
+### 6. Use should_process? for Filtering
+
+```ruby
+def should_process?(event)
+  # Skip test mode events in production
+  return false if Rails.env.production? && event.payload.dig("livemode") == false
+  
+  # Skip events without customer
+  return false unless event.payload.dig("data", "object", "customer").present?
+  
+  true
+end
+```
+
+### 7. Set Appropriate Priorities
+
+```ruby
+# Critical: Update core data first
+config.register_action(..., priority: 10)
+
+# Normal: Send notifications
+config.register_action(..., priority: 100)
+
+# Low: Analytics, reporting
+config.register_action(..., priority: 500)
+```
+
+### 8. Configure Retries Based on Action Type
+
+```ruby
+# External API calls: Longer delays
+config.register_action(
+  ...,
+  retry_delays: [60, 300, 900, 3600]  # 1m, 5m, 15m, 1h
+)
+
+# Database operations: Quick retries
+config.register_action(
+  ...,
+  retry_delays: [10, 30, 60]  # 10s, 30s, 1m
+)
+
+# Non-critical: Fewer attempts
+config.register_action(
+  ...,
+  max_attempts: 2
+)
+```
+
+### 9. Monitor and Alert
+
+```ruby
+def on_error(event, error)
+  # Report to error tracker
+  Sentry.capture_exception(error, extra: {
+    event_id: event.id,
+    provider: event.provider,
+    event_type: event.event_type
+  })
+  
+  # Alert team for critical actions
+  if critical_action?
+    PagerDuty.alert("Critical webhook action failed", error)
   end
 end
 ```
 
-**Behavior:**
-- Memory grows with each execution
-- Job worker memory bloat
-- Eventually crashes
+### 10. Document Event Payloads
 
-**Solution:** Avoid class variables, use instance variables
+```ruby
+# captain_hook/stripe/actions/payment_intent_succeeded_action.rb
+#
+# Stripe payload structure:
+# {
+#   "id": "evt_123",
+#   "type": "payment_intent.succeeded",
+#   "data": {
+#     "object": {
+#       "id": "pi_123",
+#       "amount": 5000,
+#       "currency": "usd",
+#       "customer": "cus_123",
+#       ...
+#     }
+#   }
+# }
+class PaymentIntentSucceededAction
+  def perform(event)
+    # ...
+  end
+end
+```
 
 ---
 
-## Summary
+**End of Part 2**
 
-### Key Takeaways (Providers & Actions)
-
-**Providers:**
-1. **Discovery is file-based**: Providers must exist as YAML files in `captain_hook/providers/`
-2. **Dual files serve different purposes**: YAML = configuration (required), Ruby = behavior (optional)
-3. **Security is layered**: Token authentication, signature verification, timestamp validation, rate limiting
-4. **Verifiers are isolated**: Each provider's verifier is self-contained with verification logic
-5. **Idempotency is automatic**: Same webhook won't be processed twice
-
-**Actions:**
-1. **Business logic layer**: Actions contain your application-specific webhook processing code
-2. **Registry + Database**: Hybrid system for fast lookups and persistent configuration
-3. **Async by default**: Background jobs with retry logic ensure reliability
-4. **Multiple actions supported**: Same event can trigger multiple independent actions
-5. **Priority-based execution**: Control action order with priority values
-6. **Soft delete protection**: User deletions respected during sync
-7. **Gem integration**: Actions can come from host app or third-party gems
-8. **Duplicate providers**: Actions register to existing provider, regardless of source
-
-**Critical Design Decisions:**
-
-- **Why two tables?** `providers` for webhook reception, `actions` for configuration management
-- **Why registry + database?** Fast runtime lookups + admin UI management
-- **Why soft delete?** Respect user intent, prevent unwanted re-creation
-- **Why provider matching?** Actions can't exist without providers
-- **Why job-based execution?** Reliability, retries, and non-blocking webhook responses
-
-### Why Database Storage for Actions?
-
-**The Problem:** In-memory registry alone isn't enough
-
-**Reasons for database persistence:**
-
-1. **Admin UI Management**
-   - View all registered actions
-   - Edit action configuration (priority, retries, async)
-   - Enable/disable actions without code changes
-   - See action execution history
-
-2. **Configuration Flexibility**
-   - Change retry delays without redeploying
-   - Adjust priorities based on production needs
-   - Toggle async/sync per environment
-
-3. **User Control**
-   - Soft delete to remove unwanted actions
-   - Deletions persist across deployments
-   - Override gem defaults
-
-4. **Visibility**
-   - See what actions are active
-   - Track which actions exist per provider
-   - Audit action configurations
-
-5. **Consistency**
-   - Single source of truth after sync
-   - Configuration survives restarts
-   - Platform-independent storage
-
-**Why not database only?**
-
-- **Performance**: Registry lookups are O(1) in memory vs database query
-- **Webhook speed**: Can't afford database roundtrip for every webhook
-- **Reliability**: Works even if database is slow
-
-**Best of both worlds:**
-- **Registry** for runtime (speed)
-- **Database** for management (flexibility)
-- **Sync** keeps them aligned
-
-### Complete Data Flow
-
-```
-1. Developer writes action class
-   ↓
-2. Developer registers in initializer
-   ↓
-3. Application starts, registry populated
-   ↓
-4. Admin clicks "Scan Actions"
-   ↓
-5. Discovery reads from registry
-   ↓
-6. Sync writes to database
-   ↓
-7. Admin UI shows actions
-   ↓
-8. Webhook arrives
-   ↓
-9. Registry lookup (fast)
-   ↓
-10. Action execution record created
-   ↓
-11. Job enqueued
-   ↓
-12. Action executes
-   ↓
-13. Success/failure tracked in database
-```
-
-### References
-
-- [Provider Discovery Documentation](docs/PROVIDER_DISCOVERY.md)
-- [Verifier Implementation Guide](docs/VERIFIERS.md)
-- [Action Management Guide](docs/ACTION_MANAGEMENT.md)
-- [Setting Up Webhooks in Gems](docs/GEM_WEBHOOK_SETUP.md)
-- [Signing Secret Storage](docs/SIGNING_SECRET_STORAGE.md)
-
----
-
-## Summary
-
-### Key Takeaways
-
-1. **Discovery is file-based**: Providers must exist as YAML files in `captain_hook/providers/`
-
-2. **Dual files serve different purposes**: 
-   - YAML = configuration (required)
-   - Ruby = behavior (optional)
-
-3. **Security is layered**:
-   - Token authentication (always)
-   - Signature verification (optional, via verifier)
-   - Timestamp validation (optional)
-   - Rate limiting (optional)
-   - Payload size limits (optional)
-
-4. **Verifiers are isolated**: Each provider's verifier is self-contained with verification logic
-
-5. **Idempotency is automatic**: Same webhook won't be processed twice
-
-6. **Flexibility by design**: Can mix app providers, gem providers, and multiple instances
-
-### References
-
-- [Provider Discovery Documentation](docs/PROVIDER_DISCOVERY.md)
-- [Verifier Implementation Guide](docs/VERIFIERS.md)
-- [Setting Up Webhooks in Gems](docs/GEM_WEBHOOK_SETUP.md)
-- [Signing Secret Storage](docs/SIGNING_SECRET_STORAGE.md)
+This completes the comprehensive technical documentation for CaptainHook's Providers, Verifiers, and Actions systems.

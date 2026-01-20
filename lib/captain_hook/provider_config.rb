@@ -8,7 +8,7 @@ module CaptainHook
     :display_name,
     :description,
     :token,
-    :signing_secret,
+    :raw_signing_secret, # Changed from :signing_secret to store raw value
     :webhook_url,
     :timestamp_tolerance_seconds,
     :max_payload_size_bytes,
@@ -24,6 +24,13 @@ module CaptainHook
     def initialize(config_hash = nil, **kwargs)
       # Support both hash and keyword arguments
       kwargs = config_hash.symbolize_keys.merge(kwargs) if config_hash.is_a?(Hash)
+
+      # Map 'signing_secret' to 'raw_signing_secret'
+      if kwargs.key?(:signing_secret)
+        kwargs[:raw_signing_secret] = kwargs.delete(:signing_secret)
+      elsif kwargs.key?("signing_secret")
+        kwargs[:raw_signing_secret] = kwargs.delete("signing_secret")
+      end
 
       # Validate name is provided when config is completely empty
       if (config_hash.nil? || (config_hash.is_a?(Hash) && config_hash.empty?)) && kwargs.empty?
@@ -41,25 +48,25 @@ module CaptainHook
       end
 
       super(**kwargs)
-      
+
       # Set defaults
       self.display_name ||= name&.titleize unless display_name.nil? # Keep explicit nil
       self.active = true if active.nil?
       self.verifier_class ||= "CaptainHook::Verifiers::Base"
-      
+
       # Load global config defaults for settings not provided
       # These come from config/captain_hook.yml in the host application
       if defined?(CaptainHook::Services::GlobalConfigLoader)
-        self.timestamp_tolerance_seconds ||= 
+        self.timestamp_tolerance_seconds ||=
           CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :timestamp_tolerance_seconds) || 300
-        self.max_payload_size_bytes ||= 
+        self.max_payload_size_bytes ||=
           CaptainHook::Services::GlobalConfigLoader.provider_setting(name, :max_payload_size_bytes) || 1_048_576
       else
         # Fallback to defaults if GlobalConfigLoader not available
         self.timestamp_tolerance_seconds ||= 300 # 5 minutes default
         self.max_payload_size_bytes ||= 1_048_576 # 1MB default
       end
-      
+
       # Rate limiting defaults (not in global config, provider-specific)
       self.rate_limit_requests ||= 100 # 100 requests
       self.rate_limit_period ||= 60 # per 60 seconds
@@ -70,18 +77,21 @@ module CaptainHook
       active == true
     end
 
-    # Resolve signing secret (handle ENV variables)
+    # Get signing secret and automatically resolve ENV variables
     # Supports format: ENV[VARIABLE_NAME]
-    def resolve_signing_secret
-      return nil if signing_secret.blank?
+    def signing_secret
+      return nil if raw_signing_secret.blank?
 
-      if signing_secret.match?(/\AENV\[(\w+)\]\z/)
-        var_name = signing_secret.match(/\AENV\[(\w+)\]\z/)[1]
+      if raw_signing_secret.match?(/\AENV\[(\w+)\]\z/)
+        var_name = raw_signing_secret.match(/\AENV\[(\w+)\]\z/)[1]
         ENV.fetch(var_name, nil)
       else
-        signing_secret
+        raw_signing_secret
       end
     end
+
+    # Alias for backward compatibility
+    alias_method :resolve_signing_secret, :signing_secret
 
     # source_file is stored as a struct attribute, no need to override
 

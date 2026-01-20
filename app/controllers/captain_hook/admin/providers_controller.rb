@@ -9,6 +9,11 @@ module CaptainHook
       # GET /captain_hook/admin/providers
       def index
         @providers = CaptainHook::Provider.by_name.page(params[:page]).per(50)
+
+        # Load provider configs from registry for security status
+        discovery = CaptainHook::Services::ProviderDiscovery.new
+        provider_definitions = discovery.call
+        @provider_configs = provider_definitions.index_by { |p| p["name"] }
       end
 
       # GET /captain_hook/admin/providers/:id

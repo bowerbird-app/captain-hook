@@ -15,7 +15,8 @@ module CaptainHook
         scan_application_providers
         scan_gem_providers
 
-        @discovered_providers
+        # Deduplicate by provider name, prioritizing application over gems
+        deduplicate_providers
       end
 
       private
@@ -115,6 +116,24 @@ module CaptainHook
       rescue StandardError => e
         Rails.logger.error("Failed to load provider file #{file_path}: #{e.message}")
         nil
+      end
+
+      # Deduplicate providers by name, prioritizing application over gems
+      # Application providers take precedence over gem providers
+      def deduplicate_providers
+        seen = {}
+        @discovered_providers.each do |provider|
+          name = provider["name"]
+          next unless name
+
+          # Priority: application > gem
+          # If we haven't seen this provider, or current is from application and existing is from gem
+          if !seen[name] || (provider["source"] == "application" && seen[name]["source"] != "application")
+            seen[name] = provider
+          end
+        end
+
+        @discovered_providers = seen.values
       end
     end
   end
