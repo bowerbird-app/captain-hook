@@ -378,17 +378,19 @@ verifier_file: string                 # Verifier Ruby file name
 # Optional fields
 display_name: string                  # Human-readable name
 description: string                   # Provider description
-active: boolean                       # Default: true
 
 # Security settings
 signing_secret: string                # ENV[VARIABLE_NAME] or literal value
-timestamp_tolerance_seconds: integer  # Seconds to allow for clock skew
-max_payload_size_bytes: integer       # Maximum webhook payload size
+timestamp_tolerance_seconds: integer  # Seconds to allow for clock skew (optional, uses global default if omitted)
+max_payload_size_bytes: integer       # Maximum webhook payload size (optional, uses global default if omitted)
 
-# Rate limiting
-rate_limit_requests: integer          # Number of requests allowed
-rate_limit_period: integer            # Time period in seconds
+# Database-synced fields (optional - see note below)
+active: boolean                       # Default: true if omitted
+rate_limit_requests: integer          # Default: 100 if omitted
+rate_limit_period: integer            # Default: 60 seconds if omitted
 ```
+
+**Note on Database-Synced Fields**: The `active`, `rate_limit_requests`, and `rate_limit_period` fields are saved to the database with sensible defaults when omitted. If included in YAML, they will overwrite any manual database changes on every server restart. **Recommendation**: Omit these fields from YAML to allow runtime management via admin UI without requiring application restarts.
 
 ### Example: Complete Provider Setup
 
@@ -411,7 +413,7 @@ captain_hook/
 
 Provider discovery runs automatically during:
 1. **Application Boot** (via Rails engine initializer)
-2. **Manual Trigger** (via `CaptainHook.scan_providers` or admin UI)
+2. **Manual Trigger** (via `CaptainHook.scan_providers` in console or code)
 
 ### Discovery Algorithm
 
