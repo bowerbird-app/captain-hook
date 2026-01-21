@@ -201,7 +201,7 @@ module CaptainHook
       assert_includes hash.keys, "name"
       assert_includes hash.keys, "display_name"
       assert_includes hash.keys, "verifier_class"
-      assert_includes hash.keys, "signing_secret"
+      assert_includes hash.keys, "raw_signing_secret"
     end
 
     # === Metadata Tests ===
@@ -299,7 +299,7 @@ module CaptainHook
         "description" => ""
       )
 
-      assert_equal "", config.signing_secret
+      assert_nil config.signing_secret # Empty string treated as no secret
       assert_equal "", config.description
     end
 

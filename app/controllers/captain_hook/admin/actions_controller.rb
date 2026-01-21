@@ -49,6 +49,8 @@ module CaptainHook
 
       def set_provider
         @provider = CaptainHook::Provider.find(params[:provider_id])
+        # Load registry config for display_name
+        @registry_config = CaptainHook.configuration.provider(@provider.name)
       end
 
       def set_action
@@ -56,7 +58,7 @@ module CaptainHook
       end
 
       def action_params
-        permitted = params.require(:action).permit(
+        permitted = params.require(:captain_hook_action).permit(
           :event_type, :async, :max_attempts, :priority, :retry_delays
         )
 

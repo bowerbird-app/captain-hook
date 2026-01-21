@@ -98,7 +98,7 @@ module CaptainHook
     # Get signing secret and automatically resolve ENV variables
     # Supports format: ENV[VARIABLE_NAME]
     def signing_secret
-      return nil if raw_signing_secret.blank?
+      return nil if raw_signing_secret.nil? || raw_signing_secret == ""
 
       if raw_signing_secret.match?(/\AENV\[(\w+)\]\z/)
         var_name = raw_signing_secret.match(/\AENV\[(\w+)\]\z/)[1]
@@ -115,7 +115,10 @@ module CaptainHook
 
     # Convert to hash
     def to_h
-      super.compact.transform_keys(&:to_s)
+      hash = super.compact.transform_keys(&:to_s)
+      # Also include signing_secret (resolved value) for backward compatibility
+      hash["signing_secret"] = signing_secret unless raw_signing_secret.nil?
+      hash
     end
 
     # Array access support

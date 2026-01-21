@@ -25,7 +25,8 @@
                   <td>
                     <code><%= provider.name %></code>
                   </td>
-                  <td><%= provider.display_name || provider.name.titleize %></td>
+                  <% provider_config = CaptainHook.configuration.provider(provider.name) %>
+                  <td><%= provider_config&.display_name || provider.name.titleize %></td>
                   <td>
                     <% if db_provider&.active? %>
                       <span class="badge bg-success">Active</span>

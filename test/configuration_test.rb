@@ -93,10 +93,9 @@ module CaptainHook
 
     def test_provider_returns_db_provider_first
       # Create a provider in the database
-      db_provider = CaptainHook::Provider.create!(
-        name: "stripe",
-        active: true
-      )
+      db_provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+        p.active = true
+      end
 
       # Also register in memory
       @config.register_provider("stripe", signing_secret: "memory_secret")
@@ -120,21 +119,29 @@ module CaptainHook
       assert_nil @config.provider("unknown_provider")
     end
 
-    def test_provider_config_from_model_maps_attributes_correctly
-      provider_model = CaptainHook::Provider.create!(
-        name: "test_provider",
-        token: "test_token",
-        active: true,
-        rate_limit_requests: 50,
-        rate_limit_period: 120
-      )
+    def test_provider_uses_db_and_registry_attributes
+      # Create provider in database (minimal fields)
+      provider_model = CaptainHook::Provider.find_or_create_by!(name: "test_provider") do |p|
+        p.token = "test_token"
+        p.active = true
+        p.rate_limit_requests = 50
+        p.rate_limit_period = 120
+      end
 
-      provider_config = @config.send(:provider_config_from_model, provider_model)
+      # Register in memory with additional attributes
+      @config.register_provider("test_provider",
+                                signing_secret: "test_secret",
+                                verifier_class: "TestVerifier")
+
+      # Get provider config (should combine DB and registry)
+      provider_config = @config.provider("test_provider")
 
       assert_equal "test_provider", provider_config.name
       assert_equal "test_token", provider_config.token
       assert_equal 50, provider_config.rate_limit_requests
       assert_equal 120, provider_config.rate_limit_period
+      assert_equal "test_secret", provider_config.signing_secret
+      assert_equal "TestVerifier", provider_config.verifier_class
     ensure
       provider_model&.destroy
     end

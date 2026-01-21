@@ -103,11 +103,17 @@ module CaptainHook
         FileUtils.mkdir_p(temp_dir)
 
         begin
+          # Create provider directories with YAML files (following expected structure)
+          FileUtils.mkdir_p(temp_dir.join("test1"))
+          FileUtils.mkdir_p(temp_dir.join("test2"))
+          FileUtils.mkdir_p(temp_dir.join("ignored_txt"))
+          FileUtils.mkdir_p(temp_dir.join("ignored_rb"))
+
           # Create files with different extensions
-          File.write(temp_dir.join("valid.yml"), "name: test1\nverifier_class: Test")
-          File.write(temp_dir.join("valid.yaml"), "name: test2\nverifier_class: Test")
-          File.write(temp_dir.join("ignored.txt"), "name: test3\nverifier_class: Test")
-          File.write(temp_dir.join("ignored.rb"), "name: test4\nverifier_class: Test")
+          File.write(temp_dir.join("test1", "test1.yml"), "name: test1\nverifier_class: Test")
+          File.write(temp_dir.join("test2", "test2.yaml"), "name: test2\nverifier_class: Test")
+          File.write(temp_dir.join("ignored_txt", "ignored_txt.txt"), "name: test3\nverifier_class: Test")
+          File.write(temp_dir.join("ignored_rb", "ignored_rb.rb"), "name: test4\nverifier_class: Test")
 
           discovery = ProviderDiscovery.new
           discovery.send(:scan_directory, temp_dir, source: "test")

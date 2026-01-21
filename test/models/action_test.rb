@@ -162,10 +162,9 @@ module CaptainHook
     end
 
     test "provider_record returns associated Provider" do
-      provider = CaptainHook::Provider.create!(
-        name: "stripe",
-        active: true
-      )
+      provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+        p.active = true
+      end
       @action.save!
 
       provider_record = @action.provider_record
@@ -182,6 +181,9 @@ module CaptainHook
     end
 
     test "by_priority scope orders by priority ascending" do
+      # Clean up any existing actions to ensure isolation
+      Action.destroy_all
+
       @action.priority = 200
       @action.save!
 

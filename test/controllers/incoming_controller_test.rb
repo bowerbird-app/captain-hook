@@ -15,14 +15,27 @@ module CaptainHook
     setup do
       # Clear action registry before each test
       CaptainHook.action_registry.clear!
+      # Clear in-memory provider registrations
+      CaptainHook.configuration.instance_variable_set(:@providers, {})
+      CaptainHook.configuration.instance_variable_set(:@registry_cache, {})
 
-      @provider = CaptainHook::Provider.create!(
-        name: "stripe",
-        active: true,
-        token: "test_token",
-        rate_limit_requests: 100,
-        rate_limit_period: 60
-      )
+      @provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+        p.active = true
+        p.token = "test_token"
+        p.rate_limit_requests = 100
+        p.rate_limit_period = 60
+      end
+      
+      # Ensure token is always set correctly (find_or_create_by only runs block on create)
+      @provider.update!(token: "test_token", active: true)
+
+      # Test signing secret (signing_secret is now in registry, not DB)
+      @test_signing_secret = "whsec_test123"
+
+      # Register stripe provider in memory with test signing secret
+      CaptainHook.configuration.register_provider("stripe",
+                                                  signing_secret: @test_signing_secret,
+                                                  verifier_class: "CaptainHook::Verifiers::Stripe")
 
       # Register a test action
       CaptainHook.register_action(
@@ -41,7 +54,7 @@ module CaptainHook
     end
 
     test "should receive webhook with valid signature" do
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
            params: @valid_payload,
@@ -70,7 +83,7 @@ module CaptainHook
     end
 
     test "should reject webhook with invalid token" do
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/wrong_token",
            params: @valid_payload,
@@ -108,7 +121,7 @@ module CaptainHook
 
     test "should reject webhook with invalid JSON" do
       invalid_payload = "not-json"
-      signature = generate_stripe_signature(invalid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(invalid_payload, @timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
            env: { "RAW_POST_DATA" => invalid_payload },
@@ -123,7 +136,7 @@ module CaptainHook
     end
 
     test "should handle duplicate events" do
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       # First request
       post "/captain_hook/stripe/test_token",
@@ -148,7 +161,7 @@ module CaptainHook
 
     test "should reject webhook with expired timestamp" do
       old_timestamp = (Time.now - 400).to_i.to_s # 400 seconds ago, outside tolerance
-      signature = generate_stripe_signature(@valid_payload, old_timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, old_timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
            params: @valid_payload,
@@ -164,7 +177,7 @@ module CaptainHook
 
     test "should accept webhook with valid timestamp" do
       fresh_timestamp = Time.now.to_i.to_s
-      signature = generate_stripe_signature(@valid_payload, fresh_timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, fresh_timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
            params: @valid_payload,
@@ -184,13 +197,19 @@ module CaptainHook
         token: "small_test_token"
       )
 
+      # Register in memory with small payload limit
+      CaptainHook.configuration.register_provider("small",
+                                                  signing_secret: @test_signing_secret,
+                                                  verifier_class: "CaptainHook::Verifiers::Stripe",
+                                                  max_payload_size_bytes: 100) # Small limit to trigger rejection
+
       large_payload = {
         id: "evt_large",
         type: "charge.succeeded",
         data: { object: { description: "x" * 200 } }
       }.to_json
 
-      signature = generate_stripe_signature(large_payload, @timestamp, small_provider.signing_secret)
+      signature = generate_stripe_signature(large_payload, @timestamp, @test_signing_secret)
 
       post "/captain_hook/small/small_test_token",
            params: large_payload,
@@ -205,7 +224,7 @@ module CaptainHook
     end
 
     test "should create action records for event" do
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
         assert_difference "CaptainHook::IncomingEventAction.count", 1 do
@@ -225,7 +244,7 @@ module CaptainHook
     end
 
     test "should extract headers correctly" do
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
            params: @valid_payload,
@@ -248,7 +267,7 @@ module CaptainHook
         data: { object: { id: "ch_test" } }
       }.to_json
 
-      signature = generate_stripe_signature(payload_no_action, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(payload_no_action, @timestamp, @test_signing_secret)
 
       assert_difference "CaptainHook::IncomingEvent.count", 1 do
         assert_no_difference "CaptainHook::IncomingEventAction.count" do
@@ -266,7 +285,7 @@ module CaptainHook
 
     test "should skip CSRF token verification" do
       # This test verifies that skip_before_action :verify_authenticity_token works
-      signature = generate_stripe_signature(@valid_payload, @timestamp, @provider.signing_secret)
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
 
       # Don't include CSRF token
       post "/captain_hook/stripe/test_token",

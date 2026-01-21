@@ -2,7 +2,7 @@
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
+      <li class="breadcrumb-item"><%= link_to @registry_config&.display_name || @provider.name.titleize, [:admin, @provider] %></li>
       <li class="breadcrumb-item active" aria-current="page">Edit</li>
     </ol>
   </nav>
@@ -32,15 +32,21 @@
           <small class="form-text text-muted">Provider name cannot be changed after creation</small>
         </div>
 
-        <div class="mb-3">
-          <%= f.label :display_name, class: "form-label" %>
-          <%= f.text_field :display_name, class: "form-control" %>
-        </div>
+        <% if @registry_config&.display_name.present? %>
+          <div class="mb-3">
+            <label class="form-label">Display Name</label>
+            <input type="text" class="form-control" value="<%= @registry_config.display_name %>" disabled>
+            <small class="form-text text-muted">Display name is configured in the provider's YAML file</small>
+          </div>
+        <% end %>
 
-        <div class="mb-3">
-          <%= f.label :description, class: "form-label" %>
-          <%= f.text_area :description, class: "form-control", rows: 3 %>
-        </div>
+        <% if @registry_config&.description.present? %>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" rows="3" disabled><%= @registry_config.description %></textarea>
+            <small class="form-text text-muted">Description is configured in the provider's YAML file</small>
+          </div>
+        <% end %>
 
         <div class="mb-3">
           <%= f.label :active, class: "form-label" %>
@@ -58,10 +64,11 @@
         <h5 class="mb-0">Authentication</h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <%= f.label :signing_secret, class: "form-label" %>
-          <%= f.text_field :signing_secret, class: "form-control", placeholder: "Leave blank to keep current value" %>
-          <small class="form-text text-muted">Update the signing secret for webhook signature verification</small>
+        <div class="alert alert-info">
+          <strong>ℹ️ Note:</strong> The signing secret is configured in the provider's YAML file.
+          <% if @registry_config&.raw_signing_secret.present? %>
+            Current value: <code><%= @registry_config.raw_signing_secret.start_with?('ENV[') ? @registry_config.raw_signing_secret : @registry_config.raw_signing_secret.truncate(20) %></code>
+          <% end %>
         </div>
 
         <div class="alert alert-warning">

@@ -6,12 +6,12 @@
 class PaypalVerifier
   include CaptainHook::VerifierHelpers
 
-  SIGNATURE_HEADER = "Paypal-Transmission-Sig"
-  CERT_URL_HEADER = "Paypal-Cert-Url"
-  TRANSMISSION_ID_HEADER = "Paypal-Transmission-Id"
-  TRANSMISSION_TIME_HEADER = "Paypal-Transmission-Time"
-  AUTH_ALGO_HEADER = "Paypal-Auth-Algo"
-  WEBHOOK_ID_HEADER = "Paypal-Webhook-Id"
+  SIGNATURE_HEADER = "Paypal-Transmission-Sig" unless defined?(SIGNATURE_HEADER)
+  CERT_URL_HEADER = "Paypal-Cert-Url" unless defined?(CERT_URL_HEADER)
+  TRANSMISSION_ID_HEADER = "Paypal-Transmission-Id" unless defined?(TRANSMISSION_ID_HEADER)
+  TRANSMISSION_TIME_HEADER = "Paypal-Transmission-Time" unless defined?(TRANSMISSION_TIME_HEADER)
+  AUTH_ALGO_HEADER = "Paypal-Auth-Algo" unless defined?(AUTH_ALGO_HEADER)
+  WEBHOOK_ID_HEADER = "Paypal-Webhook-Id" unless defined?(WEBHOOK_ID_HEADER)
 
   # Verify PayPal webhook signature
   # PayPal uses a complex verification with certificate chain

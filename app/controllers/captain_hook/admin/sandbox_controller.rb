@@ -12,6 +12,16 @@ module CaptainHook
       def test_webhook
         provider = CaptainHook::Provider.find(params[:provider_id])
 
+        # Get provider config from registry to access verifier_class
+        provider_config = CaptainHook.configuration.provider(provider.name)
+        if provider_config.nil?
+          render json: {
+            success: false,
+            error: "Provider '#{provider.name}' not found in registry"
+          }, status: :not_found
+          return
+        end
+
         # Parse the payload
         begin
           payload_hash = JSON.parse(params[:payload])
@@ -24,7 +34,7 @@ module CaptainHook
         end
 
         # Get the verifier
-        verifier_class = provider.verifier_class.constantize
+        verifier_class = provider_config.verifier_class.constantize
         verifier = verifier_class.new
 
         # Extract event details (dry run - no database)
@@ -44,8 +54,8 @@ module CaptainHook
           dry_run: true,
           provider: {
             name: provider.name,
-            display_name: provider.display_name,
-            verifier: provider.verifier_class
+            display_name: provider_config.display_name,
+            verifier: provider_config.verifier_class
           },
           extracted: {
             event_type: event_type,

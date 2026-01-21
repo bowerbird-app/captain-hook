@@ -6,8 +6,8 @@
 class StripeVerifier
   include CaptainHook::VerifierHelpers
 
-  SIGNATURE_HEADER = "Stripe-Signature"
-  TIMESTAMP_TOLERANCE = 300 # 5 minutes
+  SIGNATURE_HEADER = "Stripe-Signature" unless defined?(SIGNATURE_HEADER)
+  TIMESTAMP_TOLERANCE = 300 unless defined?(TIMESTAMP_TOLERANCE) # 5 minutes
 
   # Verify Stripe webhook signature
   # Stripe sends signature as: t=timestamp,v1=signature

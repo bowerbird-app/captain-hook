@@ -8,10 +8,9 @@ module CaptainHook
       include Engine.routes.url_helpers
 
       setup do
-        @provider = CaptainHook::Provider.create!(
-          name: "stripe",
-          token: "test_token"
-        )
+        @provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+          p.token = "test_token"
+        end
         @action = CaptainHook::Action.create!(
           provider: "stripe",
           event_type: "charge.succeeded",
@@ -35,7 +34,7 @@ module CaptainHook
 
       test "should update action" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { action: { priority: 200 } }
+              params: { captain_hook_action: { priority: 200 } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal 200, @action.priority
@@ -43,7 +42,7 @@ module CaptainHook
 
       test "should update action with JSON retry_delays" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { action: { retry_delays: "[10, 20, 30]" } }
+              params: { captain_hook_action: { retry_delays: "[10, 20, 30]" } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal [10, 20, 30], @action.retry_delays
@@ -51,7 +50,7 @@ module CaptainHook
 
       test "should update action with comma-separated retry_delays" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { action: { retry_delays: "10, 20, 30" } }
+              params: { captain_hook_action: { retry_delays: "10, 20, 30" } }
         assert_redirected_to admin_provider_actions_path(@provider)
         @action.reload
         assert_equal [10, 20, 30], @action.retry_delays
@@ -59,7 +58,7 @@ module CaptainHook
 
       test "should handle invalid JSON in retry_delays gracefully" do
         patch "/captain_hook/admin/providers/#{@provider.id}/actions/#{@action.id}",
-              params: { action: { retry_delays: "not-json" } }
+              params: { captain_hook_action: { retry_delays: "not-json" } }
         assert_response :unprocessable_entity
       end
 

@@ -8,10 +8,9 @@ module CaptainHook
       include Engine.routes.url_helpers
 
       setup do
-        @provider = CaptainHook::Provider.create!(
-          name: "stripe",
-          token: "test_token"
-        )
+        @provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+          p.token = "test_token"
+        end
         @event1 = CaptainHook::IncomingEvent.create!(
           provider: @provider,
           event_type: "charge.succeeded",

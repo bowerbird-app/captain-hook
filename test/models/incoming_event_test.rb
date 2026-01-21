@@ -5,9 +5,9 @@ require "test_helper"
 module CaptainHook
   class IncomingEventModelTest < ActiveSupport::TestCase
     setup do
-      @provider = CaptainHook::Provider.create!(
-        name: "test_provider"
-      )
+      @provider = CaptainHook::Provider.find_or_create_by!(name: "test_provider") do |p|
+        p.token = SecureRandom.hex(16)
+      end
 
       @event = CaptainHook::IncomingEvent.create!(
         provider: @provider.name,

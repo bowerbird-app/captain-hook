@@ -8,10 +8,9 @@ module CaptainHook
       include Engine.routes.url_helpers
 
       setup do
-        @provider = CaptainHook::Provider.create!(
-          name: "stripe",
-          token: "test_token"
-        )
+        @provider = CaptainHook::Provider.find_or_create_by!(name: "stripe") do |p|
+          p.token = "test_token"
+        end
       end
 
       test "should get index" do
@@ -130,15 +129,23 @@ module CaptainHook
           token: "bad_test_token"
         )
 
-        payload = { id: "test" }.to_json
+        # Stub the configuration to return a config with invalid verifier_class
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad",
+          token: "bad_test_token",
+          verifier_class: "NonExistent::InvalidVerifier"
+        )
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
 
-        post "/captain_hook/admin/sandbox/test",
-             params: { provider_id: bad_provider.id, payload: payload }
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
 
-        assert_response :internal_server_error
-        json = JSON.parse(response.body)
-        assert_not json["success"]
-        assert json["error"].present?
+          assert_response :internal_server_error
+          json = JSON.parse(response.body)
+          assert_not json["success"]
+          assert json["error"].present?
+        end
       end
     end
   end

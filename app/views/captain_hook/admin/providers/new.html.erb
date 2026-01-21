@@ -28,18 +28,7 @@
         <div class="mb-3">
           <%= f.label :name, class: "form-label" %>
           <%= f.text_field :name, class: "form-control", placeholder: "stripe", required: true %>
-          <small class="form-text text-muted">Unique identifier (lowercase, underscores only). Example: stripe, openai, github</small>
-        </div>
-
-        <div class="mb-3">
-          <%= f.label :display_name, class: "form-label" %>
-          <%= f.text_field :display_name, class: "form-control", placeholder: "Stripe" %>
-          <small class="form-text text-muted">Human-readable name for display</small>
-        </div>
-
-        <div class="mb-3">
-          <%= f.label :description, class: "form-label" %>
-          <%= f.text_area :description, class: "form-control", rows: 3, placeholder: "Webhooks from Stripe payment processing" %>
+          <small class="form-text text-muted">Unique identifier (lowercase, underscores only). Example: stripe, openai, github. Display name and description should be configured in the provider's YAML file.</small>
         </div>
 
         <div class="mb-3">
@@ -58,44 +47,18 @@
         <h5 class="mb-0">Authentication</h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <%= f.label :signing_secret, class: "form-label" %>
-          <%= f.text_field :signing_secret, class: "form-control", placeholder: "whsec_..." %>
-          <small class="form-text text-muted">Secret key for verifying webhook signatures (optional, but recommended)</small>
-        </div>
-
         <div class="alert alert-info">
-          <strong>Note:</strong> A secure token will be automatically generated when you save this provider.
-          You'll use this token in the webhook URL.
+          <strong>ℹ️ Note:</strong> A secure token will be automatically generated when you save this provider.
+          You'll use this token in the webhook URL. The signing secret should be configured in the provider's YAML file.
         </div>
       </div>
     </div>
 
     <div class="card mb-4">
       <div class="card-header">
-        <h5 class="mb-0">Security Settings</h5>
+        <h5 class="mb-0">Rate Limiting (optional)</h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <%= f.label :verifier_class, class: "form-label" %>
-          <%= f.text_field :verifier_class, 
-              class: "form-control",
-              placeholder: "e.g., StripeVerifier" %>
-          <small class="form-text text-muted">Verifier class name (must exist in your provider directory)</small>
-        </div>
-
-        <div class="mb-3">
-          <%= f.label :timestamp_tolerance_seconds, class: "form-label" %>
-          <%= f.number_field :timestamp_tolerance_seconds, class: "form-control", value: 300, placeholder: "300" %>
-          <small class="form-text text-muted">Allow timestamps within ± this many seconds (prevents replay attacks). Default: 300 (5 minutes)</small>
-        </div>
-
-        <div class="mb-3">
-          <%= f.label :max_payload_size_bytes, class: "form-label" %>
-          <%= f.number_field :max_payload_size_bytes, class: "form-control", value: 1_048_576, placeholder: "1048576" %>
-          <small class="form-text text-muted">Maximum webhook payload size in bytes. Default: 1048576 (1 MB)</small>
-        </div>
-
         <div class="row">
           <div class="col-md-6 mb-3">
             <%= f.label :rate_limit_requests, "Rate Limit (requests)", class: "form-label" %>

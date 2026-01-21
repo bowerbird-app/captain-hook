@@ -4,6 +4,7 @@
 name: webhook_site
 display_name: Webhook.site
 description: Test webhook provider for development
+verifier_class: CaptainHook::Verifiers::WebhookSite
 verifier_file: webhook_site.rb
 active: true
 

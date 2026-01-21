@@ -83,12 +83,13 @@ module CaptainHook
 
       def set_provider
         @provider = CaptainHook::Provider.find(params[:id])
+        # Load registry config for display_name and other metadata
+        @registry_config = CaptainHook.configuration.provider(@provider.name)
       end
 
       def provider_params
         params.require(:provider).permit(
-          :name, :display_name, :description, :signing_secret,
-          :verifier_class, :timestamp_tolerance_seconds, :max_payload_size_bytes,
+          :name, :token,
           :rate_limit_requests, :rate_limit_period, :active
         )
       end

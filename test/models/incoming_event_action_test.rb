@@ -5,9 +5,9 @@ require "test_helper"
 module CaptainHook
   class IncomingEventActionModelTest < ActiveSupport::TestCase
     setup do
-      @provider = CaptainHook::Provider.create!(
-        name: "test_provider"
-      )
+      @provider = CaptainHook::Provider.find_or_create_by!(name: "test_provider") do |p|
+        p.token = SecureRandom.hex(16)
+      end
 
       @event = CaptainHook::IncomingEvent.create!(
         provider: @provider.name,
@@ -102,14 +102,15 @@ module CaptainHook
         priority: 50
       )
       same_priority = @event.incoming_event_actions.create!(
-        action_class: "AnotherAction",
+        action_class: "ZAction", # Changed to come after ".*Action" alphabetically
         priority: 100
       )
 
       ordered = @event.incoming_event_actions.by_priority
       assert_equal high_priority.id, ordered.first.id
-      assert_equal same_priority.id, ordered.second.id
-      assert_equal @action.id, ordered.third.id
+      # @action (.*Action, priority 100) should come before same_priority (ZAction, priority 100)
+      assert_equal @action.id, ordered.second.id
+      assert_equal same_priority.id, ordered.third.id
     end
 
     test "locked scope returns only locked actions" do
@@ -317,7 +318,7 @@ module CaptainHook
 
     test "locked scope returns locked actions" do
       @action.save!
-      @event.incoming_event_actions.create!(
+      locked_action = @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,
@@ -330,7 +331,7 @@ module CaptainHook
 
     test "unlocked scope returns unlocked actions" do
       @action.save!
-      @event.incoming_event_actions.create!(
+      locked_action = @event.incoming_event_actions.create!(
         action_class: "LockedAction",
         priority: 100,
         locked_at: Time.current,

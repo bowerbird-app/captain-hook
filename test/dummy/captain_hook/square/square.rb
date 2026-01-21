@@ -6,8 +6,8 @@
 class SquareVerifier
   include CaptainHook::VerifierHelpers
 
-  SIGNATURE_HEADER = "X-Square-Signature"
-  SIGNATURE_HMACSHA256_HEADER = "X-Square-Hmacsha256-Signature"
+  SIGNATURE_HEADER = "X-Square-Signature" unless defined?(SIGNATURE_HEADER)
+  SIGNATURE_HMACSHA256_HEADER = "X-Square-Hmacsha256-Signature" unless defined?(SIGNATURE_HMACSHA256_HEADER)
 
   # Verify Square webhook signature
   # Square signs webhooks with HMAC-SHA256 (Base64 encoded)

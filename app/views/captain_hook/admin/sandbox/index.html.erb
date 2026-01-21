@@ -21,7 +21,8 @@
             <select id="provider-select" class="form-select">
               <option value="">Select a provider...</option>
               <% @providers.each do |provider| %>
-                <option value="<%= provider.id %>"><%= provider.display_name || provider.name %></option>
+                <% provider_config = CaptainHook.configuration.provider(provider.name) %>
+                <option value="<%= provider.id %>"><%= provider_config&.display_name || provider.name %></option>
               <% end %>
             </select>
           </div>

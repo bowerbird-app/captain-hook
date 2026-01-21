@@ -5,9 +5,9 @@ require "test_helper"
 module CaptainHook
   class IncomingActionJobTest < ActiveSupport::TestCase
     setup do
-      @provider = CaptainHook::Provider.create!(
-        name: "test_provider"
-      )
+      @provider = CaptainHook::Provider.find_or_create_by!(name: "test_provider") do |p|
+        p.token = SecureRandom.hex(16)
+      end
 
       @event = CaptainHook::IncomingEvent.create!(
         provider: @provider.name,
@@ -176,9 +176,9 @@ module CaptainHook
 
   class ArchivalJobTest < ActiveSupport::TestCase
     setup do
-      @provider = CaptainHook::Provider.create!(
-        name: "test_provider"
-      )
+      @provider = CaptainHook::Provider.find_or_create_by!(name: "test_provider_archival") do |p|
+        p.token = SecureRandom.hex(16)
+      end
     end
 
     test "job archives old events" do

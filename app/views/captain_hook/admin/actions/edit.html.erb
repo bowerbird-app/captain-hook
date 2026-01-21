@@ -2,7 +2,7 @@
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item"><%= link_to @provider.display_name || @provider.name.titleize, [:admin, @provider] %></li>
+      <li class="breadcrumb-item"><%= link_to @registry_config&.display_name || @provider.name.titleize, [:admin, @provider] %></li>
       <li class="breadcrumb-item"><%= link_to "Actions", admin_provider_actions_path(@provider) %></li>
       <li class="breadcrumb-item active" aria-current="page">Edit</li>
     </ol>

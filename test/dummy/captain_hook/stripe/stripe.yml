@@ -4,6 +4,7 @@
 name: stripe
 display_name: Stripe
 description: Stripe payment webhooks
+verifier_class: CaptainHook::Verifiers::Stripe
 verifier_file: stripe.rb
 
 # Database-synced fields (can be updated at runtime via admin UI or database)
