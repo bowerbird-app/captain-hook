@@ -1,4 +1,6 @@
 # Action for Stripe payment_intent.* events
+return if defined?(StripePaymentIntentAction)
+
 class StripePaymentIntentAction
   # Called by the job system
   # @param event [CaptainHook::IncomingEvent] The incoming event

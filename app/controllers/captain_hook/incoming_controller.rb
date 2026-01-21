@@ -71,7 +71,7 @@ module CaptainHook
         payload_size = request.raw_post.bytesize
 
         if payload_size > provider_config.max_payload_size_bytes
-          render json: { error: "Payload too large" }, status: :payload_too_large
+          render json: { error: "Payload too large" }, status: :content_too_large
           return
         end
       end

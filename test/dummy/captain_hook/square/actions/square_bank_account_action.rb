@@ -1,4 +1,6 @@
 # Action for Square bank_account.* events
+return if defined?(SquareBankAccountAction)
+
 class SquareBankAccountAction
   # Called by the job system
   # @param event [CaptainHook::IncomingEvent] The incoming event

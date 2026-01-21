@@ -218,7 +218,7 @@ module CaptainHook
              "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
            }
 
-      assert_response :payload_too_large
+      assert_response :content_too_large
       json = JSON.parse(response.body)
       assert_equal "Payload too large", json["error"]
     end

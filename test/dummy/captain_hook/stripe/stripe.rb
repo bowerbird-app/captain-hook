@@ -3,6 +3,8 @@
 # Stripe webhook verifier
 # Implements Stripe's webhook signature verification scheme
 # https://stripe.com/docs/webhooks/signatures
+return if defined?(StripeVerifier)
+
 class StripeVerifier
   include CaptainHook::VerifierHelpers
 

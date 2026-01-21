@@ -3,6 +3,8 @@
 # Webhook.site verifier for testing webhooks
 # Webhook.site doesn't provide signature verification, so this verifier
 # implements a no-op verification that always returns true
+return if defined?(WebhookSiteVerifier)
+
 class WebhookSiteVerifier
   include CaptainHook::VerifierHelpers
 

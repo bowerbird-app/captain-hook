@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+return if defined?(SquareVerifier)
+
 # Square webhook verifier
 # Implements Square's webhook signature verification
 # https://developer.squareup.com/docs/webhooks/step3validate

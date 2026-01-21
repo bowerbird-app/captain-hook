@@ -264,7 +264,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
                "Stripe-Signature" => signature
              }
 
-        expect(response).to have_http_status(:payload_too_large)
+        expect(response).to have_http_status(:content_too_large)
         json = JSON.parse(response.body)
         expect(json["error"]).to eq("Payload too large")
       end

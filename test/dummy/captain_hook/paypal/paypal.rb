@@ -3,6 +3,8 @@
 # PayPal webhook verifier
 # Implements PayPal's webhook signature verification scheme
 # https://developer.paypal.com/api/rest/webhooks/
+return if defined?(PaypalVerifier)
+
 class PaypalVerifier
   include CaptainHook::VerifierHelpers
 

@@ -2,6 +2,8 @@
 
 # Action for webhook.site test events
 # Creates a WebhookLog record to track incoming webhooks
+return if defined?(WebhookSiteTestAction)
+
 class WebhookSiteTestAction
   def self.call(event:, payload:, metadata:)
     new.call(event: event, payload: payload, metadata: metadata)
