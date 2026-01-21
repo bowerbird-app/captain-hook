@@ -6,8 +6,7 @@ module CaptainHook
   class IncomingEventModelTest < ActiveSupport::TestCase
     setup do
       @provider = CaptainHook::Provider.create!(
-        name: "test_provider",
-        verifier_class: "CaptainHook::Verifiers::Base"
+        name: "test_provider"
       )
 
       @event = CaptainHook::IncomingEvent.create!(

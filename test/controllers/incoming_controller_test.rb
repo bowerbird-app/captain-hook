@@ -18,12 +18,8 @@ module CaptainHook
 
       @provider = CaptainHook::Provider.create!(
         name: "stripe",
-        verifier_class: "CaptainHook::Verifiers::Stripe",
         active: true,
         token: "test_token",
-        signing_secret: "whsec_test123",
-        timestamp_tolerance_seconds: 300,
-        max_payload_size_bytes: 1_000_000,
         rate_limit_requests: 100,
         rate_limit_period: 60
       )
@@ -184,11 +180,8 @@ module CaptainHook
       # Create a provider with small payload limit
       small_provider = CaptainHook::Provider.create!(
         name: "small",
-        verifier_class: "CaptainHook::Verifiers::Stripe",
         active: true,
-        token: "small_test_token",
-        signing_secret: "whsec_test123",
-        max_payload_size_bytes: 100 # Very small limit
+        token: "small_test_token"
       )
 
       large_payload = {

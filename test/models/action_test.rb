@@ -164,9 +164,6 @@ module CaptainHook
     test "provider_record returns associated Provider" do
       provider = CaptainHook::Provider.create!(
         name: "stripe",
-        display_name: "Stripe",
-        verifier_class: "StripeVerifier",
-        signing_secret: "secret",
         active: true
       )
       @action.save!

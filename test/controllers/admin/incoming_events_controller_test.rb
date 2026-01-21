@@ -10,9 +10,7 @@ module CaptainHook
       setup do
         @provider = CaptainHook::Provider.create!(
           name: "stripe",
-          verifier_class: "CaptainHook::Verifiers::Stripe",
-          token: "test_token",
-          signing_secret: "test_secret"
+          token: "test_token"
         )
         @event1 = CaptainHook::IncomingEvent.create!(
           provider: @provider,

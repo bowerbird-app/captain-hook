@@ -10,9 +10,7 @@ module CaptainHook
       setup do
         @provider = CaptainHook::Provider.create!(
           name: "stripe",
-          verifier_class: "CaptainHook::Verifiers::Stripe",
-          token: "test_token",
-          signing_secret: "test_secret"
+          token: "test_token"
         )
       end
 
@@ -42,9 +40,7 @@ module CaptainHook
                params: {
                  provider: {
                    name: "paypal",
-                   verifier_class: "CaptainHook::Verifiers::Paypal",
-                   token: "paypal_token",
-                   signing_secret: "paypal_secret"
+                   token: "paypal_token"
                  }
                }
         end
@@ -67,12 +63,12 @@ module CaptainHook
         patch "/captain_hook/admin/providers/#{@provider.id}",
               params: {
                 provider: {
-                  display_name: "Updated Stripe"
+                  active: false
                 }
               }
         assert_redirected_to admin_provider_path(@provider)
         @provider.reload
-        assert_equal "Updated Stripe", @provider.display_name
+        assert_equal false, @provider.active
       end
 
       test "should not update provider with invalid params" do
@@ -88,7 +84,6 @@ module CaptainHook
       test "should destroy provider without events" do
         provider_without_events = CaptainHook::Provider.create!(
           name: "test_delete",
-          verifier_class: "CaptainHook::Verifiers::Base",
           token: "test_delete_token"
         )
 

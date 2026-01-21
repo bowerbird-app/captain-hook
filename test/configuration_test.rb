@@ -95,9 +95,6 @@ module CaptainHook
       # Create a provider in the database
       db_provider = CaptainHook::Provider.create!(
         name: "stripe",
-        display_name: "Stripe",
-        verifier_class: "StripeVerifier",
-        signing_secret: "db_secret",
         active: true
       )
 
@@ -106,7 +103,8 @@ module CaptainHook
 
       # Should prioritize database
       provider_config = @config.provider("stripe")
-      assert_equal "db_secret", provider_config.signing_secret
+      # NOTE: signing_secret now comes from registry, not DB
+      assert_equal "memory_secret", provider_config.signing_secret
     ensure
       db_provider&.destroy
     end
@@ -125,13 +123,8 @@ module CaptainHook
     def test_provider_config_from_model_maps_attributes_correctly
       provider_model = CaptainHook::Provider.create!(
         name: "test_provider",
-        display_name: "Test Provider",
-        verifier_class: "TestVerifier",
-        signing_secret: "test_secret",
         token: "test_token",
         active: true,
-        timestamp_tolerance_seconds: 600,
-        max_payload_size_bytes: 2_097_152,
         rate_limit_requests: 50,
         rate_limit_period: 120
       )
@@ -140,10 +133,6 @@ module CaptainHook
 
       assert_equal "test_provider", provider_config.name
       assert_equal "test_token", provider_config.token
-      assert_equal "test_secret", provider_config.signing_secret
-      assert_equal "TestVerifier", provider_config.verifier_class
-      assert_equal 600, provider_config.timestamp_tolerance_seconds
-      assert_equal 2_097_152, provider_config.max_payload_size_bytes
       assert_equal 50, provider_config.rate_limit_requests
       assert_equal 120, provider_config.rate_limit_period
     ensure
