@@ -25,7 +25,7 @@ module CaptainHook
         p.rate_limit_requests = 100
         p.rate_limit_period = 60
       end
-      
+
       # Ensure token is always set correctly (find_or_create_by only runs block on create)
       @provider.update!(token: "test_token", active: true)
 
