@@ -7,137 +7,16 @@ module CaptainHook
     class ActionDiscoveryTest < ActiveSupport::TestCase
       setup do
         @discovery = ActionDiscovery.new
-        # Clear the registry before each test
-        CaptainHook.action_registry.clear!
       end
 
-      test "discovers actions from registry" do
-        # Register a test action
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "TestAction",
-          priority: 100,
-          async: true,
-          max_attempts: 5,
-          retry_delays: [30, 60, 300]
-        )
-
+      test "discovers actions from filesystem" do
         actions = @discovery.call
 
-        assert_equal 1, actions.size
+        # Should find actions in test/dummy/captain_hook/*/actions/
+        assert actions.size > 0, "Should discover at least one action from filesystem"
+        
+        # Check that we have the expected structure
         action = actions.first
-        assert_equal "stripe", action["provider"]
-        assert_equal "payment.succeeded", action["event_type"]
-        assert_equal "TestAction", action["action_class"]
-        assert_equal 100, action["priority"]
-        assert_equal true, action["async"]
-        assert_equal 5, action["max_attempts"]
-        assert_equal [30, 60, 300], action["retry_delays"]
-      end
-
-      test "discovers multiple actions for same provider" do
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "PaymentAction"
-        )
-
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.failed",
-          action_class: "FailureAction"
-        )
-
-        actions = @discovery.call
-
-        assert_equal 2, actions.size
-        provider_names = actions.map { |h| h["provider"] }
-        assert(provider_names.all? { |p| p == "stripe" })
-      end
-
-      test "discovers actions for specific provider" do
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "StripeAction"
-        )
-
-        CaptainHook.register_action(
-          provider: "square",
-          event_type: "payment.succeeded",
-          action_class: "SquareAction"
-        )
-
-        stripe_actions = ActionDiscovery.for_provider("stripe")
-        square_actions = ActionDiscovery.for_provider("square")
-
-        assert_equal 1, stripe_actions.size
-        assert_equal 1, square_actions.size
-        assert_equal "StripeAction", stripe_actions.first["action_class"]
-        assert_equal "SquareAction", square_actions.first["action_class"]
-      end
-
-      test "returns empty array when no actions registered" do
-        actions = @discovery.call
-        assert_equal [], actions
-      end
-
-      test "for_provider returns empty array for unknown provider" do
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "TestAction"
-        )
-
-        actions = ActionDiscovery.for_provider("unknown_provider")
-        assert_equal [], actions
-      end
-
-      test "handles multiple actions for same event type" do
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "Action1",
-          priority: 100
-        )
-
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment.succeeded",
-          action_class: "Action2",
-          priority: 200
-        )
-
-        actions = @discovery.call
-        stripe_payment_actions = actions.select do |h|
-          h["provider"] == "stripe" && h["event_type"] == "payment.succeeded"
-        end
-
-        assert_equal 2, stripe_payment_actions.size
-      end
-
-      test "action class is converted to string" do
-        CaptainHook.register_action(
-          provider: "test",
-          event_type: "test.event",
-          action_class: Object # Using a class object
-        )
-
-        actions = @discovery.call
-        assert_equal "Object", actions.first["action_class"]
-        assert actions.first["action_class"].is_a?(String)
-      end
-
-      test "discovered actions include all required fields" do
-        CaptainHook.register_action(
-          provider: "test",
-          event_type: "test.event",
-          action_class: "TestAction"
-        )
-
-        action = @discovery.call.first
-
         assert action.key?("provider")
         assert action.key?("event_type")
         assert action.key?("action_class")
@@ -145,6 +24,106 @@ module CaptainHook
         assert action.key?("max_attempts")
         assert action.key?("priority")
         assert action.key?("retry_delays")
+      end
+
+      test "discovers stripe actions" do
+        actions = @discovery.call
+        stripe_actions = actions.select { |a| a["provider"] == "stripe" }
+
+        assert stripe_actions.size > 0, "Should find Stripe actions"
+        
+        # Should find the PaymentIntentCreatedAction
+        payment_intent_created = stripe_actions.find do |a|
+          a["event_type"] == "payment_intent.created"
+        end
+        
+        assert_not_nil payment_intent_created, "Should find payment_intent.created action"
+        assert_equal "Stripe::PaymentIntentCreatedAction", payment_intent_created["action_class"]
+        assert_equal 100, payment_intent_created["priority"]
+        assert_equal true, payment_intent_created["async"]
+        assert_equal 3, payment_intent_created["max_attempts"]
+      end
+
+      test "discovers square actions" do
+        actions = @discovery.call
+        square_actions = actions.select { |a| a["provider"] == "square" }
+
+        assert square_actions.size > 0, "Should find Square actions"
+        
+        # Should find BankAccountAction with wildcard
+        bank_account_action = square_actions.find do |a|
+          a["event_type"] == "bank_account.*"
+        end
+        
+        assert_not_nil bank_account_action, "Should find bank_account.* action"
+        assert_equal "Square::BankAccountAction", bank_account_action["action_class"]
+      end
+
+      test "discovers webhook_site actions" do
+        actions = @discovery.call
+        webhook_site_actions = actions.select { |a| a["provider"] == "webhook_site" }
+
+        assert webhook_site_actions.size > 0, "Should find webhook_site actions"
+        
+        test_action = webhook_site_actions.find { |a| a["event_type"] == "test" }
+        assert_not_nil test_action, "Should find test action"
+        assert_equal "WebhookSite::TestAction", test_action["action_class"]
+      end
+
+      test "for_provider filters actions by provider" do
+        stripe_actions = ActionDiscovery.for_provider("stripe")
+        
+        assert stripe_actions.size > 0, "Should find actions for stripe"
+        assert stripe_actions.all? { |a| a["provider"] == "stripe" }, "All actions should be for stripe"
+      end
+
+      test "for_provider returns empty array for unknown provider" do
+        actions = ActionDiscovery.for_provider("nonexistent_provider")
+        assert_equal [], actions
+      end
+
+      test "transforms class names correctly" do
+        actions = @discovery.call
+        
+        # All class names should be in the format Provider::ClassName
+        # Should NOT have CaptainHook:: prefix
+        # Should NOT have ::Actions:: in the middle
+        actions.each do |action|
+          class_name = action["action_class"]
+          
+          assert_not class_name.start_with?("CaptainHook::"), 
+                 "Class name should not start with CaptainHook:: but got: #{class_name}"
+          assert_not class_name.include?("::Actions::"), 
+                 "Class name should not contain ::Actions:: but got: #{class_name}"
+          
+          # Should have exactly one ::
+          assert_equal 1, class_name.count("::"), 
+                 "Class name should have exactly one :: but got: #{class_name}"
+        end
+      end
+
+      test "handles actions with default values" do
+        actions = @discovery.call
+        
+        # All actions should have retry_delays, even if not specified in details
+        actions.each do |action|
+          assert action["retry_delays"].is_a?(Array), "retry_delays should be an array"
+          assert action["retry_delays"].size > 0, "retry_delays should not be empty"
+        end
+      end
+
+      test "action classes have details method" do
+        # Load one of our test actions and verify it has .details
+        require Rails.root.join("captain_hook/stripe/actions/stripe_payment_intent_created_action.rb")
+        
+        assert Stripe::PaymentIntentCreatedAction.respond_to?(:details), 
+               "Action class should respond to .details"
+        
+        details = Stripe::PaymentIntentCreatedAction.details
+        assert details.key?(:event_type), "details should have :event_type"
+        assert details.key?(:priority), "details should have :priority"
+        assert details.key?(:async), "details should have :async"
+        assert details.key?(:max_attempts), "details should have :max_attempts"
       end
     end
   end

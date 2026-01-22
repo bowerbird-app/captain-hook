@@ -1,7 +1,17 @@
-# Action for Stripe payment_intent.* events
-return if defined?(StripePaymentIntentAction)
+# frozen_string_literal: true
 
-class StripePaymentIntentAction
+# Action for Stripe payment_intent.* events
+module Stripe
+  class PaymentIntentAction
+    def self.details
+      {
+        description: "Handles Stripe payment intent events (wildcard)",
+        event_type: "payment_intent.*",
+        priority: 200,
+        async: true,
+        max_attempts: 5
+      }
+    end
   # Called by the job system
   # @param event [CaptainHook::IncomingEvent] The incoming event
   # @param payload [Hash] The parsed JSON payload
@@ -50,11 +60,12 @@ class StripePaymentIntentAction
     true
   end
 
-  private
+    private
 
-  def format_amount(amount_cents, currency)
-    amount_dollars = amount_cents / 100.0
-    "#{currency.upcase} #{amount_dollars}"
+    def format_amount(amount_cents, currency)
+      amount_dollars = amount_cents / 100.0
+      "#{currency.upcase} #{amount_dollars}"
+    end
   end
 end
 
