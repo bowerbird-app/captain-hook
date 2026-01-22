@@ -226,7 +226,7 @@ Each instance gets its own webhook URL and actions, but they share the same sign
 
 ## Step 2: Create Action Classes
 
-Create action classes for each event type you want to process. Actions are plain Ruby classes with a `handle` method that receives the webhook data.
+Create action classes for each event type you want to process. Actions are plain Ruby classes with a `webhook_action` method that receives the webhook data.
 
 ### Example Action Structure
 
@@ -242,10 +242,10 @@ Create `app/jobs/your_gem/webhooks/payment_intent_succeeded_action.rb`:
 module YourGem
   module Webhooks
     # Action for Stripe payment_intent.succeeded events
-    # Actions are plain Ruby classes with a `handle` method
+    # Actions are plain Ruby classes with a `webhook_action` method
     # CaptainHook manages job queuing, retries, and execution
     class PaymentIntentSucceededAction
-      # Required method signature: handle(event:, payload:, metadata:)
+      # Required method signature: webhook_action(event:, payload:, metadata:)
       # @param event [CaptainHook::IncomingEvent] The stored webhook event
       # @param payload [Hash] The parsed webhook payload
       # @param metadata [Hash] Additional metadata about the webhook
@@ -329,7 +329,7 @@ end
 
 ### Important Notes About Actions
 
-**Actions are NOT ActiveJob classes!** They are plain Ruby classes with a `handle` method. CaptainHook wraps them in its own job system (`IncomingActionJob`) which provides:
+**Actions are NOT ActiveJob classes!** They are plain Ruby classes with a `webhook_action` method. CaptainHook wraps them in its own job system (`IncomingActionJob`) which provides:
 - Automatic retry logic with exponential backoff
 - Priority-based execution
 - Status tracking and logging
