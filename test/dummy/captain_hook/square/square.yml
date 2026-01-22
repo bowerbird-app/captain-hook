@@ -4,7 +4,6 @@
 name: square
 display_name: Square
 description: Square payment and order webhooks
-verifier_class: CaptainHook::Verifiers::Square
 verifier_file: square.rb
 active: true
 
