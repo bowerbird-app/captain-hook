@@ -4,7 +4,7 @@ class SquareBankAccountAction
   # @param event [CaptainHook::IncomingEvent] The incoming event
   # @param payload [Hash] The parsed JSON payload
   # @param metadata [Hash] Additional metadata
-  def handle(event:, payload:, metadata: {})
+  def webhook_action(event:, payload:, metadata: {})
     Rails.logger.info "🟦 ========================================"
     Rails.logger.info "🟦 SQUARE BANK ACCOUNT ACTION EXECUTED"
     Rails.logger.info "🟦 ========================================"

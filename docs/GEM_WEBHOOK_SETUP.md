@@ -249,7 +249,7 @@ module YourGem
       # @param event [CaptainHook::IncomingEvent] The stored webhook event
       # @param payload [Hash] The parsed webhook payload
       # @param metadata [Hash] Additional metadata about the webhook
-      def handle(event:, payload:, metadata:)
+      def webhook_action(event:, payload:, metadata:)
         payment_intent_id = payload.dig("data", "object", "id")
         amount = payload.dig("data", "object", "amount")
         currency = payload.dig("data", "object", "currency")
@@ -287,7 +287,7 @@ module YourGem
   module Webhooks
     # Action for Stripe charge.succeeded events
     class ChargeSucceededAction
-      def handle(event:, payload:, metadata:)
+      def webhook_action(event:, payload:, metadata:)
         charge_id = payload.dig("data", "object", "id")
         amount = payload.dig("data", "object", "amount")
         receipt_url = payload.dig("data", "object", "receipt_url")
@@ -312,7 +312,7 @@ module YourGem
   module Webhooks
     # Action for Stripe customer.created events
     class CustomerCreatedAction
-      def handle(event:, payload:, metadata:)
+      def webhook_action(event:, payload:, metadata:)
         customer_id = payload.dig("data", "object", "id")
         email = payload.dig("data", "object", "email")
         name = payload.dig("data", "object", "name")
@@ -338,7 +338,7 @@ end
 If you need to enqueue additional background jobs from within a action, you can do so:
 
 ```ruby
-def handle(event:, payload:, metadata:)
+def webhook_action(event:, payload:, metadata:)
   # Process some data immediately
   payment_id = payload.dig("data", "object", "id")
   
@@ -691,7 +691,7 @@ For handling `invoice.payment_succeeded`:
 module YourGem
   module Webhooks
     class InvoicePaymentSucceededAction
-      def handle(event:, payload:, metadata:)
+      def webhook_action(event:, payload:, metadata:)
         invoice_id = payload.dig("data", "object", "id")
         # Your logic here
       end

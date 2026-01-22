@@ -75,7 +75,7 @@ Actions are Ruby classes that process webhook events. Place action files in the 
 ```ruby
 # actions/stripe_payment_intent_action.rb
 class StripePaymentIntentAction
-  def handle(event:, payload:, metadata: {})
+  def webhook_action(event:, payload:, metadata: {})
     # Process the webhook event
     Rails.logger.info "Processing payment intent: #{payload['id']}"
     

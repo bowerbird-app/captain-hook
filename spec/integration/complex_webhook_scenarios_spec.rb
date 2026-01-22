@@ -11,7 +11,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
     # Simulate an action from a third-party gem
     class GemWebhookAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "GemWebhookAction executed for event #{event.external_id}"
         event.update(metadata: event.metadata.merge(gem_action_executed: true))
       end
@@ -19,7 +19,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
 
     # Simulate an action from the Rails app
     class AppWebhookAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "AppWebhookAction executed for event #{event.external_id}"
         event.update(metadata: event.metadata.merge(app_action_executed: true))
       end
@@ -119,14 +119,14 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     let(:app_provider) { create(:captain_hook_provider, name: "stripe_app_account", verifier_class: "CaptainHook::Verifiers::Stripe") }
 
     class GemStripeAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "GemStripeAction executed"
         event.update(metadata: event.metadata.merge(gem_stripe_executed: true))
       end
     end
 
     class AppStripeAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "AppStripeAction executed"
         event.update(metadata: event.metadata.merge(app_stripe_executed: true))
       end
@@ -252,7 +252,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
     class SuccessfulAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "SuccessfulAction executed successfully"
         # Simulate successful processing
         true
@@ -260,7 +260,7 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     end
 
     class FailingAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.error "FailingAction encountered an error"
         raise StandardError, "Simulated action failure"
       end
@@ -345,14 +345,14 @@ RSpec.describe "Complex Webhook Integration Scenarios", type: :request do
     let(:provider) { create(:captain_hook_provider, :stripe) }
 
     class AsyncTestAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "AsyncTestAction executed"
         event.update(metadata: event.metadata.merge(async_executed: true))
       end
     end
 
     class SyncTestAction
-      def self.handle(event:, payload:, metadata:)
+      def self.webhook_action(event:, payload:, metadata:)
         Rails.logger.info "SyncTestAction executed"
         event.update(metadata: event.metadata.merge(sync_executed: true))
       end

@@ -330,7 +330,7 @@ Create a action class in the provider's `actions/` folder:
 ```ruby
 # captain_hook/stripe/actions/payment_succeeded_action.rb
 class StripePaymentSucceededAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
     Payment.find_by(stripe_id: payment_intent_id)&.mark_succeeded!
   end
@@ -561,7 +561,7 @@ Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for si
 ```ruby
 # app/actions/stripe_payment_succeeded_action.rb
 class StripePaymentSucceededAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     Rails.logger.info "Payment succeeded: #{payload['id']}"
   end
 end
@@ -571,7 +571,7 @@ end
 
 ```ruby
 class StripePaymentSucceededAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
     
     payment = Payment.find_by!(stripe_id: payment_intent_id)
@@ -592,7 +592,7 @@ end
 ```ruby
 # Handles multiple related events
 class SquareBankAccountAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     event_type = payload["type"]
     bank_account = payload.dig("data", "object")
     

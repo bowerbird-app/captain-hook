@@ -39,8 +39,8 @@ module CaptainHook
         action_class = action.action_class.constantize
         action_instance = action_class.new
 
-        # Call handle method with event payload
-        action_instance.handle(event: event, payload: event.payload, metadata: event.metadata)
+        # Call webhook_action method with event payload
+        action_instance.webhook_action(event: event, payload: event.payload, metadata: event.metadata)
 
         # Mark as processed
         action.mark_processed!

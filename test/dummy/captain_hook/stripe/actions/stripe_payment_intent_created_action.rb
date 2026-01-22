@@ -2,7 +2,7 @@
 return if defined?(StripePaymentIntentCreatedAction)
 
 class StripePaymentIntentCreatedAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     Rails.logger.info "[DUMMY] payment_intent.created: #{payload.dig('data', 'object', 'id')}"
   end
 end
