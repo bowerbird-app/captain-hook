@@ -342,49 +342,75 @@ Action method signature:
 - `payload`: The parsed JSON payload (Hash)
 - `metadata`: Additional metadata (Hash with `:timestamp`, `:headers`, etc.)
 
-**Note**: Actions are automatically loaded from the provider's `actions/` folder. You can also place actions elsewhere and register them manually, but the recommended location is `captain_hook/<provider>/actions/` to keep all webhook-related code organized together.
+### 5. Actions Are Automatically Discovered!
 
-### 5. Register the Action
+✨ **NEW**: No manual registration needed! Just create action files in the right location.
 
-In `config/initializers/captain_hook.rb`:
+CaptainHook automatically scans `captain_hook/<provider>/actions/**/*.rb` directories and discovers actions on boot.
+
+**Action Structure Required:**
 
 ```ruby
-CaptainHook.configure do |config|
-  # Optional: Configure admin settings
-  # config.admin_parent_controller = "ApplicationController"
-  # config.admin_layout = "application"
-  # config.retention_days = 90
-end
+# captain_hook/stripe/actions/payment_succeeded_action.rb
+module Stripe
+  class PaymentSucceededAction
+    # REQUIRED: Metadata for automatic discovery
+    def self.details
+      {
+        description: "Handles Stripe payment succeeded events",
+        event_type: "payment_intent.succeeded",  # REQUIRED
+        priority: 100,                           # Optional (default: 100)
+        async: true,                             # Optional (default: true)
+        max_attempts: 5                          # Optional (default: 5)
+      }
+    end
 
-# Register actions - must be inside after_initialize block
-Rails.application.config.after_initialize do
-  # Register action for specific event type
-  CaptainHook.register_action(
-    provider: "stripe",
-    event_type: "payment_intent.succeeded",
-    action_class: "StripePaymentSucceededAction",
-    priority: 100,
-    async: true,
-    max_attempts: 3
-  )
-
-  # Register action for multiple event types with wildcard
-  CaptainHook.register_action(
-    provider: "square",
-    event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-    action_class: "SquareBankAccountAction",
-    priority: 100,
-    async: true
-  )
+    # REQUIRED: Webhook processing method
+    def webhook_action(event:, payload:, metadata:)
+      # Your business logic here
+    end
+  end
 end
 ```
 
-**After registering actions, restart your Rails application.** CaptainHook will automatically discover and sync the actions to the database on boot.
+**Wildcard Event Types:**
 
-You can view and configure your actions at `/captain_hook/admin/providers/:id/actions`
+```ruby
+# captain_hook/square/actions/bank_account_action.rb
+module Square
+  class BankAccountAction
+    def self.details
+      {
+        event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
+        priority: 100,
+        async: true
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      # event.event_type contains the specific event
+      case event.event_type
+      when "bank_account.created"
+        # Handle created
+      when "bank_account.verified"
+        # Handle verified
+      end
+    end
+  end
+end
 ```
 
-**Important**: Action registration must be inside `Rails.application.config.after_initialize` to ensure CaptainHook is fully loaded.
+**After creating action files, restart your Rails application.** CaptainHook will automatically discover and sync the actions to the database on boot.
+
+You can view your discovered actions at `/captain_hook/admin/providers/:id/actions`
+
+**Important**: 
+- Actions must be in `captain_hook/<provider>/actions/` directories
+- Action classes must be namespaced under the provider module (e.g., `module Stripe`)
+- Action classes must have a `self.details` class method with at least `:event_type`
+- Action classes must have a `webhook_action` instance method
+
+For more details, see [docs/GEM_WEBHOOK_SETUP.md](docs/GEM_WEBHOOK_SETUP.md) and [docs/ACTION_DISCOVERY.md](docs/ACTION_DISCOVERY.md).
 
 ### 6. Test with Sandbox
 
@@ -559,10 +585,22 @@ Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for si
 ### Basic Action
 
 ```ruby
-# app/actions/stripe_payment_succeeded_action.rb
-class StripePaymentSucceededAction
-  def webhook_action(event:, payload:, metadata:)
-    Rails.logger.info "Payment succeeded: #{payload['id']}"
+# captain_hook/stripe/actions/payment_succeeded_action.rb
+module Stripe
+  class PaymentSucceededAction
+    def self.details
+      {
+        description: "Handles Stripe payment succeeded events",
+        event_type: "payment_intent.succeeded",
+        priority: 100,
+        async: true,
+        max_attempts: 3
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      Rails.logger.info "Payment succeeded: #{payload.dig('data', 'object', 'id')}"
+    end
   end
 end
 ```
@@ -570,19 +608,31 @@ end
 ### Action with Error Handling
 
 ```ruby
-class StripePaymentSucceededAction
-  def webhook_action(event:, payload:, metadata:)
-    payment_intent_id = payload.dig("data", "object", "id")
-    
-    payment = Payment.find_by!(stripe_id: payment_intent_id)
-    payment.mark_succeeded!
-    
-    # Send confirmation email
-    PaymentMailer.success(payment).deliver_later
-    
-  rescue ActiveRecord::RecordNotFound => e
-    Rails.logger.error "Payment not found: #{payment_intent_id}"
-    raise # Re-raise to trigger retry
+# captain_hook/stripe/actions/payment_succeeded_action.rb
+module Stripe
+  class PaymentSucceededAction
+    def self.details
+      {
+        event_type: "payment_intent.succeeded",
+        priority: 100,
+        async: true,
+        max_attempts: 3
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      payment_intent_id = payload.dig("data", "object", "id")
+      
+      payment = Payment.find_by!(stripe_id: payment_intent_id)
+      payment.mark_succeeded!
+      
+      # Send confirmation email
+      PaymentMailer.success(payment).deliver_later
+      
+    rescue ActiveRecord::RecordNotFound => e
+      Rails.logger.error "Payment not found: #{payment_intent_id}"
+      raise # Re-raise to trigger retry
+    end
   end
 end
 ```
@@ -590,28 +640,35 @@ end
 ### Action with Wildcard Event Types
 
 ```ruby
+# captain_hook/square/actions/bank_account_action.rb
 # Handles multiple related events
-class SquareBankAccountAction
-  def webhook_action(event:, payload:, metadata:)
-    event_type = payload["type"]
-    bank_account = payload.dig("data", "object")
-    
-    case event_type
-    when "bank_account.verified"
-      BankAccount.find_by(square_id: bank_account["id"])&.mark_verified!
-    when "bank_account.disabled"
-      BankAccount.find_by(square_id: bank_account["id"])&.mark_disabled!
+module Square
+  class BankAccountAction
+    def self.details
+      {
+        description: "Handles Square bank account events",
+        event_type: "bank_account.*",  # Wildcard matches all bank_account.* events
+        priority: 100,
+        async: true
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      event_type = payload["type"]
+      bank_account = payload.dig("data", "object")
+      
+      # event.event_type contains the specific event
+      case event.event_type
+      when "bank_account.verified"
+        BankAccount.find_by(square_id: bank_account["id"])&.mark_verified!
+      when "bank_account.disabled"
+        BankAccount.find_by(square_id: bank_account["id"])&.mark_disabled!
+      end
     end
   end
 end
 
-# Register with wildcard
-CaptainHook.register_action(
-  provider: "square",
-  event_type: "bank_account.*",
-  action_class: "SquareBankAccountAction",
-  async: true
-)
+# No manual registration needed - automatically discovered on boot!
 ```
 
 ## Documentation
