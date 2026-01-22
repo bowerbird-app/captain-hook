@@ -107,30 +107,26 @@ Create this structure in your gem:
 
 ```
 your_gem/
-├── app/
-│   └── jobs/                          # Event processing actions (REQUIRED)
-│       └── your_gem/
-│           └── webhooks/
-│               ├── event_one_action.rb        # e.g., payment_succeeded_action.rb
-│               ├── event_two_action.rb        # e.g., refund_processed_action.rb
-│               └── event_three_action.rb      # e.g., subscription_updated_action.rb
-├── captain_hook/                      # Provider configuration (REQUIRED)
-│   └── providers/
-│       └── your_provider/             # Provider-specific directory
-│           └── your_provider.yml      # Configuration (e.g., stripe.yml)
+├── captain_hook/                      # Action handlers and provider config (REQUIRED)
+│   ├── providers/
+│   │   └── your_provider/             # Provider-specific directory
+│   │       └── your_provider.yml      # Configuration (e.g., stripe.yml)
+│   └── your_provider/                 # Provider name (e.g., stripe, paypal)
+│       └── actions/                   # Action classes directory
+│           ├── event_one_action.rb    # e.g., payment_succeeded_action.rb
+│           ├── event_two_action.rb    # e.g., refund_processed_action.rb
+│           └── event_three_action.rb  # e.g., subscription_updated_action.rb
 ├── lib/
 │   └── your_gem/
-│       └── engine.rb                  # Action registration (REQUIRED)
+│       └── engine.rb                  # Rails engine (if applicable)
 └── your_gem.gemspec                   # Gem dependencies (REQUIRED)
 ```
 
-### Why Each File?
+### Why Each Directory?
 
-- **Provider Config (`stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which built-in verifier to use, where to get secrets from environment variables, and security settings.
+- **Provider Config (`captain_hook/providers/stripe/stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which built-in verifier to use, where to get secrets from environment variables, and security settings.
 
-- **Actions (`*_action.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response.
-
-- **Engine (`engine.rb`)**: Registers your actions with CaptainHook when your gem loads. This tells CaptainHook which Ruby classes should process which event types.
+- **Actions (`captain_hook/stripe/actions/*.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response. **Actions are automatically discovered on boot!**
 
 - **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
 
@@ -226,51 +222,59 @@ Each instance gets its own webhook URL and actions, but they share the same sign
 
 ## Step 2: Create Action Classes
 
-Create action classes for each event type you want to process. Actions are plain Ruby classes with a `webhook_action` method that receives the webhook data.
+⚠️ **IMPORTANT CHANGE**: Actions are now automatically discovered from the filesystem! You no longer need to manually register them in an initializer.
+
+Create action classes in `captain_hook/<provider>/actions/` directories. Each action must have a `self.details` class method that returns metadata about the action.
 
 ### Example Action Structure
 
-Create `app/jobs/your_gem/webhooks/[event_name]_action.rb`:
-
-**Example: Stripe Payment Intent Succeeded**
-
-Create `app/jobs/your_gem/webhooks/payment_intent_succeeded_action.rb`:
+Create `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
 
-module YourGem
-  module Webhooks
-    # Action for Stripe payment_intent.succeeded events
-    # Actions are plain Ruby classes with a `webhook_action` method
-    # CaptainHook manages job queuing, retries, and execution
-    class PaymentIntentSucceededAction
-      # Required method signature: webhook_action(event:, payload:, metadata:)
-      # @param event [CaptainHook::IncomingEvent] The stored webhook event
-      # @param payload [Hash] The parsed webhook payload
-      # @param metadata [Hash] Additional metadata about the webhook
-      def webhook_action(event:, payload:, metadata:)
-        payment_intent_id = payload.dig("data", "object", "id")
-        amount = payload.dig("data", "object", "amount")
-        currency = payload.dig("data", "object", "currency")
-        customer_id = payload.dig("data", "object", "customer")
+# Action for Stripe payment_intent.succeeded events
+# Actions are automatically discovered by scanning captain_hook/*/actions directories
+module Stripe
+  class PaymentIntentSucceededAction
+    # REQUIRED: self.details class method for automatic discovery
+    # This tells CaptainHook what event type this action handles
+    def self.details
+      {
+        description: "Handles Stripe payment intent succeeded events",
+        event_type: "payment_intent.succeeded",  # REQUIRED: exact event type from webhook
+        priority: 100,                           # Optional: lower = higher priority (default: 100)
+        async: true,                             # Optional: run in background (default: true)
+        max_attempts: 5,                         # Optional: max retry attempts (default: 5)
+        retry_delays: [30, 60, 300, 900, 3600]  # Optional: retry delays in seconds
+      }
+    end
 
-        # Your business logic here
-        Rails.logger.info "Payment succeeded: #{payment_intent_id} for #{amount} #{currency}"
+    # Required method signature: webhook_action(event:, payload:, metadata:)
+    # @param event [CaptainHook::IncomingEvent] The stored webhook event
+    # @param payload [Hash] The parsed webhook payload
+    # @param metadata [Hash] Additional metadata about the webhook
+    def webhook_action(event:, payload:, metadata:)
+      payment_intent_id = payload.dig("data", "object", "id")
+      amount = payload.dig("data", "object", "amount")
+      currency = payload.dig("data", "object", "currency")
+      customer_id = payload.dig("data", "object", "customer")
 
-        # Example: Update your database
-        # Payment.find_by(stripe_payment_intent_id: payment_intent_id)&.mark_as_paid!
+      # Your business logic here
+      Rails.logger.info "Payment succeeded: #{payment_intent_id} for #{amount} #{currency}"
 
-        # Example: Send confirmation email
-        # PaymentMailer.payment_confirmation(payment_intent_id).deliver_later
-        
-        # Example: Create a record
-        # YourGem::Payment.create!(
-        #   stripe_payment_intent_id: payment_intent_id,
-        #   amount: amount,
-        #   currency: currency
-        # )
-      end
+      # Example: Update your database
+      # Payment.find_by(stripe_payment_intent_id: payment_intent_id)&.mark_as_paid!
+
+      # Example: Send confirmation email
+      # PaymentMailer.payment_confirmation(payment_intent_id).deliver_later
+      
+      # Example: Create a record
+      # YourGem::Payment.create!(
+      #   stripe_payment_intent_id: payment_intent_id,
+      #   amount: amount,
+      #   currency: currency
+      # )
     end
   end
 end
@@ -278,49 +282,64 @@ end
 
 **Example: Stripe Charge Succeeded**
 
-Create `app/jobs/your_gem/webhooks/charge_succeeded_action.rb`:
+Create `captain_hook/stripe/actions/charge_succeeded_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
 
-module YourGem
-  module Webhooks
-    # Action for Stripe charge.succeeded events
-    class ChargeSucceededAction
-      def webhook_action(event:, payload:, metadata:)
-        charge_id = payload.dig("data", "object", "id")
-        amount = payload.dig("data", "object", "amount")
-        receipt_url = payload.dig("data", "object", "receipt_url")
+module Stripe
+  class ChargeSucceededAction
+    def self.details
+      {
+        description: "Handles Stripe charge succeeded events",
+        event_type: "charge.succeeded",
+        priority: 100,
+        async: true,
+        max_attempts: 3
+      }
+    end
 
-        Rails.logger.info "Charge succeeded: #{charge_id} for #{amount}"
+    def webhook_action(event:, payload:, metadata:)
+      charge_id = payload.dig("data", "object", "id")
+      amount = payload.dig("data", "object", "amount")
+      receipt_url = payload.dig("data", "object", "receipt_url")
 
-        # Your business logic here
-      end
+      Rails.logger.info "Charge succeeded: #{charge_id} for #{amount}"
+
+      # Your business logic here
     end
   end
 end
 ```
 
-**Example: Stripe Customer Created**
+**Example: Using Wildcards for Multiple Events**
 
-Create `app/jobs/your_gem/webhooks/customer_created_action.rb`:
+Create `captain_hook/square/actions/bank_account_action.rb`:
 
 ```ruby
 # frozen_string_literal: true
 
-module YourGem
-  module Webhooks
-    # Action for Stripe customer.created events
-    class CustomerCreatedAction
-      def webhook_action(event:, payload:, metadata:)
-        customer_id = payload.dig("data", "object", "id")
-        email = payload.dig("data", "object", "email")
-        name = payload.dig("data", "object", "name")
+module Square
+  class BankAccountAction
+    def self.details
+      {
+        description: "Handles all Square bank account events",
+        event_type: "bank_account.*",  # Wildcard matches all bank_account.* events
+        priority: 100,
+        async: true,
+        max_attempts: 3
+      }
+    end
 
-        Rails.logger.info "Customer created: #{customer_id} - #{email}"
-
-        # Your business logic here
-        # User.find_by(email: email)&.update(stripe_customer_id: customer_id)
+    def webhook_action(event:, payload:, metadata:)
+      # event.event_type will be the specific event (e.g., "bank_account.verified")
+      case event.event_type
+      when "bank_account.created"
+        # Handle created
+      when "bank_account.verified"
+        # Handle verified
+      when "bank_account.disabled"
+        # Handle disabled
       end
     end
   end
@@ -328,6 +347,21 @@ end
 ```
 
 ### Important Notes About Actions
+
+**Namespacing**: Actions MUST be namespaced with a module matching the provider name:
+- For provider "stripe": `module Stripe; class YourAction; end; end`
+- For provider "paypal": `module Paypal; class YourAction; end; end`
+- For provider "square": `module Square; class YourAction; end; end`
+
+**File Location**: Actions MUST be in `captain_hook/<provider>/actions/` directory
+
+**Class Name**: The file name should match the class name in snake_case:
+- `payment_intent_action.rb` → `class PaymentIntentAction`
+- `charge_succeeded_action.rb` → `class ChargeSucceededAction`
+
+**Required Methods**:
+1. `self.details` - Class method returning a hash with at minimum `:event_type`
+2. `webhook_action(event:, payload:, metadata:)` - Instance method that processes the webhook
 
 **Actions are NOT ActiveJob classes!** They are plain Ruby classes with a `webhook_action` method. CaptainHook wraps them in its own job system (`IncomingActionJob`) which provides:
 - Automatic retry logic with exponential backoff
@@ -348,117 +382,11 @@ def webhook_action(event:, payload:, metadata:)
 end
 ```
 
-## Step 3: Register Actions in Your Engine
+## Step 3: Update Your Gemspec
 
-⚠️ **CRITICAL STEP**: Without this step, your actions won't be called!
+✨ **NEW**: Actions are now automatically discovered! No manual registration needed.
 
-Action registration tells CaptainHook which Ruby classes should process which webhook events. When a webhook arrives:
-1. CaptainHook verifies the signature and stores the event
-2. It looks up registered actions for that provider + event type
-3. It enqueues background jobs for each registered action
-4. Your actions execute and process the business logic
-
-**Without registration, CaptainHook won't know about your actions and they'll never run.**
-
-### Registration Pattern
-
-Update your `lib/your_gem/engine.rb` to register actions for each event type you want to handle:
-
-```ruby
-# frozen_string_literal: true
-
-module YourGem
-  class Engine < ::Rails::Engine
-    isolate_namespace YourGem
-
-    # IMPORTANT: Register webhook actions after Rails initializes
-    # This tells CaptainHook which action classes process which events
-    config.after_initialize do
-      # Only register if CaptainHook is available
-      if defined?(CaptainHook)
-        # Registration format:
-        # CaptainHook.register_action(
-        #   provider: "provider_name",      # Must match provider YAML name (e.g., "stripe", "paypal")
-        #   event_type: "event.type",       # Exact event type string from webhook payload
-        #   action_class: "Full::ClassName" # Full class name as string
-        # )
-
-        # Example: Stripe actions
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "payment_intent.succeeded",
-          action_class: "YourGem::Webhooks::PaymentIntentSucceededAction"
-        )
-
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "charge.succeeded",
-          action_class: "YourGem::Webhooks::ChargeSucceededAction"
-        )
-
-        CaptainHook.register_action(
-          provider: "stripe",
-          event_type: "customer.created",
-          action_class: "YourGem::Webhooks::CustomerCreatedAction"
-        )
-
-        # Example: PayPal actions (if you're also integrating PayPal)
-        # CaptainHook.register_action(
-        #   provider: "paypal",
-        #   event_type: "PAYMENT.SALE.COMPLETED",
-        #   action_class: "YourGem::Webhooks::PaypalPaymentCompletedAction"
-        # )
-
-        # Example: Square actions (if you're also integrating Square)
-        # CaptainHook.register_action(
-        #   provider: "square",
-        #   event_type: "payment.created",
-        #   action_class: "YourGem::Webhooks::SquarePaymentCreatedAction"
-        # )
-
-        Rails.logger.info "YourGem: Registered webhook actions"
-      else
-        Rails.logger.warn "YourGem: CaptainHook not available, webhook actions not registered"
-      end
-    end
-  end
-end
-```
-
-### Why `after_initialize`?
-
-Using `config.after_initialize` ensures:
-- CaptainHook is fully loaded before we try to register actions
-- All your action classes are loaded and available
-- The action registry is ready to accept registrations
-
-### Verifying Registration Works
-
-After adding this code and restarting your server, verify actions are registered:
-
-```ruby
-# Rails console - Check specific action
-CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event.type")
-# Should return: ["YourGem::Webhooks::YourActionClass"]
-
-# Example for Stripe:
-CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-# Should return: ["YourGem::Webhooks::PaymentIntentSucceededAction"]
-
-# Check all registered actions across all providers
-CaptainHook.action_registry.all_actions
-# Should show all your registered actions
-```
-
-If actions aren't showing up:
-1. Make sure you restarted the Rails server after adding registration code
-2. Check the Rails logs for "Registered webhook actions" message
-3. Verify the action class names are correct (full namespace)
-4. Ensure CaptainHook is loaded before your gem (it usually is)
-
-## Step 4: Update Your Gemspec
-
-Make sure your gemspec includes the necessary files:
+Make sure your gemspec includes the `captain_hook` directory:
 
 ```ruby
 # your_gem.gemspec
@@ -471,7 +399,7 @@ Gem::Specification.new do |spec|
   spec.description = "Your gem description"
   spec.license     = "MIT"
 
-  # Include all necessary files
+  # IMPORTANT: Include captain_hook directory for automatic action discovery
   spec.files = Dir[
     "{app,captain_hook,config,db,lib}/**/*",
     "MIT-LICENSE",
@@ -485,7 +413,51 @@ Gem::Specification.new do |spec|
 end
 ```
 
-## Step 5: Install in Your Rails App
+### How Automatic Discovery Works
+
+When your Rails application boots with CaptainHook installed:
+
+1. **Filesystem Scan**: CaptainHook scans all `captain_hook/<provider>/actions/**/*.rb` files in the load path
+2. **Class Loading**: Each action file is loaded and its class is instantiated
+3. **Details Extraction**: The `self.details` method is called to get event type, priority, async settings, etc.
+4. **Registration**: Actions are automatically registered in the ActionRegistry
+5. **Database Sync**: Registered actions are synced to the database for tracking
+
+**You don't need to do anything beyond creating the action files!** Just:
+- Put them in the right directory (`captain_hook/<provider>/actions/`)
+- Namespace them correctly (`module ProviderName; class ActionName`)
+- Include a `self.details` class method
+- Include a `webhook_action` instance method
+
+### Verifying Actions Are Discovered
+
+After installing your gem and restarting the Rails server, check that actions were discovered:
+
+```ruby
+# Rails console - View discovered actions
+CaptainHook::Action.where(provider: "stripe")
+# Should show your Stripe actions
+
+# Check if a specific action exists
+CaptainHook::Action.find_by(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  action_class: "Stripe::PaymentIntentSucceededAction"
+)
+# Should return the action record
+
+# View all actions
+CaptainHook::Action.all
+```
+
+You should also see log messages during boot:
+```
+🔍 CaptainHook: Auto-scanning providers and actions...
+✅ Discovered action: Stripe::PaymentIntentSucceededAction for stripe:payment_intent.succeeded
+✅ CaptainHook: Synced actions - Created: 3, Updated: 0, Skipped: 0
+```
+
+## Step 4: Install in Your Rails App
 
 In your Rails application:
 
@@ -642,16 +614,22 @@ Most providers offer a test/sandbox mode where you can trigger real events:
 
 ## Verification
 
-### Check actions are registered:
+### Check actions are discovered:
 
 ```ruby
-# Rails console
-CaptainHook.action_registry.actions_for(provider: "your_provider", event_type: "your.event")
-# => ["YourGem::Webhooks::YourAction"]
+# Rails console - Check actions in database
+CaptainHook::Action.where(provider: "stripe")
+# Should show your Stripe actions
 
-# Example for Stripe:
-CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-# => ["YourGem::Webhooks::PaymentIntentSucceededAction"]
+# Check specific action
+CaptainHook::Action.find_by(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded"
+)
+# Should return the action record with class name "Stripe::PaymentIntentSucceededAction"
+
+# View all actions
+CaptainHook::Action.all
 ```
 
 ### Check provider is created:
@@ -676,71 +654,90 @@ CaptainHook::IncomingEvent.where(provider: "stripe").order(created_at: :desc).fi
 
 ## Adding More Event Actions
 
+✨ **NEW**: Just create a new action file - no registration needed!
+
 To handle additional events from your provider:
 
-1. **Create a new action class** in `app/jobs/your_gem/webhooks/`
-2. **Register it in your engine** in `config.after_initialize` block
-3. **Restart your Rails server**
+1. **Create a new action file** in `captain_hook/<provider>/actions/`
+2. **Add the `self.details` method** with the event type
+3. **Restart your Rails server** - actions are automatically discovered on boot
 
 ### Example: Adding a New Stripe Event
 
 For handling `invoice.payment_succeeded`:
 
 ```ruby
-# app/jobs/your_gem/webhooks/invoice_payment_succeeded_action.rb
-module YourGem
-  module Webhooks
-    class InvoicePaymentSucceededAction
-      def webhook_action(event:, payload:, metadata:)
-        invoice_id = payload.dig("data", "object", "id")
-        # Your logic here
-      end
+# captain_hook/stripe/actions/invoice_payment_succeeded_action.rb
+# frozen_string_literal: true
+
+module Stripe
+  class InvoicePaymentSucceededAction
+    def self.details
+      {
+        description: "Handles Stripe invoice payment succeeded events",
+        event_type: "invoice.payment_succeeded",
+        priority: 100,
+        async: true,
+        max_attempts: 3
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      invoice_id = payload.dig("data", "object", "id")
+      # Your logic here
+      Rails.logger.info "Invoice paid: #{invoice_id}"
     end
   end
 end
 ```
 
-Register in engine.rb:
-
-```ruby
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "invoice.payment_succeeded",
-  action_class: "YourGem::Webhooks::InvoicePaymentSucceededAction"
-)
-```
+That's it! When you restart the Rails server, CaptainHook will automatically discover this action and register it.
 
 ## Troubleshooting
 
 ### Actions not being called?
 
-**Most common issue**: Actions not registered properly
+**Most common issue**: Actions not discovered or files in wrong location
 
-1. **Verify actions are registered**:
+1. **Verify actions are discovered**:
    ```ruby
-   # Rails console
-   CaptainHook.action_registry.actions_for(provider: "stripe", event_type: "payment_intent.succeeded")
-   # Should return: ["YourGem::Webhooks::PaymentIntentSucceededAction"]
+   # Rails console - Check if action exists in database
+   CaptainHook::Action.find_by(
+     provider: "stripe",
+     event_type: "payment_intent.succeeded"
+   )
+   # Should return an Action record
    ```
    
-   If this returns an empty array, your actions aren't registered! Check:
-   - Did you add the registration code to `lib/your_gem/engine.rb`?
-   - Did you restart the Rails server after adding the code?
-   - Are the provider names matching exactly? (case-sensitive: "stripe" not "Stripe")
-   - Are the event type strings exactly matching what Stripe sends?
+   If this returns nil, your actions weren't discovered! Check:
+   - Are action files in `captain_hook/<provider>/actions/` directory?
+   - Is the provider name in the path matching the provider in the database? (e.g., "stripe" not "Stripe")
+   - Does the action class have a `self.details` method?
+   - Is the action class properly namespaced (e.g., `module Stripe; class ActionName`)?
+   - Did you restart the Rails server after creating the action file?
 
-2. **Check if provider exists**: 
+2. **Check Rails logs during boot** for discovery messages:
+   ```bash
+   tail -f log/development.log | grep "CaptainHook"
+   ```
+   You should see:
+   ```
+   🔍 CaptainHook: Auto-scanning providers and actions...
+   ✅ Discovered action: Stripe::PaymentIntentSucceededAction for stripe:payment_intent.succeeded
+   ```
+
+3. **Check if provider exists**: 
    ```ruby
    CaptainHook::Provider.find_by(name: "stripe")
    ```
    If nil, use "Discover New" or "Full Sync" in the admin UI
 
-3. **Check Sidekiq is running** (actions are background jobs)
+4. **Check Sidekiq is running** (actions are background jobs)
    ```bash
    bundle exec sidekiq
    ```
 
-4. **Check Rails logs** for errors:
+5. **Check Rails logs** for errors:
    ```bash
    tail -f log/development.log
    ```
