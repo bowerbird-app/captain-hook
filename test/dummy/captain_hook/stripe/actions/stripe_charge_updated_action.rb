@@ -2,7 +2,7 @@
 return if defined?(StripeChargeUpdatedAction)
 
 class StripeChargeUpdatedAction
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     Rails.logger.info "[DUMMY] charge.updated: #{payload.dig('data', 'object', 'id')}"
   end
 end

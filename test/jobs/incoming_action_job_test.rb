@@ -25,7 +25,7 @@ module CaptainHook
       # Mock action class
       unless defined?(MockAction)
         Object.const_set(:MockAction, Class.new do
-          def handle(event:, payload:, metadata:)
+          def webhook_action(event:, payload:, metadata:)
             # Successfully handled
           end
         end)
@@ -87,7 +87,7 @@ module CaptainHook
     test "job handles action errors gracefully" do
       # Create failing action
       Object.const_set(:FailingAction, Class.new do
-        def handle(event:, payload:, metadata:)
+        def webhook_action(event:, payload:, metadata:)
           raise StandardError, "Action failed"
         end
       end)

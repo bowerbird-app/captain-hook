@@ -658,7 +658,7 @@ end
 │   - Acquire optimistic lock on action record               │
 │   - Increment attempt_count                                 │
 │   - Instantiate action class: action_class.constantize    │
-│   - Call action.handle(event:, payload:, metadata:)        │
+│   - Call action.webhook_action(event:, payload:, metadata:)│
 └────────┬────────────────────────────────────────────────────┘
          │
         ┌┴────────┐
@@ -815,7 +815,7 @@ end
 ```ruby
 class StripePaymentIntentSucceededAction
   # Required method signature
-  def handle(event:, payload:, metadata:)
+  def webhook_action(event:, payload:, metadata:)
     payment_intent_id = payload.dig("data", "object", "id")
     
     # Your business logic
@@ -1121,7 +1121,7 @@ CaptainHook's discovery and management system provides:
 3. Create Action
    # captain_hook/stripe/actions/payment_succeeded_action.rb
    class PaymentSucceededAction
-     def handle(event:, payload:, metadata:)
+     def webhook_action(event:, payload:, metadata:)
        # Your logic here
      end
    end
