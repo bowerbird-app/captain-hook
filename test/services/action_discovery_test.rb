@@ -113,13 +113,21 @@ module CaptainHook
       end
 
       test "action classes have details method" do
-        # Load one of our test actions and verify it has .details
-        require Rails.root.join("captain_hook/stripe/actions/stripe_payment_intent_created_action.rb")
+        # Discover actions to ensure they're loaded
+        actions = @discovery.call
         
-        assert Stripe::PaymentIntentCreatedAction.respond_to?(:details), 
+        # Find a Stripe action from the discovered actions
+        stripe_action = actions.find { |a| a["provider"] == "stripe" && a["event_type"] == "payment_intent.created" }
+        assert_not_nil stripe_action, "Should find a Stripe action to test"
+        
+        # Get the class from the discovered action
+        action_class_name = stripe_action["action_class"]
+        action_class = action_class_name.constantize
+        
+        assert action_class.respond_to?(:details), 
                "Action class should respond to .details"
         
-        details = Stripe::PaymentIntentCreatedAction.details
+        details = action_class.details
         assert details.key?(:event_type), "details should have :event_type"
         assert details.key?(:priority), "details should have :priority"
         assert details.key?(:async), "details should have :async"

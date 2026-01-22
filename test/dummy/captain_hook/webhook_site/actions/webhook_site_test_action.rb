@@ -14,11 +14,9 @@ module WebhookSite
       }
     end
 
-    def self.call(event:, payload:, metadata:)
-      new.call(event: event, payload: payload, metadata: metadata)
-    end
-
-    def call(event:, payload:, metadata:)
+    # Required: Standard webhook processing method
+    # CaptainHook calls this method when processing webhooks
+    def webhook_action(event:, payload:, metadata:)
       Rails.logger.info "=" * 80
       Rails.logger.info "🎣 WebhookSiteTestAction called!"
       Rails.logger.info "Event: #{event.inspect}"

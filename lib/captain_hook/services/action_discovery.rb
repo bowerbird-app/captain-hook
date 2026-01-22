@@ -25,6 +25,9 @@ module CaptainHook
 
       private
 
+      # Default retry delays for actions (can be overridden in self.details)
+      DEFAULT_RETRY_DELAYS = [30, 60, 300, 900, 3600].freeze
+
       # Scan all load paths for captain_hook/<provider>/actions/**/*.rb files
       def scan_filesystem_for_actions
         action_files = find_action_files
@@ -64,7 +67,8 @@ module CaptainHook
         begin
           require file_path
         rescue LoadError, StandardError => e
-          Rails.logger.warn "⚠️  Failed to load action file #{file_path}: #{e.message}"
+          Rails.logger.warn "⚠️  Failed to load action file #{file_path}: #{e.class} - #{e.message}"
+          Rails.logger.debug e.backtrace.join("\n") if Rails.logger.debug?
           return
         end
 
@@ -87,7 +91,7 @@ module CaptainHook
           "async" => details[:async],
           "max_attempts" => details[:max_attempts],
           "priority" => details[:priority],
-          "retry_delays" => details[:retry_delays] || [30, 60, 300, 900, 3600]
+          "retry_delays" => details[:retry_delays] || DEFAULT_RETRY_DELAYS
         }
 
         Rails.logger.debug "✅ Discovered action: #{stored_class_name} for #{provider}:#{details[:event_type]}"
@@ -108,21 +112,23 @@ module CaptainHook
         # Get the file name without extension
         file_basename = File.basename(file_path, ".rb")
         
-        # Convert to class name (e.g., payment_intent_action -> PaymentIntentAction)
-        class_name = file_basename.split("_").map(&:capitalize).join
+        # Convert to class name using ActiveSupport's camelize
+        class_name = file_basename.camelize
         
         # Remove provider prefix if present (e.g., StripePaymentIntentAction -> PaymentIntentAction)
-        provider_prefix = provider.split("_").map(&:capitalize).join
+        provider_prefix = provider.camelize
         class_name = class_name.sub(/^#{provider_prefix}/, "")
         
         # Try to find the class in the provider module
-        provider_module_name = provider.split("_").map(&:capitalize).join
+        provider_module_name = provider.camelize
         
         begin
           provider_module = Object.const_get(provider_module_name)
           provider_module.const_get(class_name)
-        rescue NameError
+        rescue NameError => e
           Rails.logger.warn "⚠️  Could not find class #{provider_module_name}::#{class_name} for file #{file_path}"
+          Rails.logger.warn "    Make sure the class is namespaced correctly:"
+          Rails.logger.warn "    module #{provider_module_name}; class #{class_name}; end; end"
           nil
         end
       end
@@ -130,7 +136,8 @@ module CaptainHook
       # Extract action details from the class
       def extract_action_details(action_class)
         unless action_class.respond_to?(:details)
-          Rails.logger.warn "⚠️  Action class #{action_class} does not have a .details method"
+          Rails.logger.warn "⚠️  Action class #{action_class} does not have a .details class method"
+          Rails.logger.warn "    Add: def self.details; { event_type: 'your.event', priority: 100, async: true, max_attempts: 5 }; end"
           return nil
         end
 
@@ -139,6 +146,7 @@ module CaptainHook
         # Validate required fields
         unless details[:event_type].present?
           Rails.logger.warn "⚠️  Action class #{action_class} details missing :event_type"
+          Rails.logger.warn "    The details hash must include: { event_type: 'your.event.type', ... }"
           return nil
         end
 
