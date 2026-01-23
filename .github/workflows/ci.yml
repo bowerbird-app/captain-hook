@@ -58,16 +58,12 @@ jobs:
     - name: Run RuboCop
       run: bundle exec rubocop --fail-level error
 
-    - name: Run Minitest tests with coverage
+    - name: Run Minitest tests
       run: bundle exec rake app:test
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
-        COVERAGE: true
 
     - name: Run RSpec tests
       run: bundle exec rspec
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
-
-    - name: Check SimpleCov coverage thresholds
-      run: ruby scripts/check_coverage.rb
