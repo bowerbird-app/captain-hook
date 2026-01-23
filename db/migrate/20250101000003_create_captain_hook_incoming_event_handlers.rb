@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 class CreateCaptainHookIncomingEventHandlers < ActiveRecord::Migration[7.0]
+  def id_type
+    ActiveRecord::Base.connection.adapter_name.downcase.to_sym == :postgresql ? :uuid : :string
+  end
+
   def change
-    create_table :captain_hook_incoming_event_handlers, id: :uuid do |t|
-      t.uuid :incoming_event_id, null: false
+    create_table :captain_hook_incoming_event_handlers, id: id_type do |t|
+      t.string :incoming_event_id, limit: 36, null: false
       t.string :handler_class, null: false
       t.string :status, null: false, default: "pending"
       t.integer :priority, null: false, default: 100

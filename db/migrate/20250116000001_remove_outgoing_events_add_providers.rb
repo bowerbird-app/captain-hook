@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 class RemoveOutgoingEventsAddProviders < ActiveRecord::Migration[8.0]
+  def id_type
+    ActiveRecord::Base.connection.adapter_name.downcase.to_sym == :postgresql ? :uuid : :string
+  end
+
   def up
     # Drop outgoing_events table
     drop_table :captain_hook_outgoing_events, if_exists: true
 
     # Create providers table
-    create_table :captain_hook_providers, id: :uuid do |t|
+    create_table :captain_hook_providers, id: id_type do |t|
       t.string :name, null: false
       t.string :display_name
       t.text :description
@@ -18,7 +22,7 @@ class RemoveOutgoingEventsAddProviders < ActiveRecord::Migration[8.0]
       t.integer :rate_limit_requests, default: 100
       t.integer :rate_limit_period, default: 60
       t.boolean :active, default: true, null: false
-      t.jsonb :metadata, default: {}
+      t.json :metadata, default: {}
       t.timestamps
 
       t.index :name, unique: true
@@ -31,13 +35,13 @@ class RemoveOutgoingEventsAddProviders < ActiveRecord::Migration[8.0]
     drop_table :captain_hook_providers, if_exists: true
 
     # Recreate outgoing_events table
-    create_table :captain_hook_outgoing_events, id: :uuid do |t|
+    create_table :captain_hook_outgoing_events, id: id_type do |t|
       t.string :provider, null: false
       t.string :event_type, null: false
       t.string :target_url, null: false
-      t.jsonb :payload, default: {}
-      t.jsonb :headers, default: {}
-      t.jsonb :metadata, default: {}
+      t.json :payload, default: {}
+      t.json :headers, default: {}
+      t.json :metadata, default: {}
       t.string :status, null: false, default: "pending"
       t.integer :attempt_count, default: 0
       t.integer :response_code

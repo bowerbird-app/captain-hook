@@ -10,7 +10,7 @@ class SimplifyProvidersTable < ActiveRecord::Migration[8.0]
     remove_column :captain_hook_providers, :verifier_file, :string
     remove_column :captain_hook_providers, :timestamp_tolerance_seconds, :integer
     remove_column :captain_hook_providers, :max_payload_size_bytes, :integer
-    remove_column :captain_hook_providers, :metadata, :jsonb
+    remove_column :captain_hook_providers, :metadata, :json
   end
 
   def down
@@ -22,6 +22,6 @@ class SimplifyProvidersTable < ActiveRecord::Migration[8.0]
     add_column :captain_hook_providers, :verifier_file, :string
     add_column :captain_hook_providers, :timestamp_tolerance_seconds, :integer, default: 300
     add_column :captain_hook_providers, :max_payload_size_bytes, :integer, default: 1_048_576
-    add_column :captain_hook_providers, :metadata, :jsonb, default: {}
+    add_column :captain_hook_providers, :metadata, :json, default: {}
   end
 end
