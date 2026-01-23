@@ -35,8 +35,9 @@ module CaptainHook
         # Increment attempt count
         action.increment_attempts!
 
-        # Execute action
-        action_class = action.action_class.constantize
+        # Execute action - resolve actual class name from stored format
+        resolved_class_name = CaptainHook::Services::ActionDiscovery.resolve_action_class(action.action_class)
+        action_class = resolved_class_name.constantize
         action_instance = action_class.new
 
         # Call webhook_action method with event payload

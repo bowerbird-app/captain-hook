@@ -31,8 +31,8 @@ module CaptainHook
 
       def sync_action(definition)
         provider = definition["provider"]
-        event_type = definition["event_type"]
-        action_class = definition["action_class"]
+        event_type = definition["event"]
+        action_class = definition["action"]
 
         unless valid_action_definition?(definition)
           @results[:errors] << {
@@ -101,8 +101,8 @@ module CaptainHook
       # Validate action definition has required fields
       def valid_action_definition?(definition)
         definition["provider"].present? &&
-          definition["event_type"].present? &&
-          definition["action_class"].present? &&
+          definition["event"].present? &&
+          definition["action"].present? &&
           definition["async"].in?([true, false]) &&
           definition["max_attempts"].present? &&
           definition["priority"].present? &&

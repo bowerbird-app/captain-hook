@@ -11,17 +11,7 @@ module CaptainHook
       provider_name = params[:provider]
       token = params[:token]
 
-      # DEBUG: Log all incoming webhook details
-      Rails.logger.info "🔍 ============================================"
-      Rails.logger.info "🔍 WEBHOOK RECEIVED"
-      Rails.logger.info "🔍 Provider: #{provider_name}"
-      Rails.logger.info "🔍 Token: #{token}"
-      Rails.logger.info "🔍 Headers: #{request.headers.to_h.select do |k, _v|
-        k.start_with?('HTTP_', 'CONTENT_')
-      end.inspect}"
-      Rails.logger.info "🔍 Body (first 500 chars): #{request.body.read[0..500]}"
       request.body.rewind # Important: rewind after reading
-      Rails.logger.info "🔍 ============================================"
 
       # Get provider from database first, then fall back to configuration
       provider = CaptainHook::Provider.find_by(name: provider_name)
@@ -91,11 +81,8 @@ module CaptainHook
 
       CaptainHook::Instrumentation.signature_verified(provider: provider_name)
 
-      # Parse payload
-      Rails.logger.info "🔍 Parsing JSON payload..."
       begin
         parsed_payload = JSON.parse(raw_payload)
-        Rails.logger.info "🔍 JSON parsed successfully"
       rescue JSON::ParserError => e
         Rails.logger.error "🔍 JSON parse failed: #{e.message}"
         render json: { error: "Invalid JSON" }, status: :bad_request
@@ -103,16 +90,12 @@ module CaptainHook
       end
 
       # Extract event details using verifier
-      Rails.logger.info "🔍 Extracting event metadata..."
       external_id = verifier.extract_event_id(parsed_payload)
       event_type = verifier.extract_event_type(parsed_payload)
-      Rails.logger.info "🔍 Event ID: #{external_id}, Event Type: #{event_type}"
 
       # Check timestamp if provided
       if provider_config.timestamp_validation_enabled?
-        Rails.logger.info "🔍 Validating timestamp..."
         timestamp = verifier.extract_timestamp(headers)
-        Rails.logger.info "🔍 Extracted timestamp: #{timestamp}"
 
         if timestamp
           validator = CaptainHook::TimeWindowValidator.new(
@@ -124,11 +107,8 @@ module CaptainHook
             render json: { error: "Timestamp outside tolerance window" }, status: :bad_request
             return
           end
-          Rails.logger.info "🔍 Timestamp validation passed"
         end
       end
-
-      Rails.logger.info "🔍 Creating IncomingEvent record..."
 
       # Create or find incoming event (idempotency)
       event = CaptainHook::IncomingEvent.find_or_create_by_external!(
@@ -154,12 +134,10 @@ module CaptainHook
           event_type: event_type
         )
 
-        Rails.logger.info "🔍 Sending 201 Created response..."
         render json: { id: event.id, status: "received" }, status: :created
       else
         # Duplicate event
         event.mark_duplicate!
-        Rails.logger.info "🔍 Sending 200 OK response (duplicate)..."
         render json: { id: event.id, status: "duplicate" }, status: :ok
       end
     end

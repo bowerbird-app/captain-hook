@@ -207,7 +207,7 @@ definitions = discovery.call
 
 # View discovered actions
 definitions.each do |defn|
-  puts "#{defn['provider']}:#{defn['event_type']} → #{defn['action_class']}"
+  puts "#{defn['provider']}:#{defn['event']} → #{defn['action']}"
 end
 
 # Sync to database
@@ -393,8 +393,8 @@ class ActionDiscoveryTest < ActiveSupport::TestCase
     stripe_actions = actions.select { |a| a["provider"] == "stripe" }
     assert stripe_actions.size > 0
     
-    payment_action = stripe_actions.find { |a| a["event_type"] == "payment.succeeded" }
-    assert_equal "Stripe::PaymentSucceededAction", payment_action["action_class"]
+    payment_action = stripe_actions.find { |a| a["event"] == "payment.succeeded" }
+    assert_equal "Stripe::PaymentSucceededAction", payment_action["action"]
   end
 end
 ```

@@ -18,8 +18,8 @@ module CaptainHook
         # Check that we have the expected structure
         action = actions.first
         assert action.key?("provider")
-        assert action.key?("event_type")
-        assert action.key?("action_class")
+        assert action.key?("event")
+        assert action.key?("action")
         assert action.key?("async")
         assert action.key?("max_attempts")
         assert action.key?("priority")
@@ -34,11 +34,11 @@ module CaptainHook
         
         # Should find the PaymentIntentCreatedAction
         payment_intent_created = stripe_actions.find do |a|
-          a["event_type"] == "payment_intent.created"
+          a["event"] == "payment_intent.created"
         end
         
         assert_not_nil payment_intent_created, "Should find payment_intent.created action"
-        assert_equal "Stripe::PaymentIntentCreatedAction", payment_intent_created["action_class"]
+        assert_equal "Stripe::PaymentIntentCreatedAction", payment_intent_created["action"]
         assert_equal 100, payment_intent_created["priority"]
         assert_equal true, payment_intent_created["async"]
         assert_equal 3, payment_intent_created["max_attempts"]
@@ -52,11 +52,11 @@ module CaptainHook
         
         # Should find BankAccountAction with wildcard
         bank_account_action = square_actions.find do |a|
-          a["event_type"] == "bank_account.*"
+          a["event"] == "bank_account.*"
         end
         
         assert_not_nil bank_account_action, "Should find bank_account.* action"
-        assert_equal "Square::BankAccountAction", bank_account_action["action_class"]
+        assert_equal "Square::BankAccountAction", bank_account_action["action"]
       end
 
       test "discovers webhook_site actions" do
@@ -65,9 +65,9 @@ module CaptainHook
 
         assert webhook_site_actions.size > 0, "Should find webhook_site actions"
         
-        test_action = webhook_site_actions.find { |a| a["event_type"] == "test" }
+        test_action = webhook_site_actions.find { |a| a["event"] == "test" }
         assert_not_nil test_action, "Should find test action"
-        assert_equal "WebhookSite::TestAction", test_action["action_class"]
+        assert_equal "WebhookSite::TestAction", test_action["action"]
       end
 
       test "for_provider filters actions by provider" do
@@ -89,7 +89,7 @@ module CaptainHook
         # Should NOT have CaptainHook:: prefix
         # Should NOT have ::Actions:: in the middle
         actions.each do |action|
-          class_name = action["action_class"]
+          class_name = action["action"]
           
           assert_not class_name.start_with?("CaptainHook::"), 
                  "Class name should not start with CaptainHook:: but got: #{class_name}"
@@ -117,11 +117,11 @@ module CaptainHook
         actions = @discovery.call
         
         # Find a Stripe action from the discovered actions
-        stripe_action = actions.find { |a| a["provider"] == "stripe" && a["event_type"] == "payment_intent.created" }
+        stripe_action = actions.find { |a| a["provider"] == "stripe" && a["event"] == "payment_intent.created" }
         assert_not_nil stripe_action, "Should find a Stripe action to test"
         
         # Get the class from the discovered action
-        action_class_name = stripe_action["action_class"]
+        action_class_name = stripe_action["action"]
         action_class = action_class_name.constantize
         
         assert action_class.respond_to?(:details), 
