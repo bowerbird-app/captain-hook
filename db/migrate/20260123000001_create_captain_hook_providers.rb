@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
 class CreateCaptainHookProviders < ActiveRecord::Migration[8.0]
-  def id_type
-    ActiveRecord::Base.connection.adapter_name.downcase.to_sym == :postgresql ? :uuid : :string
-  end
-
   def change
-    create_table :captain_hook_providers, id: id_type do |t|
+    create_table :captain_hook_providers, id: :uuid do |t|
       t.string :name, null: false
       t.string :token, null: false
       t.boolean :active, default: true, null: false
