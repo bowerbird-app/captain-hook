@@ -25,9 +25,12 @@ module CaptainHook
         say "#{'=' * 80}\n", :green
         say "Next steps:", :cyan
         say "  1. Run migrations: rails captain_hook:install:migrations && rails db:migrate", :yellow
-        say "  2. Create providers via admin UI: /captain_hook/admin/providers", :yellow
-        say "  3. Register actions in config/initializers/captain_hook.rb", :yellow
-        say "\nProviders are now managed via the database (no YAML config needed).", :cyan
+        say "  2. Setup encryption keys: rails db:encryption:init", :yellow
+        say "  3. Configure autoload paths in config/application.rb", :yellow
+        say "  4. Create providers via admin UI: /captain_hook/admin/providers", :yellow
+        say "\n💡 Or run the unified setup wizard:", :cyan
+        say "  rails captain_hook:setup", :green
+        say "\nThis wizard will complete all remaining setup steps interactively.", :cyan
       end
 
       def add_tailwind_source

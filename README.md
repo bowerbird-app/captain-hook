@@ -91,22 +91,55 @@ And then execute:
 $ bundle install
 ```
 
-Run the installer:
+### Quick Setup (Recommended)
+
+Run the unified setup command to install everything:
+
+```bash
+$ rails captain_hook:setup
+```
+
+This interactive wizard will:
+- ✅ Mount the engine at `/captain_hook` in your routes
+- ✅ Create an initializer at `config/initializers/captain_hook.rb`
+- ✅ Create global config at `config/captain_hook.yml`
+- ✅ Configure Tailwind CSS (if detected) to include engine views
+- ✅ Copy and run migrations
+- ✅ Generate encryption keys for signing secrets
+- ✅ Create example provider for testing (development only)
+- ✅ Validate your setup
+
+**Non-interactive mode** (for CI/scripts):
+```bash
+$ AUTO=true rails captain_hook:setup
+```
+
+### Manual Setup (Alternative)
+
+If you prefer to run steps individually:
 
 ```bash
 $ rails generate captain_hook:install
-```
-
-This will:
-- Mount the engine at `/captain_hook` in your routes
-- Create an initializer at `config/initializers/captain_hook.rb`
-- Configure Tailwind CSS (if detected) to include engine views
-
-Run migrations:
-
-```bash
 $ rails captain_hook:install:migrations
 $ rails db:migrate
+$ rails db:encryption:init  # Generate encryption keys
+```
+
+### Validate Your Setup
+
+Check that everything is configured correctly:
+
+```bash
+$ rails captain_hook:doctor
+```
+
+Or run steps manually:
+
+```bash
+$ rails generate captain_hook:install
+$ rails captain_hook:install:migrations
+$ rails db:migrate
+$ rails db:encryption:init  # Generate encryption keys
 ```
 
 ## Quick Start
