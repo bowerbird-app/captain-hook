@@ -70,28 +70,4 @@ jobs:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
 
     - name: Check SimpleCov coverage thresholds
-      run: |
-        if [ -f coverage/.last_run.json ]; then
-          ruby -r json -e '
-            data = JSON.parse(File.read("coverage/.last_run.json"))
-            coverage = data.dig("result", "line") || data.dig("result", "covered_percent")
-            branch_cov = data.dig("result", "branch")
-            
-            puts "Line coverage: #{coverage}%"
-            puts "Branch coverage: #{branch_cov}%" if branch_cov
-            
-            if coverage && coverage < 90
-              puts "ERROR: Line coverage (#{coverage}%) is below minimum threshold of 90%"
-              exit 1
-            end
-            
-            if branch_cov && branch_cov < 80
-              puts "ERROR: Branch coverage (#{branch_cov}%) is below minimum threshold of 80%"
-              exit 1
-            end
-            
-            puts "✓ Coverage thresholds met!"
-          '
-        else
-          echo "Warning: No coverage report found"
-        fi
+      run: ruby scripts/check_coverage.rb
