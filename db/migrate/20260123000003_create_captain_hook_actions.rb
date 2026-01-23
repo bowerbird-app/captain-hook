@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-class CreateCaptainHookHandlers < ActiveRecord::Migration[7.0]
+class CreateCaptainHookActions < ActiveRecord::Migration[8.0]
   def id_type
     ActiveRecord::Base.connection.adapter_name.downcase.to_sym == :postgresql ? :uuid : :string
   end
 
   def change
-    create_table :captain_hook_handlers, id: id_type do |t|
+    create_table :captain_hook_actions, id: id_type do |t|
       t.string :provider, null: false
       t.string :event_type, null: false
-      t.string :handler_class, null: false
+      t.string :action_class, null: false
       t.boolean :async, null: false, default: true
       t.integer :max_attempts, null: false, default: 5
       t.integer :priority, null: false, default: 100
@@ -18,13 +18,13 @@ class CreateCaptainHookHandlers < ActiveRecord::Migration[7.0]
 
       t.timestamps
 
-      # Unique constraint to prevent duplicate handler registrations
-      t.index %i[provider event_type handler_class], unique: true, name: "idx_captain_hook_handlers_unique"
+      # Unique constraint to prevent duplicate action registrations
+      t.index %i[provider event_type action_class], unique: true, name: "idx_captain_hook_actions_unique"
 
-      # Index for finding handlers by provider
+      # Index for finding actions by provider
       t.index :provider
 
-      # Index for finding active handlers
+      # Index for finding active actions
       t.index :deleted_at
     end
   end
