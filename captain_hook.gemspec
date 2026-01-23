@@ -21,10 +21,10 @@ Gem::Specification.new do |spec|
 
   spec.post_install_message = <<~MSG
     ⚓ CaptainHook installed successfully!
-    
+
     🚀 Quick setup:  rails captain_hook:setup
     📖 Full guide:   https://github.com/bowerbird-app/captain-hook#installation
-    
+
     The setup command will:
       • Mount the engine in your routes
       • Create configuration files
@@ -39,10 +39,10 @@ Gem::Specification.new do |spec|
 
   spec.post_install_message = <<~MSG
     ⚓ CaptainHook installed successfully!
-    
+
     🚀 Quick setup:
       rails captain_hook:setup
-    
+
     📖 Documentation:
       https://github.com/bowerbird-app/captain-hook#installation
   MSG

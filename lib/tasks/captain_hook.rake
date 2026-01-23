@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Note: The setup and doctor tasks are in lib/tasks/setup.rake
+# NOTE: The setup and doctor tasks are in lib/tasks/setup.rake
 # This file contains status and monitoring tasks for CaptainHook
 
 namespace :captain_hook do
@@ -19,7 +19,9 @@ namespace :captain_hook do
       status = provider.active? ? "✓" : "✗"
       puts "  #{status} #{display_name} (#{provider.name})"
       puts "    URL: #{provider.webhook_url}"
-      puts "    Rate limit: #{provider.rate_limit_requests}/#{provider.rate_limit_period}s" if provider.rate_limit_requests
+      if provider.rate_limit_requests
+        puts "    Rate limit: #{provider.rate_limit_requests}/#{provider.rate_limit_period}s"
+      end
     end
 
     # Actions
