@@ -1,7 +1,32 @@
 # frozen_string_literal: true
 
 require "simplecov"
-SimpleCov.start "rails"
+
+SimpleCov.start "rails" do
+  # Enable branch coverage (critical for catching untested conditional paths)
+  enable_coverage :branch
+  
+  # Set minimum coverage thresholds (CI fails if below these)
+  minimum_coverage line: 90, branch: 80
+  
+  # Refuse to merge coverage drops (CI fails if coverage decreases)
+  refuse_coverage_drop :line, :branch
+  
+  # Exclude non-application code
+  add_filter "/test/"
+  add_filter "/spec/"
+  add_filter "/config/"
+  add_filter "/db/"
+  add_filter "/benchmark/"
+  
+  # Group coverage reports for better organization
+  add_group "Models", "app/models"
+  add_group "Controllers", "app/controllers"
+  add_group "Jobs", "app/jobs"
+  add_group "Services", "lib/captain_hook/services"
+  add_group "Verifiers", "lib/captain_hook/verifiers"
+  add_group "Core", "lib/captain_hook"
+end
 
 # Configure Rails Environment
 ENV["RAILS_ENV"] = "test"
