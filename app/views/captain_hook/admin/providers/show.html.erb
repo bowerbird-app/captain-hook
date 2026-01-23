@@ -28,7 +28,7 @@
     <div class="card-body">
       <p class="text-muted mb-2">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
       <div class="input-group">
-        <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url %>" readonly>
+        <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
         <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
           📋 Copy
         </button>
