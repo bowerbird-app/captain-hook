@@ -1,750 +1,768 @@
-# CaptainHook Rails Engine
+# ⚓ Captain Hook
 
-A comprehensive Rails engine for receiving and processing webhooks from external providers with features including signature verification, rate limiting, retry logic, and admin UI.
+A comprehensive Rails engine for managing webhook integrations with features including signature verification, action routing, rate limiting, retry logic, and an admin UI.
 
-## How It Works
+## 📋 Table of Contents
 
-CaptainHook provides a complete webhook management system with automatic discovery, verification, and processing:
+- [Features](#-features)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Configuration](#-configuration)
+- [Usage](#-usage)
+  - [Built-in Providers](#built-in-providers)
+  - [Creating Actions](#creating-actions)
+  - [Adding Custom Providers](#adding-custom-providers)
+- [Admin UI](#-admin-ui)
+- [Architecture](#-architecture)
+- [Testing](#-testing)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-1. **Provider Setup**: Define providers in YAML files (`captain_hook/<provider>/<provider>.yml`) - automatically discovered on boot
-2. **Global Configuration**: Set defaults in `config/captain_hook.yml` for max_payload_size_bytes and timestamp_tolerance_seconds
-3. **Action Registration**: Register actions in `config/initializers/captain_hook.rb` - automatically synced to database on boot
-4. **Webhook Reception**: External provider sends POST to `/captain_hook/:provider/:token`
-5. **Security Validation**: Token → Rate limit → Payload size → Signature → Timestamp (configurable)
-6. **Event Storage**: Creates `IncomingEvent` with idempotency (unique index on provider + external_id)
-7. **Action Execution**: Looks up actions from database, creates execution records, enqueues jobs
-8. **Background Processing**: `IncomingActionJob` executes actions with retry logic and exponential backoff
-9. **Observability**: ActiveSupport::Notifications events for monitoring
+## ✨ Features
 
-**Key Architecture Points:**
-- **Registry as Source of Truth**: Provider configuration (verifier, signing secret, display name) comes from YAML files
-- **Minimal Database Storage**: Database only stores runtime data: token, active status, rate limits
-- **Global Configuration**: Host app can override defaults via `config/captain_hook.yml`
-- **ENV-based Secrets**: Signing secrets reference environment variables (e.g., `ENV[STRIPE_WEBHOOK_SECRET]`)
-- **File-based Discovery**: Providers and verifiers auto-discovered from YAML files in app or gems
-- **In-Memory Registry**: Actions stored in thread-safe `ActionRegistry` then synced to database
-- **Idempotency**: Duplicate webhooks (same provider + external_id) return 200 OK without re-processing
-- **Async by Default**: Actions run in background jobs with configurable retry delays
-- **Provider Verifiers**: Each provider has verifier class for signature verification (Stripe, Square, PayPal, etc.)
+### 🔐 Security
+- **Signature Verification** - Validates webhook authenticity using provider-specific signatures
+- **Timestamp Validation** - Prevents replay attacks with configurable time windows
+- **Rate Limiting** - Protects against DoS with per-provider rate limits
+- **Constant-Time Comparison** - Prevents timing attacks during signature verification
 
-## Features
+### 🎯 Reliability
+- **Idempotency** - Automatic deduplication prevents processing duplicate webhooks
+- **Retry Logic** - Configurable exponential backoff for failed actions
+- **Background Processing** - Non-blocking webhook handling via ActiveJob
+- **Circuit Breakers** - Prevents cascading failures
+- **Optimistic Locking** - Handles concurrent processing safely
 
-- **Incoming Webhooks**
-  - Idempotency via unique `(provider, external_id)` index
-  - Provider-specific signature verification verifiers
-  - Rate limiting per provider
-  - Payload size limits
-  - Timestamp validation to prevent replay attacks
-  - Action priority and ordering
-  - Automatic retry with exponential backoff
-  - Optimistic locking for safe concurrency
+### 🚀 Developer Experience
+- **Auto-Discovery** - Automatically finds and registers providers and actions
+- **Action Routing** - Maps webhook events to your business logic
+- **Admin UI** - Monitor webhook traffic, inspect payloads, retry failures
+- **Built-in Providers** - Pre-configured verifiers for Stripe, Square, PayPal
+- **Instrumentation** - ActiveSupport notifications for monitoring
+- **Test Helpers** - Utilities for testing webhook integrations
 
-- **Provider Management**
-  - Registry-based provider configuration (YAML files as source of truth)
-  - Minimal database storage for runtime data (token, rate limits, active status)
-  - Global configuration file for application-wide defaults
-  - Per-provider security settings via YAML
-  - Webhook URL generation for sharing with providers
-  - Active/inactive status control
-  - ENV-based signing secret management
-  - Built-in verifiers for Stripe, Square, PayPal, WebhookSite
+### 📊 Observability
+- **Event Storage** - Persists all incoming webhooks with full audit trail
+- **Action Tracking** - Monitor processing status, attempts, and errors
+- **Metrics** - Track success rates, latency, and throughput
+- **Debugging Tools** - Inspect payloads, view error messages, retry failed actions
 
-- **Admin Interface**
-  - View and manage providers
-  - View incoming events with filtering
-  - View registered actions per provider
-  - **Edit and configure actions** (async/sync, retries, priority)
-  - **Auto-Discovery**: Providers and actions automatically synced on boot
-  - **Duplicate detection**: Warns when same provider exists in multiple sources
-  - **Soft-delete actions** to prevent re-addition
-  - Monitor event processing status
-  - Track action execution
+## 🚀 Installation
 
-- **Security Features**
-  - HMAC signature verification
-  - Timestamp validation (replay attack prevention)
-  - Rate limiting per provider
-  - Payload size limits
-  - Token-based authentication
-  - Support for IP whitelisting (planned)
-
-- **Observability**
-  - ActiveSupport::Notifications instrumentation
-  - Rate limiting stats
-  - Comprehensive event tracking
-
-- **Data Retention**
-  - Automatic archival of old events
-  - Configurable retention period
-
-## Installation
-
-Add this line to your application's Gemfile:
+Add Captain Hook to your Rails application's Gemfile:
 
 ```ruby
 gem 'captain_hook'
 ```
 
-And then execute:
+Install the gem:
 
 ```bash
-$ bundle install
+bundle install
 ```
 
-### Quick Setup (Recommended)
-
-Run the unified setup command to install everything:
+Run the setup wizard:
 
 ```bash
-$ rails captain_hook:setup
+rails captain_hook:setup
 ```
 
-This interactive wizard will:
-- ✅ Mount the engine at `/captain_hook` in your routes
-- ✅ Create an initializer at `config/initializers/captain_hook.rb`
-- ✅ Create global config at `config/captain_hook.yml`
-- ✅ Configure Tailwind CSS (if detected) to include engine views
-- ✅ Copy and run migrations
-- ✅ Generate encryption keys for signing secrets
-- ✅ Create example provider for testing (development only)
-- ✅ Validate your setup
+The setup wizard will:
+1. ✅ Mount the engine in your routes
+2. ✅ Create configuration files
+3. ✅ Install database migrations
+4. ✅ Set up encryption keys for secure credential storage
+5. ✅ Create an example provider (in development)
 
-**Non-interactive mode** (for CI/scripts):
-```bash
-$ AUTO=true rails captain_hook:setup
-```
-
-### Manual Setup (Alternative)
-
-If you prefer to run steps individually:
+Run migrations:
 
 ```bash
-$ rails generate captain_hook:install
-$ rails captain_hook:install:migrations
-$ rails db:migrate
-$ rails db:encryption:init  # Generate encryption keys
+rails db:migrate
 ```
 
-### Validate Your Setup
+## 🎯 Quick Start
 
-Check that everything is configured correctly:
+### 1. Configure Your First Provider
 
-```bash
-$ rails captain_hook:doctor
-```
-
-Or run steps manually:
-
-```bash
-$ rails generate captain_hook:install
-$ rails captain_hook:install:migrations
-$ rails db:migrate
-$ rails db:encryption:init  # Generate encryption keys
-```
-
-## Quick Start
-
-### 1. Global Configuration (Optional)
-
-Create `config/captain_hook.yml` to set application-wide defaults:
+Create a provider configuration file at `captain_hook/stripe/stripe.yml`:
 
 ```yaml
-# config/captain_hook.yml
-defaults:
-  max_payload_size_bytes: 1048576      # 1MB default
-  timestamp_tolerance_seconds: 300     # 5 minutes default
-
-# Per-provider overrides (optional)
-providers:
-  stripe:
-    max_payload_size_bytes: 2097152    # 2MB for Stripe
-  square:
-    timestamp_tolerance_seconds: 600    # 10 minutes for Square
-```
-
-**Note**: Individual provider YAML files can override these defaults. The priority is:
-1. Provider YAML file value (highest priority)
-2. Global config per-provider override
-3. Global config default
-4. Built-in default (lowest priority)
-
-### 2. Environment Variables for Signing Secrets
-
-CaptainHook now stores signing secrets as environment variable references (not in the database).
-
-Set your provider webhook secrets as environment variables:
-
-```bash
-# .env or production environment
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx
-SQUARE_WEBHOOK_SECRET=your_square_secret
-PAYPAL_WEBHOOK_SECRET=your_paypal_secret
-```
-
-**Important**: Provider YAML files reference these via `ENV[VARIABLE_NAME]` syntax.
-
-### 3. Configure Providers
-
-CaptainHook uses a file-based provider discovery system. Create provider configuration files in `captain_hook/<provider>/` directory.
-
-**Providers and actions are automatically discovered and synced to the database when your Rails application starts.** There's no need to manually scan - just define your providers in YAML and register your actions in code, then restart your application.
-
-**Provider verifiers are distributed with individual gems** (like `example-stripe`, `example-square`) or can be created in your host application. Each verifier handles provider-specific signature verification and event extraction.
-
-Common providers typically have verifiers available:
-- **Stripe** - Check for gems like `example-stripe` or create your own
-- **Square** - Check for gems like `example-square` or create your own
-- **PayPal** - Check for gems like `example-paypal` or create your own
-
-See [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for how to create verifiers.
-
-**Create the directory structure:**
-
-```bash
-mkdir -p captain_hook/stripe/actions
-```
-
-**Create a provider YAML file** (e.g., `captain_hook/stripe/stripe.yml`):
-
-You can copy from the example templates shipped with CaptainHook and customize:
-
-```yaml
-# captain_hook/stripe/stripe.yml
 name: stripe
 display_name: Stripe
-description: Stripe payment and subscription webhooks
-verifier_file: stripe.rb
+description: Stripe payment webhooks
+verifier_file: stripe.rb  # Built-in verifier
 active: true
 
-# Security settings
+# Security
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
 
-# Rate limiting (optional - can be set per-provider or in database)
+# Rate limiting (optional)
 rate_limit_requests: 100
 rate_limit_period: 60
-
-# Payload size and timestamp tolerance now come from global config
-# But can be overridden here if needed for this specific provider
-# timestamp_tolerance_seconds: 600
-# max_payload_size_bytes: 2097152
 ```
 
-**Note on configuration priority:**
-- `signing_secret`: Must be in provider YAML as `ENV[VARIABLE_NAME]` reference
-- `rate_limit_requests/rate_limit_period`: Can be in YAML or set via admin UI (stored in database)
-- `timestamp_tolerance_seconds/max_payload_size_bytes`: Come from global config by default, can override in provider YAML
+### 2. Create an Action
 
-**Create the verifier file** (if needed - Stripe has a built-in verifier) (`captain_hook/stripe/stripe.rb`):
+Create an action to handle specific events at `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`:
 
 ```ruby
-# frozen_string_literal: true
-
-class StripeVerifier
-  include CaptainHook::VerifierHelpers
-
-  SIGNATURE_HEADER = "Stripe-Signature"
-
-  def verify_signature(payload:, headers:, provider_config:)
-    signature_header = extract_header(headers, SIGNATURE_HEADER)
-    return false if signature_header.blank?
-
-    parsed = parse_kv_header(signature_header)
-    timestamp = parsed["t"]
-    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
-    
-    return false if timestamp.blank? || signatures.empty?
-
-    if provider_config.timestamp_validation_enabled?
-      tolerance = provider_config.timestamp_tolerance_seconds || 300
-      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
-    end
-
-    signed_payload = "#{timestamp}.#{payload}"
-    expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
-
-    signatures.any? { |sig| secure_compare(sig, expected_signature) }
-  end
-
-  def extract_timestamp(headers)
-    signature_header = extract_header(headers, SIGNATURE_HEADER)
-    return nil if signature_header.blank?
-    parse_kv_header(signature_header)["t"]&.to_i
-  end
-
-  def extract_event_id(payload)
-    payload["id"]
-  end
-
-  def extract_event_type(payload)
-    payload["type"]
-  end
-end
-```
-
-**Set environment variables:**
-
-```bash
-# .env or your environment
-STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
-```
-
-**Restart your application:**
-
-When your Rails application starts, CaptainHook will automatically:
-1. Discover providers from YAML files in `captain_hook/<provider>/`
-2. Sync them to the database
-3. Discover registered actions from your code
-4. Sync them to the database
-
-You can view the discovered providers at `/captain_hook/admin/providers`
-
-Providers are automatically discovered from:
-- Your Rails app: `Rails.root/captain_hook/<provider_name>/<provider_name>.yml`
-- Loaded gems: `<gem_root>/captain_hook/<provider_name>/<provider_name>.yml`
-
-Actions are automatically loaded from:
-- Provider's `actions/` folder: `captain_hook/<provider_name>/actions/*.rb`
-
-The `signing_secret` will be automatically encrypted in the database using AES-256-GCM encryption. Using `ENV[VARIABLE_NAME]` format ensures secrets are read from environment variables and never committed to version control.
-
-**Multiple Instances of Same Provider:**
-
-You can have multiple instances of the same provider type (e.g., multiple Stripe accounts). Each needs its own directory with YAML config and verifier file:
-
-```yaml
-# captain_hook/stripe_account_a/stripe_account_a.yml
-name: stripe_account_a
-display_name: Stripe (Account A)
-verifier_file: stripe_account_a.rb
-signing_secret: ENV[STRIPE_SECRET_ACCOUNT_A]
-
-# captain_hook/stripe_account_b/stripe_account_b.yml
-name: stripe_account_b
-display_name: Stripe (Account B)  
-verifier_file: stripe_account_b.rb
-signing_secret: ENV[STRIPE_SECRET_ACCOUNT_B]
-```
-
-```ruby
-# captain_hook/stripe_account_a/stripe_account_a.rb
-class StripeAccountAVerifier
-  include CaptainHook::VerifierHelpers
-  # Same Stripe verification logic
-end
-
-# captain_hook/stripe_account_b/stripe_account_b.rb
-class StripeAccountBVerifier
-  include CaptainHook::VerifierHelpers
-  # Same Stripe verification logic
-end
-```
-
-Each gets its own webhook URL and can have different actions.
-
-### 3. Get Your Webhook URL
-
-Each provider gets a unique webhook URL with a secure token. The URL is automatically generated and displayed in the admin UI:
-
-```ruby
-provider.webhook_url
-# => "https://your-app.com/captain_hook/stripe/abc123token..."
-```
-
-**The URL format**: `/captain_hook/:provider_name/:token`
-
-Share this URL with your provider (e.g., in Stripe's webhook settings). The token ensures that only requests to the correct URL are processed.
-
-**Codespaces/Forwarding**: CaptainHook automatically detects GitHub Codespaces URLs or you can set `APP_URL` environment variable to override the base URL.
-
-### 4. Create a Action
-
-Create a action class in the provider's `actions/` folder:
-
-```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
-class StripePaymentSucceededAction
-  def webhook_action(event:, payload:, metadata:)
-    payment_intent_id = payload.dig("data", "object", "id")
-    Payment.find_by(stripe_id: payment_intent_id)&.mark_succeeded!
-  end
-end
-```
-
-Action method signature:
-- `event`: The `CaptainHook::IncomingEvent` record
-- `payload`: The parsed JSON payload (Hash)
-- `metadata`: Additional metadata (Hash with `:timestamp`, `:headers`, etc.)
-
-### 5. Actions Are Automatically Discovered!
-
-✨ **NEW**: No manual registration needed! Just create action files in the right location.
-
-CaptainHook automatically scans `captain_hook/<provider>/actions/**/*.rb` directories and discovers actions on boot.
-
-**Action Structure Required:**
-
-```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
 module Stripe
-  class PaymentSucceededAction
-    # REQUIRED: Metadata for automatic discovery
+  class PaymentIntentSucceededAction
+    # Define metadata about this action
     def self.details
       {
-        description: "Handles Stripe payment succeeded events",
-        event_type: "payment_intent.succeeded",  # REQUIRED
-        priority: 100,                           # Optional (default: 100)
-        async: true,                             # Optional (default: true)
-        max_attempts: 5                          # Optional (default: 5)
+        description: "Handle successful payment intents",
+        event_type: "payment_intent.succeeded",
+        priority: 100,
+        async: true,
+        max_attempts: 5
       }
     end
 
-    # REQUIRED: Webhook processing method
+    # Process the webhook
     def webhook_action(event:, payload:, metadata:)
+      payment_intent = payload.dig("data", "object")
+      
+      # Your business logic here
+      order = Order.find_by(payment_intent_id: payment_intent["id"])
+      order.mark_as_paid! if order
+      
+      Rails.logger.info "✅ Processed payment: #{payment_intent['id']}"
+    end
+  end
+end
+```
+
+### 3. Scan for Providers and Actions
+
+Run the discovery rake task to register your configuration:
+
+```bash
+rails captain_hook:discover
+```
+
+### 4. Get Your Webhook URL
+
+Your webhook endpoint is now available at:
+
+```
+POST https://yourapp.com/captain_hook/:provider/:token
+```
+
+For example, for Stripe:
+```
+POST https://yourapp.com/captain_hook/stripe/abc123token
+```
+
+Find your provider token in the admin UI or by running:
+
+```bash
+rails runner "puts CaptainHook::Provider.find_by(name: 'stripe').token"
+```
+
+### 5. Configure Your Provider
+
+In your provider's dashboard (e.g., Stripe), add the webhook URL and select the events you want to receive.
+
+## ⚙️ Configuration
+
+### Global Configuration
+
+Create or edit `config/initializers/captain_hook.rb`:
+
+```ruby
+CaptainHook.configure do |config|
+  # Default rate limits
+  config.default_rate_limit_requests = 100
+  config.default_rate_limit_period = 60
+  
+  # Default payload size limit (in bytes)
+  config.max_payload_size_bytes = 2.megabytes
+  
+  # Job queue for processing webhooks
+  config.queue_name = :captain_hook_incoming
+  
+  # Enable/disable admin UI
+  config.enable_admin_ui = true
+  
+  # Retention period for old webhooks
+  config.webhook_retention_days = 90
+end
+```
+
+### Environment Variables
+
+Set these in your `.env` file:
+
+```bash
+# Provider signing secrets
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+SQUARE_WEBHOOK_SECRET=your_square_secret
+PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
+
+# Encryption keys (generated by setup wizard)
+ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=xxxxxxxxxxxxxxxx
+ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=xxxxxxxxxxxxxxxx
+ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=xxxxxxxxxxxxxxxx
+```
+
+## 📖 Usage
+
+### Built-in Providers
+
+Captain Hook includes pre-configured verifiers for popular webhook providers:
+
+#### Stripe
+```yaml
+name: stripe
+verifier_file: stripe.rb  # Uses CaptainHook::Verifiers::Stripe
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+```
+
+**Supported events:** All Stripe webhook events  
+**Signature header:** `Stripe-Signature`  
+**Documentation:** https://stripe.com/docs/webhooks
+
+#### Square
+```yaml
+name: square
+verifier_file: square.rb  # Uses CaptainHook::Verifiers::Square
+signing_secret: ENV[SQUARE_WEBHOOK_SECRET]
+```
+
+**Supported events:** All Square webhook events  
+**Signature header:** `X-Square-Signature`  
+**Documentation:** https://developer.squareup.com/docs/webhooks
+
+#### PayPal
+```yaml
+name: paypal
+verifier_file: paypal.rb  # Uses CaptainHook::Verifiers::Paypal
+signing_secret: ENV[PAYPAL_WEBHOOK_ID]
+```
+
+**Supported events:** All PayPal webhook events  
+**Documentation:** https://developer.paypal.com/docs/api-basics/notifications/webhooks/
+
+### Creating Actions
+
+Actions are where your business logic lives. Each action handles a specific event type from a provider.
+
+#### Basic Action Structure
+
+```ruby
+module ProviderName
+  class EventNameAction
+    # Required: Define action metadata
+    def self.details
+      {
+        description: "Human-readable description",
+        event_type: "event.type",      # Matches webhook event type
+        priority: 100,                   # Lower = higher priority
+        async: true,                     # Process in background job
+        max_attempts: 5,                 # Retry failed actions
+        retry_delays: [30, 60, 300]      # Seconds between retries
+      }
+    end
+
+    # Required: Process the webhook
+    def webhook_action(event:, payload:, metadata:)
+      # event: CaptainHook::IncomingEvent record
+      # payload: Parsed JSON webhook payload
+      # metadata: Additional event metadata
+      
       # Your business logic here
     end
   end
 end
 ```
 
-**Wildcard Event Types:**
+#### Action Example: Stripe Payment Intent
 
 ```ruby
-# captain_hook/square/actions/bank_account_action.rb
-module Square
-  class BankAccountAction
+module Stripe
+  class PaymentIntentSucceededAction
     def self.details
       {
-        event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-        priority: 100,
-        async: true
+        description: "Process successful payments",
+        event_type: "payment_intent.succeeded",
+        priority: 50,  # High priority
+        async: true,
+        max_attempts: 5,
+        retry_delays: [30, 60, 300, 900, 3600]
       }
     end
 
     def webhook_action(event:, payload:, metadata:)
-      # event.event_type contains the specific event
-      case event.event_type
-      when "bank_account.created"
-        # Handle created
-      when "bank_account.verified"
-        # Handle verified
+      payment_intent = payload.dig("data", "object")
+      
+      order = Order.find_by!(
+        payment_intent_id: payment_intent["id"]
+      )
+      
+      order.transaction do
+        order.update!(
+          status: "paid",
+          paid_at: Time.current,
+          payment_method: payment_intent["payment_method"]
+        )
+        
+        # Send confirmation email
+        OrderMailer.payment_confirmed(order).deliver_later
+        
+        # Update inventory
+        order.line_items.each(&:decrement_stock!)
       end
-    end
-  end
-end
-```
-
-**After creating action files, restart your Rails application.** CaptainHook will automatically discover and sync the actions to the database on boot.
-
-You can view your discovered actions at `/captain_hook/admin/providers/:id/actions`
-
-**Important**: 
-- Actions must be in `captain_hook/<provider>/actions/` directories
-- Action classes must be namespaced under the provider module (e.g., `module Stripe`)
-- Action classes must have a `self.details` class method with at least `:event_type`
-- Action classes must have a `webhook_action` instance method
-
-For more details, see [docs/GEM_WEBHOOK_SETUP.md](docs/GEM_WEBHOOK_SETUP.md) and [docs/ACTION_DISCOVERY.md](docs/ACTION_DISCOVERY.md).
-
-### 6. Test with Sandbox
-
-CaptainHook includes a webhook sandbox at `/captain_hook/admin/sandbox`:
-
-1. Select a provider
-2. Enter a sample payload (JSON)
-3. Click "Send Test Webhook"
-4. View the results and action execution logs
-
-This lets you test your actions without needing to trigger real events from the provider.
-
-## Configuration
-
-### Provider Settings
-
-Each provider can be configured with:
-
-- **name**: Unique identifier (lowercase, underscores only)
-- **display_name**: Human-readable name
-- **signing_secret**: Secret for HMAC signature verification
-- **verifier_file**: Ruby file containing the verifier class for provider-specific signature verification
-- **timestamp_tolerance_seconds**: Tolerance window for timestamp validation (prevents replay attacks)
-- **max_payload_size_bytes**: Maximum payload size (DoS protection)
-- **rate_limit_requests**: Maximum requests per period
-- **rate_limit_period**: Time period for rate limiting (seconds)
-- **active**: Enable/disable webhook reception
-
-### Action Registration
-
-Actions can be configured with:
-
-- **provider**: Provider name (must match a provider)
-- **event_type**: Event type to handle (e.g., "payment.succeeded")
-- **action_class**: Class name (as string) that implements the action
-- **priority**: Execution order (lower numbers run first)
-- **async**: Whether to run in background job (default: true)
-- **max_attempts**: Maximum retry attempts (default: 5)
-- **retry_delays**: Array of delays between retries in seconds (default: [30, 60, 300, 900, 3600])
-
-## Verifiers
-
-Verifiers handle provider-specific signature verification and event extraction. They are distributed with individual gems (like `example-stripe`, `example-square`) or can be created in your host application.
-
-### Using an Verifier
-
-Verifiers are specified in your provider YAML configuration:
-
-```yaml
-# captain_hook/providers/stripe.yml
-name: stripe
-verifier_file: stripe.rb
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
-```
-
-### Providers Without Signature Verification
-
-For providers that don't support signature verification (e.g., testing environments, internal webhooks), you can omit the `verifier_file` field entirely:
-
-```yaml
-# captain_hook/providers/internal_service.yml
-name: internal_service
-display_name: Internal Service
-description: Internal webhooks without verification
-# verifier_file: (not specified - no signature verification)
-active: true
-```
-
-**Security Warning**: Providers without signature verification rely solely on token-based URL authentication. Only use this for:
-- Trusted internal services within your infrastructure
-- Development/testing environments
-- Services that don't provide signature verification mechanisms
-
-For production external webhooks, always use an verifier with proper signature verification.
-
-### Creating a Custom Verifier
-
-Verifiers can be created in your host application or distributed as separate gems. See [docs/VERIFIERS.md](docs/VERIFIERS.md) for detailed implementation guide, or check out [Setting Up Webhooks in Your Gem](docs/GEM_WEBHOOK_SETUP.md) for building verifiers in gems.
-
-## Security & Encryption
-
-### Signing Secret Encryption
-
-All webhook signing secrets are encrypted in the database using ActiveRecord Encryption (AES-256-GCM):
-
-```ruby
-# Automatically encrypted when saved
-provider.signing_secret = "whsec_..."
-provider.save!
-
-# Automatically decrypted when read
-provider.signing_secret # => "whsec_..." (decrypted)
-```
-
-**Hybrid ENV Override**: You can also store secrets in environment variables:
-
-```bash
-# .env
-STRIPE_WEBHOOK_SECRET=whsec_abc123
-```
-
-The system checks `ENV["#{PROVIDER_NAME}_WEBHOOK_SECRET"]` first, then falls back to the encrypted database value.
-
-### Security Checklist
-
-All incoming webhooks are verified:
-### Security Checklist
-
-All incoming webhooks are verified:
-
-1. Provider must be active
-2. Token authentication (unique URL per provider)
-3. Provider-specific signature verification (via verifier)
-4. Timestamp validation (optional, but recommended)
-5. Rate limiting (optional, but recommended)
-6. Payload size limits (optional, but recommended)
-
-**Environment Variables**: Never commit secrets to version control. Always use `.env` files (gitignored) or your hosting platform's environment variables.
-
-## Admin Interface
-
-Access the admin interface at `/captain_hook/admin`:
-
-- **Providers**: Manage webhook providers, view webhook URLs, configure settings
-  - **Scan for Providers**: Discover providers from YAML files and sync to database
-  - **Scan Actions**: Discover and sync actions for each provider
-- **Incoming Events**: View all received webhooks with filtering and search
-- **Actions**: View, edit, and manage registered actions per provider
-  - Configure async/sync execution mode
-  - Set retry attempts and delays
-  - Adjust action priority
-  - Soft-delete actions to prevent re-addition
-- **Sandbox**: Test webhooks without triggering real events from providers
-
-See [Action Management](docs/ACTION_MANAGEMENT.md) for detailed documentation on managing actions.
-
-## Testing Webhooks
-
-### Using the Sandbox
-
-1. Navigate to `/captain_hook/admin/sandbox`
-2. Select your provider from the dropdown
-3. Enter a test payload (JSON format)
-4. Click "Send Test Webhook"
-5. View action execution results and logs
-
-The sandbox bypasses signature verification for easy testing.
-
-### Testing from External Provider
-
-Most providers offer webhook testing tools:
-
-- **Stripe CLI**: 
-  ```bash
-  # Trigger test events
-  stripe trigger payment_intent.succeeded
-  
-  # Or forward webhooks to your local server
-  stripe listen --forward-to localhost:3000/captain_hook/stripe/YOUR_TOKEN
-  ```
-  Replace `YOUR_TOKEN` with your provider's token from the admin UI.
-
-- **Square**: Use the Square Sandbox webhook simulator
-- **PayPal**: Use the PayPal webhook simulator in the developer dashboard
-
-### Using webhook.site or similar
-
-Create a provider with the `CaptainHook::Verifiers::WebhookSite` verifier for simple testing without signature verification.
-
-## Action Examples
-
-### Basic Action
-
-```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
-module Stripe
-  class PaymentSucceededAction
-    def self.details
-      {
-        description: "Handles Stripe payment succeeded events",
-        event_type: "payment_intent.succeeded",
-        priority: 100,
-        async: true,
-        max_attempts: 3
-      }
-    end
-
-    def webhook_action(event:, payload:, metadata:)
-      Rails.logger.info "Payment succeeded: #{payload.dig('data', 'object', 'id')}"
-    end
-  end
-end
-```
-
-### Action with Error Handling
-
-```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
-module Stripe
-  class PaymentSucceededAction
-    def self.details
-      {
-        event_type: "payment_intent.succeeded",
-        priority: 100,
-        async: true,
-        max_attempts: 3
-      }
-    end
-
-    def webhook_action(event:, payload:, metadata:)
-      payment_intent_id = payload.dig("data", "object", "id")
       
-      payment = Payment.find_by!(stripe_id: payment_intent_id)
-      payment.mark_succeeded!
-      
-      # Send confirmation email
-      PaymentMailer.success(payment).deliver_later
-      
+      Rails.logger.info "✅ Payment processed: Order ##{order.id}"
     rescue ActiveRecord::RecordNotFound => e
-      Rails.logger.error "Payment not found: #{payment_intent_id}"
-      raise # Re-raise to trigger retry
+      Rails.logger.warn "⚠️  Order not found for payment: #{payment_intent['id']}"
+      # Don't retry - order doesn't exist
     end
   end
 end
 ```
 
-### Action with Wildcard Event Types
+#### Wildcard Actions
+
+Handle multiple event types with a single action using wildcards:
 
 ```ruby
-# captain_hook/square/actions/bank_account_action.rb
-# Handles multiple related events
-module Square
-  class BankAccountAction
+module Stripe
+  class CustomerEventsAction
     def self.details
       {
-        description: "Handles Square bank account events",
-        event_type: "bank_account.*",  # Wildcard matches all bank_account.* events
+        description: "Handle all customer events",
+        event_type: "customer.*",  # Matches customer.created, customer.updated, etc.
         priority: 100,
-        async: true
+        async: true,
+        max_attempts: 3
       }
     end
 
     def webhook_action(event:, payload:, metadata:)
-      event_type = payload["type"]
-      bank_account = payload.dig("data", "object")
+      customer_data = payload.dig("data", "object")
       
-      # event.event_type contains the specific event
       case event.event_type
-      when "bank_account.verified"
-        BankAccount.find_by(square_id: bank_account["id"])&.mark_verified!
-      when "bank_account.disabled"
-        BankAccount.find_by(square_id: bank_account["id"])&.mark_disabled!
+      when "customer.created"
+        handle_customer_created(customer_data)
+      when "customer.updated"
+        handle_customer_updated(customer_data)
+      when "customer.deleted"
+        handle_customer_deleted(customer_data)
       end
     end
   end
 end
-
-# No manual registration needed - automatically discovered on boot!
 ```
 
-## Documentation
+### Adding Custom Providers
 
-### For Gem Developers
+If you need a provider that's not built-in:
 
-**Building a gem that needs webhook support?** 
+#### 1. Create Provider Configuration
 
-See our comprehensive guide: [**Setting Up Webhooks in Your Gem**](docs/GEM_WEBHOOK_SETUP.md)
+`captain_hook/my_provider/my_provider.yml`:
 
-This guide shows you how to create provider verifiers, action classes, and YAML configurations that integrate seamlessly with CaptainHook. Perfect for payment processing gems, notification services, or any gem that receives webhooks from external providers.
+```yaml
+name: my_provider
+display_name: My Provider
+description: Custom webhook provider
+verifier_file: my_provider.rb
+active: true
+signing_secret: ENV[MY_PROVIDER_SECRET]
+```
 
-### General Documentation
+#### 2. Create Custom Verifier
 
-- **Action Management**: [docs/ACTION_MANAGEMENT.md](docs/ACTION_MANAGEMENT.md) - Managing actions via admin UI
-- **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](docs/PROVIDER_DISCOVERY.md) - File-based provider configuration
-- **Verifiers Reference**: [docs/VERIFIERS.md](docs/VERIFIERS.md) - Detailed verifier implementation guide
-- **Signing Secret Storage**: [docs/SIGNING_SECRET_STORAGE.md](docs/SIGNING_SECRET_STORAGE.md) - Security and encryption details
-- **Visual Guide**: [docs/VISUAL_GUIDE.md](docs/VISUAL_GUIDE.md) - Screenshots and UI walkthrough
-- **Performance Benchmarks**: [benchmark/README.md](benchmark/README.md) - Benchmarking suite and CI integration
+`captain_hook/my_provider/my_provider.rb`:
 
-## Development
+```ruby
+module CaptainHook
+  module Verifiers
+    class MyProvider < Base
+      def verify_signature(payload:, headers:, provider_config:)
+        signature = headers["X-My-Provider-Signature"]
+        return false unless signature.present?
+        
+        secret = provider_config.signing_secret
+        expected = compute_signature(payload, secret)
+        
+        secure_compare(signature, expected)
+      end
+      
+      private
+      
+      def compute_signature(payload, secret)
+        OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
+      end
+    end
+  end
+end
+```
 
-### Running Tests
+#### 3. Create Actions
+
+`captain_hook/my_provider/actions/event_action.rb`:
+
+```ruby
+module MyProvider
+  class EventAction
+    def self.details
+      {
+        description: "Handle my provider events",
+        event_type: "event.type",
+        priority: 100,
+        async: true,
+        max_attempts: 5
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata:)
+      # Your logic here
+    end
+  end
+end
+```
+
+## 🎨 Admin UI
+
+Access the admin UI at:
+
+```
+http://localhost:3000/captain_hook
+```
+
+### Features
+
+- **Dashboard** - Overview of webhook traffic and health
+- **Providers** - Manage provider configurations and tokens
+- **Events** - Browse all incoming webhooks with filtering
+- **Actions** - Monitor action execution status
+- **Retry Failed Actions** - Manually retry failed webhook processing
+- **Inspect Payloads** - View full webhook JSON payloads
+- **Search & Filter** - Find specific webhooks by provider, event type, date
+
+### Securing the Admin UI
+
+Protect the admin UI with authentication:
+
+```ruby
+# config/routes.rb
+authenticate :user, ->(u) { u.admin? } do
+  mount CaptainHook::Engine => "/captain_hook"
+end
+```
+
+Or use HTTP Basic Auth:
+
+```ruby
+# config/initializers/captain_hook.rb
+CaptainHook.configure do |config|
+  config.admin_username = ENV["CAPTAIN_HOOK_ADMIN_USER"]
+  config.admin_password = ENV["CAPTAIN_HOOK_ADMIN_PASSWORD"]
+end
+```
+
+## 🏗️ Architecture
+
+### File Structure
+
+```
+your_rails_app/
+├── captain_hook/                    # Your webhook configurations
+│   ├── stripe/
+│   │   ├── stripe.yml              # Provider config
+│   │   └── actions/
+│   │       ├── payment_intent_succeeded_action.rb
+│   │       └── subscription_updated_action.rb
+│   ├── square/
+│   │   ├── square.yml
+│   │   └── actions/
+│   │       └── payment_action.rb
+│   └── paypal/
+│       ├── paypal.yml
+│       └── actions/
+│           └── order_action.rb
+│
+├── config/
+│   └── initializers/
+│       └── captain_hook.rb         # Global configuration
+│
+└── db/
+    └── migrate/
+        └── [timestamp]_create_captain_hook_*.rb
+```
+
+### Database Schema
+
+Captain Hook uses four main tables:
+
+**captain_hook_providers** - Provider configurations
+- `name` - Provider identifier (stripe, square, etc.)
+- `token` - Unique webhook URL token
+- `active` - Enable/disable provider
+- `signing_secret` - Encrypted webhook secret
+
+**captain_hook_incoming_events** - Webhook event log
+- `provider` - Provider name
+- `external_id` - Provider's event ID
+- `event_type` - Event type (payment_intent.succeeded)
+- `payload` - Full JSON payload
+- `metadata` - Additional event data
+- `status` - pending, processing, completed, failed
+
+**captain_hook_actions** - Registered actions
+- `provider` - Provider name
+- `event_type` - Event type pattern
+- `action_class` - Action class name
+- `priority` - Execution order
+- `async` - Background processing flag
+- `max_attempts` - Retry limit
+
+**captain_hook_incoming_event_actions** - Action execution records
+- `incoming_event_id` - FK to event
+- `action_class` - Action executed
+- `status` - pending, processing, succeeded, failed
+- `attempt_count` - Number of retry attempts
+- `error_message` - Failure reason
+
+### Request Flow
+
+```
+1. Webhook arrives → POST /captain_hook/:provider/:token
+2. Signature verification → CaptainHook::Verifiers::*
+3. Event storage → CaptainHook::IncomingEvent.create!
+4. Idempotency check → Duplicate detection by external_id
+5. Action discovery → Find matching actions by event_type
+6. Action queuing → Create IncomingEventAction records
+7. Background processing → IncomingActionJob.perform_later
+8. Execute action → YourAction#webhook_action
+9. Update status → Mark succeeded/failed
+10. Retry on failure → Exponential backoff
+```
+
+### Service Layer
+
+Captain Hook uses a service-oriented architecture:
+
+- **ProviderDiscovery** - Scans for provider YAML files
+- **ActionDiscovery** - Finds action classes
+- **ProviderSync** - Syncs providers to database
+- **ActionSync** - Syncs actions to database
+- **ActionLookup** - Finds actions for events
+- **RateLimiter** - Enforces rate limits
+- **VerifierDiscovery** - Locates signature verifiers
+
+## 🧪 Testing
+
+### Testing Your Actions
+
+```ruby
+# test/actions/stripe/payment_intent_succeeded_action_test.rb
+require "test_helper"
+
+class PaymentIntentSucceededActionTest < ActiveSupport::TestCase
+  setup do
+    @action = Stripe::PaymentIntentSucceededAction.new
+    @event = captain_hook_incoming_events(:payment_intent)
+    @payload = {
+      "id" => "evt_123",
+      "type" => "payment_intent.succeeded",
+      "data" => {
+        "object" => {
+          "id" => "pi_123",
+          "amount" => 1000
+        }
+      }
+    }
+  end
+
+  test "processes successful payment" do
+    @action.webhook_action(
+      event: @event,
+      payload: @payload,
+      metadata: {}
+    )
+    
+    assert @event.reload.completed?
+  end
+end
+```
+
+### Test Helpers
+
+Captain Hook provides test helpers:
+
+```ruby
+# Generate valid webhook signature
+signature = captain_hook_signature(payload, provider: :stripe)
+
+# Create test event
+event = create_captain_hook_event(
+  provider: "stripe",
+  event_type: "payment_intent.succeeded",
+  payload: { test: "data" }
+)
+
+# Simulate webhook request
+post captain_hook_webhook_path(
+  provider: "stripe",
+  token: @provider.token
+),
+  params: webhook_payload,
+  headers: { "Stripe-Signature" => signature }
+```
+
+### Testing Signature Verification
+
+```ruby
+# test/verifiers/my_provider_verifier_test.rb
+class MyProviderVerifierTest < ActiveSupport::TestCase
+  setup do
+    @verifier = CaptainHook::Verifiers::MyProvider.new
+    @secret = "secret123"
+  end
+
+  test "accepts valid signature" do
+    payload = '{"event":"test"}'
+    signature = compute_signature(payload, @secret)
+    
+    result = @verifier.verify_signature(
+      payload: payload,
+      headers: { "X-Signature" => signature },
+      provider_config: build_config
+    )
+    
+    assert result
+  end
+
+  test "rejects invalid signature" do
+    result = @verifier.verify_signature(
+      payload: '{"event":"test"}',
+      headers: { "X-Signature" => "invalid" },
+      provider_config: build_config
+    )
+    
+    refute result
+  end
+end
+```
+
+## 🔧 Rake Tasks
+
+Captain Hook provides several rake tasks:
 
 ```bash
+# Setup wizard (installation)
+rails captain_hook:setup
+
+# Discover and register providers and actions
+rails captain_hook:discover
+
+# Validate configuration
+rails captain_hook:doctor
+
+# Archive old webhooks
+rails captain_hook:archive[90]  # Archive events older than 90 days
+
+# Clean up old events
+rails captain_hook:cleanup[30]  # Delete archived events older than 30 days
+
+# Retry failed actions
+rails captain_hook:retry_failed[24]  # Retry actions that failed in last 24 hours
+```
+
+## 📊 Monitoring & Instrumentation
+
+Captain Hook emits ActiveSupport notifications for monitoring:
+
+```ruby
+# Subscribe to all webhook events
+ActiveSupport::Notifications.subscribe(/captain_hook/) do |name, start, finish, id, payload|
+  duration = finish - start
+  Rails.logger.info "#{name}: #{duration}ms - #{payload.inspect}"
+end
+
+# Available events:
+# captain_hook.webhook_received
+# captain_hook.signature_verified
+# captain_hook.signature_failed
+# captain_hook.action_started
+# captain_hook.action_completed
+# captain_hook.action_failed
+# captain_hook.rate_limit_exceeded
+```
+
+### Metrics Integration
+
+```ruby
+# config/initializers/captain_hook_metrics.rb
+ActiveSupport::Notifications.subscribe("captain_hook.action_completed") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  
+  # Send to your metrics service
+  StatsD.histogram("webhook.action.duration", event.duration)
+  StatsD.increment("webhook.action.success", 
+    tags: ["provider:#{event.payload[:provider]}"])
+end
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/bowerbird-app/captain-hook.git
+cd captain-hook
+
+# Install dependencies
+bundle install
+
+# Set up test database
+cd test/dummy
+bin/rails db:create db:migrate
+cd ../..
+
+# Run tests
 bundle exec rake test
+
+# Run RSpec tests
+bundle exec rspec
 ```
 
-### Running Benchmarks
+### Adding a New Built-in Verifier
 
-```bash
-# From test/dummy app
-cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:all
+If you're adding support for a common provider:
 
-# Individual benchmarks
-cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:signatures
-cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:database
-cd test/dummy && RAILS_ENV=test bundle exec rake benchmark:actions
-```
+1. Create verifier in `lib/captain_hook/verifiers/provider_name.rb`
+2. Inherit from `CaptainHook::Verifiers::Base`
+3. Implement `verify_signature` method
+4. Add example config in `captain_hook/provider_name/`
+5. Write comprehensive tests
+6. Submit PR with documentation
 
-See [benchmark/README.md](benchmark/README.md) for complete documentation.
+## 📝 License
 
-## License
+This project is licensed under the MIT License - see the [MIT-LICENSE](MIT-LICENSE) file for details.
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+## 🆘 Support
+
+- **Documentation:** [GitHub Wiki](https://github.com/bowerbird-app/captain-hook/wiki)
+- **Issues:** [GitHub Issues](https://github.com/bowerbird-app/captain-hook/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/bowerbird-app/captain-hook/discussions)
+
+## 🙏 Acknowledgments
+
+Captain Hook is inspired by and builds upon patterns from:
+- [Stripe's webhook handling best practices](https://stripe.com/docs/webhooks/best-practices)
+- [Rails Event Store](https://railseventstore.org/)
+- [Sidekiq's retry mechanism](https://github.com/mperham/sidekiq)
+
+---
+
+Made with ⚓ by the Bowerbird team
