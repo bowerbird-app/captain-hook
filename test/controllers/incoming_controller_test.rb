@@ -298,5 +298,95 @@ module CaptainHook
       # Should not raise ActionController::InvalidAuthenticityToken
       assert_response :created
     end
+
+    # === Security Tests ===
+
+    test "should use constant-time comparison for token validation" do
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
+
+      # Test with nearly-matching token (differs by one character)
+      post "/captain_hook/stripe/test_tokeo",
+           params: @valid_payload,
+           headers: {
+             "Content-Type" => "application/json",
+             "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
+           }
+
+      assert_response :unauthorized
+      json = JSON.parse(response.body)
+      assert_equal "Invalid token", json["error"]
+    end
+
+    test "should prevent timing attacks on token comparison" do
+      signature = generate_stripe_signature(@valid_payload, @timestamp, @test_signing_secret)
+
+      # Test multiple tokens with varying similarity
+      tokens_to_test = [
+        "aaaa_token",      # Completely different
+        "test_aaaaa",      # Same length, different end
+        "tast_token",      # One char different in middle
+        "test_tokeo"       # One char different at end
+      ]
+
+      tokens_to_test.each do |wrong_token|
+        post "/captain_hook/stripe/#{wrong_token}",
+             params: @valid_payload,
+             headers: {
+               "Content-Type" => "application/json",
+               "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
+             }
+
+        assert_response :unauthorized, "Token #{wrong_token} should be rejected"
+        json = JSON.parse(response.body)
+        assert_equal "Invalid token", json["error"]
+      end
+    end
+
+    test "should sanitize error logs for invalid JSON to prevent sensitive data leakage" do
+      invalid_payload = '{"secret": "supersecret", "invalid": json}'
+      signature = generate_stripe_signature(invalid_payload, @timestamp, @test_signing_secret)
+
+      # Capture Rails logger output
+      log_output = StringIO.new
+      original_logger = Rails.logger
+      Rails.logger = Logger.new(log_output)
+
+      post "/captain_hook/stripe/test_token",
+           env: { "RAW_POST_DATA" => invalid_payload },
+           headers: {
+             "Content-Type" => "application/json",
+             "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
+           }
+
+      assert_response :bad_request
+
+      # Verify log contains only provider name, not sensitive payload
+      log_content = log_output.string
+      assert_includes log_content, "provider=stripe", "Should log provider name"
+      refute_includes log_content, "supersecret", "Should NOT log sensitive data from payload"
+      refute_includes log_content, invalid_payload, "Should NOT log raw payload"
+
+      Rails.logger = original_logger
+    end
+
+    test "should not expose error details in response for invalid JSON" do
+      invalid_payload = '{"secret": "supersecret", "password": "hunter2", invalid: }'
+      signature = generate_stripe_signature(invalid_payload, @timestamp, @test_signing_secret)
+
+      post "/captain_hook/stripe/test_token",
+           env: { "RAW_POST_DATA" => invalid_payload },
+           headers: {
+             "Content-Type" => "application/json",
+             "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
+           }
+
+      assert_response :bad_request
+      json = JSON.parse(response.body)
+
+      # Response should be generic, not expose payload details
+      assert_equal "Invalid JSON", json["error"]
+      refute_includes response.body, "supersecret"
+      refute_includes response.body, "hunter2"
+    end
   end
 end

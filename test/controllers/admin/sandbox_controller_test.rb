@@ -148,6 +148,177 @@ module CaptainHook
           assert_includes json["error"], "Verifier class not found"
         end
       end
+
+      # === Security Tests ===
+
+      test "should reject dangerous verifier class name - Kernel" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_kernel",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_kernel",
+          token: "bad_test_token",
+          verifier_class: "Kernel"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_not json["success"]
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject dangerous verifier class name - Object" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_object",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_object",
+          token: "bad_test_token",
+          verifier_class: "Object"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject dangerous verifier class name - File" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_file",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_file",
+          token: "bad_test_token",
+          verifier_class: "File::Read"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject dangerous verifier class name - IO" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_io",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_io",
+          token: "bad_test_token",
+          verifier_class: "IO"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject verifier class name with Eval" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_eval",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_eval",
+          token: "bad_test_token",
+          verifier_class: "EvalHelper"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject verifier class name with directory traversal" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_traversal",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_traversal",
+          token: "bad_test_token",
+          verifier_class: "../../BadClass"
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
+
+      test "should reject blank verifier class name" do
+        bad_provider = CaptainHook::Provider.create!(
+          name: "bad_blank",
+          token: "bad_test_token"
+        )
+
+        bad_config = CaptainHook::ProviderConfig.new(
+          name: "bad_blank",
+          token: "bad_test_token",
+          verifier_class: ""
+        )
+
+        CaptainHook.configuration.stub(:provider, bad_config) do
+          payload = { id: "test" }.to_json
+
+          post "/captain_hook/admin/sandbox/test",
+               params: { provider_id: bad_provider.id, payload: payload }
+
+          assert_response :bad_request
+          json = JSON.parse(response.body)
+          assert_equal "Invalid verifier class", json["error"]
+        end
+      end
     end
   end
 end

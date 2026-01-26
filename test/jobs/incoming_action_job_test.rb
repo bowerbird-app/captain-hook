@@ -172,6 +172,141 @@ module CaptainHook
 
       Object.send(:remove_const, :TrackingAction)
     end
+
+    # === Security Tests ===
+
+    test "job rejects dangerous class names to prevent code injection via Kernel" do
+      @action_record.update!(action_class: "Kernel::System")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "Kernel::System",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: Kernel::System") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects dangerous class names to prevent code injection via Object" do
+      @action_record.update!(action_class: "Object::Something")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "Object::Something",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: Object::Something") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects dangerous class names to prevent code injection via File" do
+      @action_record.update!(action_class: "File::Read")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "File::Read",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: File::Read") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects dangerous class names to prevent code injection via IO" do
+      @action_record.update!(action_class: "IO::Console")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "IO::Console",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: IO::Console") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects dangerous class names to prevent code injection via Eval" do
+      @action_record.update!(action_class: "EvalHelper")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "EvalHelper",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: EvalHelper") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects directory traversal in class names" do
+      @action_record.update!(action_class: "../../../EtcPasswd")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "../../../EtcPasswd",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: ../../../EtcPasswd") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job rejects class names starting with lowercase" do
+      @action_record.update!(action_class: "lowercaseClass")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "lowercaseClass",
+        priority: 100
+      )
+
+      assert_raises(SecurityError, "Invalid action class name: lowercaseClass") do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+    end
+
+    test "job accepts legitimate namespaced class names" do
+      Object.const_set(:MyModule, Module.new)
+      MyModule.const_set(:MyAction, Class.new do
+        def webhook_action(event:, payload:, metadata:)
+          # Successfully handled
+        end
+      end)
+
+      @action_record.update!(action_class: "MyModule::MyAction")
+
+      CaptainHook.action_registry.register(
+        provider: @provider.name,
+        event_type: "test.event",
+        action_class: "MyModule::MyAction",
+        priority: 100
+      )
+
+      assert_nothing_raised do
+        IncomingActionJob.perform_now(@action_record.id)
+      end
+
+      @action_record.reload
+      assert @action_record.status_processed?
+
+      MyModule.send(:remove_const, :MyAction)
+      Object.send(:remove_const, :MyModule)
+    end
   end
 
   class ArchivalJobTest < ActiveSupport::TestCase
