@@ -410,6 +410,20 @@ module CaptainHook
 end
 ```
 
+**Available Helper Methods:**
+
+Captain Hook provides reusable helper methods via `CaptainHook::VerifierHelpers` that you can use in your custom verifier:
+
+- `secure_compare(a, b)` - Constant-time string comparison (prevents timing attacks)
+- `generate_hmac(secret, data)` - Generate HMAC-SHA256 signature (hex-encoded)
+- `generate_hmac_base64(secret, data)` - Generate HMAC-SHA256 signature (Base64-encoded)
+- `extract_header(headers, *keys)` - Extract header value with case-insensitive matching
+- `parse_kv_header(header_value)` - Parse key-value headers (e.g., Stripe's signature format)
+- `timestamp_within_tolerance?(timestamp, tolerance)` - Check if timestamp is recent enough
+- `parse_timestamp(time_string)` - Parse timestamps from various formats
+
+These helpers are automatically available in verifiers that inherit from `Base`. See [VERIFIER_HELPERS.md](docs/VERIFIER_HELPERS.md) for detailed documentation.
+
 #### 3. Create Actions
 
 `captain_hook/my_provider/actions/event_action.rb`:
@@ -464,15 +478,7 @@ authenticate :user, ->(u) { u.admin? } do
 end
 ```
 
-Or use HTTP Basic Auth:
-
-```ruby
-# config/initializers/captain_hook.rb
-CaptainHook.configure do |config|
-  config.admin_username = ENV["CAPTAIN_HOOK_ADMIN_USER"]
-  config.admin_password = ENV["CAPTAIN_HOOK_ADMIN_PASSWORD"]
-end
-```
+This assumes you have a User model with an `admin?` method. Adjust the authentication logic based on your application's authentication system.
 
 ## 🏗️ Architecture
 
@@ -480,28 +486,17 @@ end
 
 ```
 your_rails_app/
-├── captain_hook/                    # Your webhook configurations
-│   ├── stripe/
-│   │   ├── stripe.yml              # Provider config
-│   │   └── actions/
-│   │       ├── payment_intent_succeeded_action.rb
-│   │       └── subscription_updated_action.rb
-│   ├── square/
-│   │   ├── square.yml
-│   │   └── actions/
-│   │       └── payment_action.rb
-│   └── paypal/
-│       ├── paypal.yml
-│       └── actions/
-│           └── order_action.rb
-│
-├── config/
-│   └── initializers/
-│       └── captain_hook.rb         # Global configuration
-│
-└── db/
-    └── migrate/
-        └── [timestamp]_create_captain_hook_*.rb
+└── captain_hook/                    # Your webhook configurations
+    ├── stripe/                      # Built-in provider (no YAML needed)
+    │   └── actions/
+    │       ├── payment_intent_succeeded_action.rb
+    │       └── subscription_updated_action.rb
+    │
+    └── new_provider/                # Custom provider
+        ├── new_provider.yml         # Provider configuration
+        ├── new_provider.rb          # Custom verifier
+        └── actions/
+            └── event_action.rb
 ```
 
 ### Database Schema
