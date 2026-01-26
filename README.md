@@ -44,7 +44,7 @@ A comprehensive Rails engine for managing webhook integrations with features inc
 ### 📊 Observability
 - **Event Storage** - Persists all incoming webhooks with full audit trail
 - **Action Tracking** - Monitor processing status, attempts, and errors
-- **Metrics** - Track success rates, latency, and throughput
+- **Metrics** - Track success rates, latency, and throughput ([guide](docs/METRICS.md))
 - **Debugging Tools** - Inspect payloads, view error messages, retry failed actions
 
 ## 🚀 Installation
@@ -716,7 +716,9 @@ rails captain_hook:retry_failed[24]  # Retry actions that failed in last 24 hour
 
 ## 📊 Monitoring & Instrumentation
 
-Captain Hook emits ActiveSupport notifications for monitoring:
+Captain Hook emits ActiveSupport notifications for monitoring. For a complete guide on tracking success rates, latency, and throughput, see [METRICS.md](docs/METRICS.md).
+
+### Quick Example
 
 ```ruby
 # Subscribe to all webhook events
@@ -724,30 +726,51 @@ ActiveSupport::Notifications.subscribe(/captain_hook/) do |name, start, finish, 
   duration = finish - start
   Rails.logger.info "#{name}: #{duration}ms - #{payload.inspect}"
 end
+```
 
-# Available events:
-# captain_hook.webhook_received
-# captain_hook.signature_verified
-# captain_hook.signature_failed
-# captain_hook.action_started
-# captain_hook.action_completed
-# captain_hook.action_failed
-# captain_hook.rate_limit_exceeded
+### Available Events
+
+```ruby
+# Webhook events
+incoming_event.received.captain_hook
+incoming_event.processing.captain_hook
+incoming_event.processed.captain_hook
+incoming_event.failed.captain_hook
+
+# Action events
+action.started.captain_hook
+action.completed.captain_hook
+action.failed.captain_hook
+
+# Security events
+signature.verified.captain_hook
+signature.failed.captain_hook
+rate_limit.exceeded.captain_hook
 ```
 
 ### Metrics Integration
 
+Send metrics to your monitoring service:
+
 ```ruby
 # config/initializers/captain_hook_metrics.rb
-ActiveSupport::Notifications.subscribe("captain_hook.action_completed") do |*args|
+ActiveSupport::Notifications.subscribe("action.completed.captain_hook") do |*args|
   event = ActiveSupport::Notifications::Event.new(*args)
   
   # Send to your metrics service
-  StatsD.histogram("webhook.action.duration", event.duration)
-  StatsD.increment("webhook.action.success", 
-    tags: ["provider:#{event.payload[:provider]}"])
+  StatsD.histogram("webhook.action.duration", event.payload[:duration] * 1000)
+  StatsD.increment("webhook.action.success")
+end
+
+ActiveSupport::Notifications.subscribe("action.failed.captain_hook") do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  
+  StatsD.increment("webhook.action.failure", 
+    tags: ["error:#{event.payload[:error]}"])
 end
 ```
+
+**For complete metrics implementation examples** (StatsD, Prometheus, New Relic, etc.), see the [Metrics Guide](docs/METRICS.md).
 
 ## 🤝 Contributing
 
