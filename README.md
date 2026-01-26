@@ -82,29 +82,31 @@ rails db:migrate
 
 ## 🎯 Quick Start
 
-### 1. Configure Your First Provider
+### 1. Configure Your Provider
 
-Create a provider configuration file at `captain_hook/stripe/stripe.yml`:
+For built-in providers (Stripe, Square, PayPal), the provider configuration is already included. You only need to set the signing secret in your environment variables:
+
+```bash
+# .env
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+```
+
+**For custom providers**, create a provider configuration file at `captain_hook/<provider_name>/<provider_name>.yml`:
 
 ```yaml
-name: stripe
-display_name: Stripe
-description: Stripe payment webhooks
-verifier_file: stripe.rb  # Built-in verifier
+name: my_provider
+display_name: My Provider
+description: Custom webhook provider
+verifier_file: my_provider.rb
 active: true
-
-# Security
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
-timestamp_tolerance_seconds: 300
-
-# Rate limiting (optional)
-rate_limit_requests: 100
-rate_limit_period: 60
+signing_secret: ENV[MY_PROVIDER_SECRET]
 ```
 
 ### 2. Create an Action
 
-Create an action to handle specific events at `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`:
+Create an action to handle specific events. Actions must follow the structure `captain_hook/<provider_name>/actions/<action_name>.rb`.
+
+For example, create a Stripe action at `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`:
 
 ```ruby
 module Stripe
@@ -442,6 +444,7 @@ http://localhost:3000/captain_hook
 - **Actions** - Monitor action execution status
 - **Retry Failed Actions** - Manually retry failed webhook processing
 - **Inspect Payloads** - View full webhook JSON payloads
+- **Configure Action Retries** - Edit max attempts and retry delays for each action handler
 - **Search & Filter** - Find specific webhooks by provider, event type, date
 
 ### Securing the Admin UI
