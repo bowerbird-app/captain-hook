@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-class CreateCaptainHookIncomingEventHandlers < ActiveRecord::Migration[7.0]
+class CreateCaptainHookIncomingEventActions < ActiveRecord::Migration[8.0]
   def change
-    create_table :captain_hook_incoming_event_handlers, id: :uuid do |t|
+    create_table :captain_hook_incoming_event_actions, id: :uuid do |t|
       t.uuid :incoming_event_id, null: false
-      t.string :handler_class, null: false
+      t.string :action_class, null: false
       t.string :status, null: false, default: "pending"
       t.integer :priority, null: false, default: 100
       t.integer :attempt_count, null: false, default: 0
@@ -22,7 +22,7 @@ class CreateCaptainHookIncomingEventHandlers < ActiveRecord::Migration[7.0]
       # Indexes for processing and querying
       t.index :incoming_event_id
       t.index :status
-      t.index %i[status priority handler_class], name: "idx_captain_hook_handlers_processing_order"
+      t.index %i[status priority action_class], name: "idx_captain_hook_actions_processing_order"
       t.index :locked_at
     end
   end

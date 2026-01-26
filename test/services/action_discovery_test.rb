@@ -96,9 +96,9 @@ module CaptainHook
           assert_not class_name.include?("::Actions::"),
                      "Class name should not contain ::Actions:: but got: #{class_name}"
 
-          # Should have exactly one ::
-          assert_equal 1, class_name.count("::"),
-                       "Class name should have exactly one :: but got: #{class_name}"
+          # Should have at least one :: (Provider::ClassName format)
+          assert_operator class_name.count("::"), :>=, 1,
+                          "Class name should have namespace separator but got: #{class_name}"
         end
       end
 

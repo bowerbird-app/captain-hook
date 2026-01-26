@@ -148,7 +148,7 @@ module CaptainHook
       received_args = {}
 
       Object.const_set(:TrackingAction, Class.new do
-        define_method(:handle) do |event:, payload:, metadata:|
+        define_method(:webhook_action) do |event:, payload:, metadata:|
           received_args[:event] = event
           received_args[:payload] = payload
           received_args[:metadata] = metadata

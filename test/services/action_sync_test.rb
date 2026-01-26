@@ -9,8 +9,8 @@ module CaptainHook
         @action_definitions = [
           {
             "provider" => "stripe",
-            "event_type" => "payment.succeeded",
-            "action_class" => "PaymentAction",
+            "event" => "payment.succeeded",
+            "action" => "PaymentAction",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -99,8 +99,8 @@ module CaptainHook
         definitions = [
           {
             "provider" => "stripe",
-            "event_type" => "payment.succeeded",
-            "action_class" => "PaymentAction",
+            "event" => "payment.succeeded",
+            "action" => "PaymentAction",
             "async" => true,
             "max_attempts" => 5,
             "priority" => 100,
@@ -108,8 +108,8 @@ module CaptainHook
           },
           {
             "provider" => "stripe",
-            "event_type" => "payment.failed",
-            "action_class" => "FailedPaymentAction",
+            "event" => "payment.failed",
+            "action" => "FailedPaymentAction",
             "async" => true,
             "max_attempts" => 3,
             "priority" => 50,
@@ -130,8 +130,8 @@ module CaptainHook
         invalid_definitions = [
           {
             "provider" => "stripe",
-            "event_type" => "payment.succeeded"
-            # Missing action_class
+            "event" => "payment.succeeded"
+            # Missing action
           }
         ]
 
@@ -148,8 +148,8 @@ module CaptainHook
         invalid_definitions = [
           {
             "provider" => "stripe",
-            "event_type" => "payment.succeeded",
-            "action_class" => "PaymentAction",
+            "event" => "payment.succeeded",
+            "action" => "PaymentAction",
             "async" => true,
             "max_attempts" => 0, # Invalid - must be > 0
             "priority" => 100,

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class CreateCaptainHookIncomingEvents < ActiveRecord::Migration[7.0]
+class CreateCaptainHookIncomingEvents < ActiveRecord::Migration[8.0]
   def change
     create_table :captain_hook_incoming_events, id: :uuid do |t|
       t.string :provider, null: false
@@ -8,9 +8,9 @@ class CreateCaptainHookIncomingEvents < ActiveRecord::Migration[7.0]
       t.string :event_type, null: false
       t.string :status, null: false, default: "received"
       t.string :dedup_state, null: false, default: "unique"
-      t.jsonb :payload
-      t.jsonb :headers
-      t.jsonb :metadata
+      t.json :payload
+      t.json :headers
+      t.json :metadata
       t.string :request_id
       t.datetime :archived_at
       t.integer :lock_version, null: false, default: 0

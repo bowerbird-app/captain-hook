@@ -25,7 +25,6 @@ module CaptainHook
 
         providers.each do |provider|
           assert provider["name"].present?, "Provider should have a name"
-          assert provider["verifier_class"].present?, "Provider should have a verifier_class"
           assert provider["source_file"].present?, "Provider should have source_file metadata"
           assert provider["source"].present?, "Provider should have source metadata"
         end
@@ -37,7 +36,7 @@ module CaptainHook
 
         assert_not_nil square_provider
         assert_equal "Square", square_provider["display_name"]
-        assert_equal "CaptainHook::Verifiers::Square", square_provider["verifier_class"]
+        assert_equal "square.rb", square_provider["verifier_file"]
       end
 
       test "handles missing directory gracefully" do

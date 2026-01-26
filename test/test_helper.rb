@@ -11,6 +11,10 @@ ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"] = "m9zZmUjUUXMdeQnp5HeIAFQ3DdPImKAd"
 ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"] = "zMGZzfBbHG8t38g1M2RKD5AsnSzva90q"
 ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"] = "yBlRa4HF0NLzhKDXSpk1ruiDhccvRkM2"
 
+# Suppress method redefinition warnings in test environment
+# (Action files may be loaded multiple times during discovery)
+$VERBOSE = nil
+
 require_relative "dummy/config/environment"
 require "rails/test_help"
 require "minitest/autorun"
