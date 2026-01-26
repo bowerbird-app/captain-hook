@@ -141,10 +141,11 @@ module CaptainHook
           post "/captain_hook/admin/sandbox/test",
                params: { provider_id: bad_provider.id, payload: payload }
 
-          assert_response :internal_server_error
+          # Security validation catches non-existent verifier classes and returns 400
+          assert_response :bad_request
           json = JSON.parse(response.body)
           assert_not json["success"]
-          assert json["error"].present?
+          assert_includes json["error"], "Verifier class not found"
         end
       end
     end

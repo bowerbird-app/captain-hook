@@ -4,6 +4,8 @@ module CaptainHook
   # Controller for receiving incoming webhooks
   # Route: POST /captain_hook/:provider/:token
   class IncomingController < ApplicationController
+    include CaptainHook::VerifierHelpers
+
     skip_before_action :verify_authenticity_token
 
     # Receive a webhook from a provider
@@ -29,8 +31,8 @@ module CaptainHook
         return
       end
 
-      # Verify token
-      unless provider_config.token == token
+      # Verify token (constant-time comparison to prevent timing attacks)
+      unless secure_compare(provider_config.token.to_s, token.to_s)
         render json: { error: "Invalid token" }, status: :unauthorized
         return
       end
@@ -84,7 +86,8 @@ module CaptainHook
       begin
         parsed_payload = JSON.parse(raw_payload)
       rescue JSON::ParserError => e
-        Rails.logger.error "🔍 JSON parse failed: #{e.message}"
+        # Sanitize error message to prevent sensitive data leakage
+        Rails.logger.error "🔍 JSON parse failed for provider=#{provider_name}"
         render json: { error: "Invalid JSON" }, status: :bad_request
         return
       end

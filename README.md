@@ -469,6 +469,12 @@ http://localhost:3000/captain_hook
 
 ### Securing the Admin UI
 
+⚠️ **SECURITY WARNING:** The admin UI has NO authentication enabled by default. Anyone who can access your application can view webhook data, inspect payloads (which may contain sensitive information), retry failed actions, and modify provider configurations.
+
+**You MUST implement authentication before deploying to production.**
+
+#### Option 1: Route Constraint Authentication
+
 Protect the admin UI with authentication:
 
 ```ruby
@@ -478,7 +484,37 @@ authenticate :user, ->(u) { u.admin? } do
 end
 ```
 
-This assumes you have a User model with an `admin?` method. Adjust the authentication logic based on your application's authentication system.
+This assumes you have a User model with an `admin?` method. Adjust the authentication logic based on your application's authentication system (Devise, Clearance, AuthLogic, etc.).
+
+#### Option 2: Controller-Level Authentication
+
+Override the `authenticate_admin!` method in your application:
+
+```ruby
+# app/controllers/application_controller.rb
+class ApplicationController < ActionController::Base
+  # This will be inherited by CaptainHook::Admin::BaseController
+  def authenticate_admin!
+    redirect_to root_path, alert: "Access denied" unless current_user&.admin?
+  end
+end
+```
+
+#### Security Best Practices
+
+1. **Implement Role-Based Authorization**: Don't just check authentication - verify the user has admin privileges
+2. **Use HTTPS in Production**: Webhook URLs and admin interface should always use HTTPS
+3. **Audit Logging**: Monitor admin actions (especially retries and configuration changes)
+4. **IP Whitelisting**: Consider restricting admin access to specific IP ranges
+5. **Regular Security Audits**: Review who has admin access periodically
+
+⚠️ **Note:** The default admin interface allows viewing full webhook payloads, which may contain:
+- Customer personal information (PII)
+- Payment details
+- API keys or tokens
+- Business-sensitive data
+
+Ensure your authentication and authorization meet your compliance requirements (GDPR, PCI-DSS, HIPAA, etc.).
 
 ## 🏗️ Architecture
 

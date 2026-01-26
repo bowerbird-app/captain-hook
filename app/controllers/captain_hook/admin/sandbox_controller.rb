@@ -34,8 +34,25 @@ module CaptainHook
         end
 
         # Get the verifier
-        verifier_class = provider_config.verifier_class.constantize
-        verifier = verifier_class.new
+        # Security: Validate verifier class name before constantize
+        unless valid_verifier_class_name?(provider_config.verifier_class)
+          render json: {
+            success: false,
+            error: "Invalid verifier class"
+          }, status: :bad_request
+          return
+        end
+
+        begin
+          verifier_class = provider_config.verifier_class.constantize
+          verifier = verifier_class.new
+        rescue NameError => e
+          render json: {
+            success: false,
+            error: "Verifier class not found: #{provider_config.verifier_class}"
+          }, status: :bad_request
+          return
+        end
 
         # Extract event details (dry run - no database)
         event_type = verifier.extract_event_type(payload_hash)
@@ -85,6 +102,28 @@ module CaptainHook
           error: e.message,
           backtrace: Rails.env.development? ? e.backtrace.first(5) : nil
         }, status: :internal_server_error
+      end
+
+      private
+
+      # Security: Validate verifier class names to prevent code injection via constantize
+      def valid_verifier_class_name?(class_name)
+        return false if class_name.blank?
+
+        # Allow only alphanumeric characters, underscores, and :: for namespacing
+        # Must start with capital letter (valid Ruby class name format)
+        return false unless class_name.match?(/\A[A-Z][a-zA-Z0-9_:]*\z/)
+
+        # Block dangerous patterns
+        dangerous_patterns = [
+          /\.\./, # Directory traversal
+          /^(Kernel|Object|Class|Module|Proc|Method|IO|File|Dir|Process|System)/, # System classes
+          /Eval/ # Eval-related
+        ]
+
+        return false if dangerous_patterns.any? { |pattern| class_name.match?(pattern) }
+
+        true
       end
     end
   end

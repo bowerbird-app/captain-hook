@@ -37,6 +37,12 @@ module CaptainHook
 
         # Execute action - resolve actual class name from stored format
         resolved_class_name = CaptainHook::Services::ActionDiscovery.resolve_action_class(action.action_class)
+
+        # Security: Validate class name before constantize to prevent code injection
+        unless valid_action_class_name?(resolved_class_name)
+          raise SecurityError, "Invalid action class name: #{resolved_class_name}"
+        end
+
         action_class = resolved_class_name.constantize
         action_instance = action_class.new
 
@@ -73,6 +79,32 @@ module CaptainHook
         # Re-raise to mark job as failed
         raise
       end
+    ensure
+      # Release the lock (ignore errors to avoid masking the original exception)
+      begin
+        action.release_lock!(worker_id) if action
+      rescue StandardError => e
+        Rails.logger.error "Failed to release lock for action #{action_id}: #{e.message}"
+      end
+    end
+
+    private
+
+    # Security: Validate action class names to prevent code injection via constantize
+    def valid_action_class_name?(class_name)
+      return false if class_name.blank?
+
+      # Allow only alphanumeric characters, underscores, and :: for namespacing
+      return false unless class_name.match?(/\A[A-Z][a-zA-Z0-9_:]*\z/)
+
+      # Prevent directory traversal or system class access
+      dangerous_patterns = [
+        /\.\./, # Directory traversal
+        /^(Kernel|Object|Class|Module|Proc|Method|IO|File|Dir|Process|System)/, # System classes
+        /Eval/ # Eval-related
+      ]
+
+      dangerous_patterns.none? { |pattern| class_name.match?(pattern) }
     end
   end
 end
