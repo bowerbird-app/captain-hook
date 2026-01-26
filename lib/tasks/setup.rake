@@ -66,31 +66,9 @@ namespace :captain_hook do
       puts "✓ No pending migrations"
     end
 
-    # Step 4: Check encryption keys
-    puts "\n📋 Step 4: Checking encryption keys..."
-    if encryption_keys_configured?
-      puts "✓ Encryption keys already configured"
-    else
-      puts "\n⚠️  ActiveRecord Encryption keys not found!"
-      puts "CaptainHook needs these to encrypt webhook signing secrets."
-
-      if auto_mode
-        puts "Generating encryption keys..."
-        generate_encryption_keys
-      else
-        print "\nGenerate encryption keys now? (Y/n): "
-        response = $stdin.gets.chomp.downcase
-        if response.empty? || response == "y" || response == "yes"
-          generate_encryption_keys
-        else
-          puts "⚠️  Skipping encryption setup. Run 'rails db:encryption:init' manually."
-        end
-      end
-    end
-
-    # Step 5: Create example provider structure (development only)
+    # Step 4: Create example provider structure (development only)
     if Rails.env.development?
-      puts "\n📋 Step 5: Setting up example provider..."
+      puts "\n📋 Step 4: Setting up example provider..."
       example_dir = Rails.root.join("captain_hook/webhook_site")
 
       if File.directory?(example_dir)
@@ -108,8 +86,8 @@ namespace :captain_hook do
       end
     end
 
-    # Step 6: Validate setup
-    puts "\n📋 Step 6: Validating setup..."
+    # Step 5: Validate setup
+    puts "\n📋 Step 5: Validating setup..."
     validation_errors = validate_setup
 
     if validation_errors.empty?
@@ -157,13 +135,6 @@ namespace :captain_hook do
       warnings << "Pending migrations exist. Run: rails db:migrate"
     else
       puts "✓ All migrations applied"
-    end
-
-    # Check encryption
-    if encryption_keys_configured?
-      puts "✓ Encryption keys configured"
-    else
-      errors << "Encryption keys not configured. Run: rails db:encryption:init"
     end
 
     # Check database tables
@@ -256,64 +227,6 @@ namespace :captain_hook do
   rescue StandardError => e
     puts "❌ Error running migrations: #{e.message}"
     puts "Try running manually: rails db:migrate"
-  end
-
-  def encryption_keys_configured?
-    ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"].present? ||
-      (defined?(Rails.application.credentials.active_record_encryption) &&
-       Rails.application.credentials.active_record_encryption.present?)
-  end
-
-  def generate_encryption_keys
-    puts "\nGenerating encryption keys..."
-
-    # Generate keys using Rails built-in
-    output = `rails db:encryption:init 2>&1`
-
-    if output.include?("primary_key:")
-      primary_key = output[/primary_key:\s+(\S+)/, 1]
-      deterministic_key = output[/deterministic_key:\s+(\S+)/, 1]
-      key_derivation_salt = output[/key_derivation_salt:\s+(\S+)/, 1]
-
-      puts "\n✓ Keys generated successfully!"
-      puts "\n" + ("=" * 80)
-      puts "📋 Add these to your environment:"
-      puts "=" * 80
-      puts "\nFor development (.env file):"
-      puts "-" * 80
-      puts "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=#{primary_key}"
-      puts "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=#{deterministic_key}"
-      puts "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=#{key_derivation_salt}"
-
-      puts "\n" + ("=" * 80)
-      puts "For production (set as environment variables):"
-      puts "=" * 80
-      puts "Heroku:  heroku config:set ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=#{primary_key}"
-      puts "Render:  Add to Environment Variables in dashboard"
-      puts "Fly.io:  fly secrets set ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=#{primary_key}"
-      puts "=" * 80
-
-      # Try to add to .env file if it exists
-      env_file = Rails.root.join(".env")
-      if File.exist?(env_file)
-        print "\nAdd keys to .env file automatically? (Y/n): "
-        response = $stdin.gets.chomp.downcase
-        if response.empty? || response == "y" || response == "yes"
-          File.open(env_file, "a") do |f|
-            f.puts "\n# ActiveRecord Encryption Keys (generated #{Time.now})"
-            f.puts "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY=#{primary_key}"
-            f.puts "ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY=#{deterministic_key}"
-            f.puts "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT=#{key_derivation_salt}"
-          end
-          puts "✓ Keys added to .env file"
-          puts "⚠️  Restart your Rails server to load the new keys"
-        end
-      end
-    else
-      puts "❌ Failed to generate keys. Output:"
-      puts output
-      puts "\nTry running manually: rails db:encryption:init"
-    end
   end
 
   def create_example_provider
@@ -417,9 +330,6 @@ namespace :captain_hook do
     unless File.read(Rails.root.join("config/routes.rb")).include?("CaptainHook::Engine")
       errors << "Engine not mounted in routes"
     end
-
-    # Check encryption
-    errors << "Encryption keys not configured (restart server after adding to .env)" unless encryption_keys_configured?
 
     # Check for pending migrations
     errors << "Pending migrations exist" if pending_migrations?
