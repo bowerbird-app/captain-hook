@@ -226,13 +226,13 @@ module CaptainHook
 
     def test_providers_returns_registered_provider_names
       @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
-      @registry.register(provider: "square", event_type: "payment.succeeded", action_class: " Action2")
+      @registry.register(provider: "custom_provider", event_type: "payment.succeeded", action_class: " Action2")
       @registry.register(provider: "stripe", event_type: "payment.failed", action_class: " Action3")
 
       providers = @registry.providers
       assert_equal 2, providers.size
       assert_includes providers, "stripe"
-      assert_includes providers, "square"
+      assert_includes providers, "custom_provider"
     end
 
     def test_providers_returns_empty_array_when_no_actions
@@ -270,13 +270,13 @@ module CaptainHook
 
     def test_clear_removes_all_actions
       @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
-      @registry.register(provider: "square", event_type: "payment.succeeded", action_class: " Action2")
+      @registry.register(provider: "custom_provider", event_type: "payment.succeeded", action_class: " Action2")
 
       @registry.clear!
 
       assert_equal [], @registry.providers
       refute @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
-      refute @registry.actions_registered?(provider: "square", event_type: "payment.succeeded")
+      refute @registry.actions_registered?(provider: "custom_provider", event_type: "payment.succeeded")
     end
 
     # ===  ActionConfig Tests ===
@@ -448,12 +448,12 @@ module CaptainHook
     def test_providers_returns_unique_provider_names
       @registry.register(provider: "stripe", event_type: "payment.succeeded", action_class: " Action1")
       @registry.register(provider: "stripe", event_type: "payment.failed", action_class: " Action2")
-      @registry.register(provider: "paypal", event_type: "sale.completed", action_class: " Action3")
+      @registry.register(provider: "custom_provider", event_type: "sale.completed", action_class: " Action3")
 
       providers = @registry.providers
       assert_equal 2, providers.size
       assert_includes providers, "stripe"
-      assert_includes providers, "paypal"
+      assert_includes providers, "custom_provider"
     end
 
     def test_providers_returns_empty_array_when_no_registrations

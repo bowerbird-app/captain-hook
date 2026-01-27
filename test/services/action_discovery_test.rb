@@ -44,32 +44,6 @@ module CaptainHook
         assert_equal 3, payment_intent_created["max_attempts"]
       end
 
-      test "discovers square actions" do
-        actions = @discovery.call
-        square_actions = actions.select { |a| a["provider"] == "square" }
-
-        assert square_actions.size > 0, "Should find Square actions"
-
-        # Should find BankAccountAction with wildcard
-        bank_account_action = square_actions.find do |a|
-          a["event"] == "bank_account.*"
-        end
-
-        assert_not_nil bank_account_action, "Should find bank_account.* action"
-        assert_equal "Square::BankAccountAction", bank_account_action["action"]
-      end
-
-      test "discovers webhook_site actions" do
-        actions = @discovery.call
-        webhook_site_actions = actions.select { |a| a["provider"] == "webhook_site" }
-
-        assert webhook_site_actions.size > 0, "Should find webhook_site actions"
-
-        test_action = webhook_site_actions.find { |a| a["event"] == "test" }
-        assert_not_nil test_action, "Should find test action"
-        assert_equal "WebhookSite::TestAction", test_action["action"]
-      end
-
       test "for_provider filters actions by provider" do
         stripe_actions = ActionDiscovery.for_provider("stripe")
 

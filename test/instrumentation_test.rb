@@ -32,14 +32,14 @@ module CaptainHook
     end
 
     test "incoming_processing instruments with correct data" do
-      event = OpenStruct.new(id: 456, provider: "square", event_type: "order.created")
+      event = OpenStruct.new(id: 456, provider: "stripe", event_type: "order.created")
 
       Instrumentation.incoming_processing(event)
 
       notification = @events.first
       assert_equal Instrumentation::INCOMING_PROCESSING, notification.name
       assert_equal 456, notification.payload[:event_id]
-      assert_equal "square", notification.payload[:provider]
+      assert_equal "stripe", notification.payload[:provider]
       assert_equal "order.created", notification.payload[:event_type]
     end
 
@@ -47,7 +47,7 @@ module CaptainHook
       actions_list = [OpenStruct.new, OpenStruct.new]
       event = OpenStruct.new(
         id: 789,
-        provider: "paypal",
+        provider: "stripe",
         event_type: "payment.completed",
         incoming_event_actions: actions_list
       )
@@ -57,7 +57,7 @@ module CaptainHook
       notification = @events.first
       assert_equal Instrumentation::INCOMING_PROCESSED, notification.name
       assert_equal 789, notification.payload[:event_id]
-      assert_equal "paypal", notification.payload[:provider]
+      assert_equal "stripe", notification.payload[:provider]
       assert_equal "payment.completed", notification.payload[:event_type]
       assert_equal 150.5, notification.payload[:duration]
       assert_equal 2, notification.payload[:actions_count]
@@ -77,7 +77,7 @@ module CaptainHook
     end
 
     test "action_started instruments with correct data" do
-      event = OpenStruct.new(id: 202, provider: "webhook_site")
+      event = OpenStruct.new(id: 202, provider: "stripe")
       action_item = OpenStruct.new(
         id: 303,
         action_class: ".*Action",
@@ -91,7 +91,7 @@ module CaptainHook
       assert_equal 303, notification.payload[:action_id]
       assert_equal ".*Action", notification.payload[:action_class]
       assert_equal 202, notification.payload[:event_id]
-      assert_equal "webhook_site", notification.payload[:provider]
+      assert_equal "stripe", notification.payload[:provider]
       assert_equal 3, notification.payload[:attempt] # attempt_count + 1
     end
 
@@ -144,22 +144,22 @@ module CaptainHook
     end
 
     test "signature_verified instruments with provider" do
-      Instrumentation.signature_verified(provider: "square")
+      Instrumentation.signature_verified(provider: "stripe")
 
       notification = @events.first
       assert_equal Instrumentation::SIGNATURE_VERIFIED, notification.name
-      assert_equal "square", notification.payload[:provider]
+      assert_equal "stripe", notification.payload[:provider]
     end
 
     test "signature_failed instruments with provider and reason" do
       Instrumentation.signature_failed(
-        provider: "paypal",
+        provider: "stripe",
         reason: "Invalid timestamp"
       )
 
       notification = @events.first
       assert_equal Instrumentation::SIGNATURE_FAILED, notification.name
-      assert_equal "paypal", notification.payload[:provider]
+      assert_equal "stripe", notification.payload[:provider]
       assert_equal "Invalid timestamp", notification.payload[:reason]
     end
 
@@ -181,7 +181,7 @@ module CaptainHook
       event2 = OpenStruct.new(id: 2, external_id: "evt_2")
 
       Instrumentation.incoming_received(event1, provider: "stripe", event_type: "test.one")
-      Instrumentation.incoming_received(event2, provider: "square", event_type: "test.two")
+      Instrumentation.incoming_received(event2, provider: "stripe", event_type: "test.two")
 
       assert_equal 2, @events.size
       assert_equal 1, @events[0].payload[:event_id]

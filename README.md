@@ -37,7 +37,7 @@ A comprehensive Rails engine for managing webhook integrations with features inc
 - **Auto-Discovery** - Automatically finds and registers providers and actions
 - **Action Routing** - Maps webhook events to your business logic
 - **Admin UI** - Monitor webhook traffic, inspect payloads, retry failures
-- **Built-in Providers** - Pre-configured verifiers for Stripe, Square, PayPal
+- **Built-in Providers** - Pre-configured verifiers for Stripe
 - **Instrumentation** - ActiveSupport notifications for monitoring
 - **Test Helpers** - Utilities for testing webhook integrations
 
@@ -82,7 +82,7 @@ rails db:migrate
 
 ### 1. Configure Your Provider
 
-For built-in providers (Stripe, Square, PayPal), the provider configuration is already included. You only need to set the signing secret in your environment variables:
+For Stripe, the provider configuration is already included. You only need to set the signing secret in your environment variables:
 
 ```bash
 # .env
@@ -192,10 +192,6 @@ providers:
   stripe:
     max_payload_size_bytes: 2097152    # 2MB for Stripe
     timestamp_tolerance_seconds: 600    # 10 minutes for Stripe
-  
-  square:
-    max_payload_size_bytes: 524288     # 512KB for Square
-    timestamp_tolerance_seconds: 180    # 3 minutes for Square
 ```
 
 #### Configuration Priority (Highest to Lowest)
@@ -214,17 +210,15 @@ CaptainHook uses a three-tier priority system for configuration values:
 Set these in your `.env` file:
 
 ```bash
-# Provider signing secrets
+# Provider signing secret
 STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
-SQUARE_WEBHOOK_SECRET=your_square_secret
-PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
 ```
 
 ## 📖 Usage
 
 ### Built-in Providers
 
-Captain Hook includes pre-configured verifiers for popular webhook providers:
+Captain Hook includes a pre-configured verifier for Stripe:
 
 #### Stripe
 ```yaml
@@ -236,27 +230,6 @@ signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 **Supported events:** All Stripe webhook events  
 **Signature header:** `Stripe-Signature`  
 **Documentation:** https://stripe.com/docs/webhooks
-
-#### Square
-```yaml
-name: square
-verifier_file: square.rb  # Uses CaptainHook::Verifiers::Square
-signing_secret: ENV[SQUARE_WEBHOOK_SECRET]
-```
-
-**Supported events:** All Square webhook events  
-**Signature header:** `X-Square-Signature`  
-**Documentation:** https://developer.squareup.com/docs/webhooks
-
-#### PayPal
-```yaml
-name: paypal
-verifier_file: paypal.rb  # Uses CaptainHook::Verifiers::Paypal
-signing_secret: ENV[PAYPAL_WEBHOOK_ID]
-```
-
-**Supported events:** All PayPal webhook events  
-**Documentation:** https://developer.paypal.com/docs/api-basics/notifications/webhooks/
 
 ### Creating Actions
 

@@ -168,7 +168,7 @@ module CaptainHook
 
     def test_configs_with_different_names_are_not_equal
       config1 = ProviderConfig.new("name" => "stripe")
-      config2 = ProviderConfig.new("name" => "square")
+      config2 = ProviderConfig.new("name" => "other_provider")
 
       refute_equal config1, config2
     end

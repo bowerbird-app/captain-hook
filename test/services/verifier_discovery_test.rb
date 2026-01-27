@@ -21,24 +21,6 @@ module CaptainHook
         assert_includes verifiers, "CaptainHook::Verifiers::Stripe"
       end
 
-      def test_discovers_square_verifier
-        verifiers = @discovery.call
-
-        assert_includes verifiers, "CaptainHook::Verifiers::Square"
-      end
-
-      def test_discovers_paypal_verifier
-        verifiers = @discovery.call
-
-        assert_includes verifiers, "CaptainHook::Verifiers::Paypal"
-      end
-
-      def test_discovers_webhook_site_verifier
-        verifiers = @discovery.call
-
-        assert_includes verifiers, "CaptainHook::Verifiers::WebhookSite"
-      end
-
       def test_returns_sorted_unique_verifiers
         verifiers = @discovery.call
 

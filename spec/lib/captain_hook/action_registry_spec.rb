@@ -74,7 +74,7 @@ RSpec.describe CaptainHook::ActionRegistry do
       )
 
       registry.register(
-        provider: "square",
+        provider: "custom_provider",
         event_type: "payment.created",
         action_class: "Action3",
         priority: 100
@@ -150,7 +150,7 @@ RSpec.describe CaptainHook::ActionRegistry do
     before do
       registry.register(provider: "stripe", event_type: "test.event1", action_class: "Action1")
       registry.register(provider: "stripe", event_type: "test.event2", action_class: "Action2")
-      registry.register(provider: "square", event_type: "test.event3", action_class: "Action3")
+      registry.register(provider: "custom_provider", event_type: "test.event3", action_class: "Action3")
     end
 
     it "returns all registered actions" do
@@ -164,7 +164,7 @@ RSpec.describe CaptainHook::ActionRegistry do
     before do
       registry.register(provider: "stripe", event_type: "event1", action_class: "Action1")
       registry.register(provider: "stripe", event_type: "event2", action_class: "Action2")
-      registry.register(provider: "square", event_type: "event3", action_class: "Action3")
+      registry.register(provider: "custom_provider", event_type: "event3", action_class: "Action3")
     end
 
     it "returns all actions for a specific provider" do
@@ -182,7 +182,7 @@ RSpec.describe CaptainHook::ActionRegistry do
   describe "#clear!" do
     before do
       registry.register(provider: "stripe", event_type: "test.event", action_class: "Action1")
-      registry.register(provider: "square", event_type: "test.event", action_class: "Action2")
+      registry.register(provider: "custom_provider", event_type: "test.event", action_class: "Action2")
     end
 
     it "removes all registered actions" do
