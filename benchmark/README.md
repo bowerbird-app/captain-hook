@@ -51,16 +51,6 @@ Calculating -------------------------------------
 
 This means ~15,234 signature verifications per second.
 
-### Comparison Results
-
-```
-Comparison:
-  Stripe:   15234.2 i/s
-  Square:   14892.1 i/s - 1.02x slower
-```
-
-Shows relative performance between implementations.
-
 ### Memory Results
 
 ```

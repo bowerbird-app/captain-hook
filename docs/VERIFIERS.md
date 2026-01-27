@@ -1,471 +1,1300 @@
-# Provider Verifiers
-
-Verifiers are the first line of defense in the webhook processing pipeline. They handle signature verification and metadata extraction specific to each webhook provider.
+# Verifiers
 
 ## Overview
 
-Each webhook provider (Stripe, PayPal, Square, etc.) has its own signature verification scheme. Verifiers encapsulate this provider-specific logic so your application can process webhooks securely.
+Verifiers are classes responsible for validating webhook signatures and extracting event data from webhook payloads. Every provider in CaptainHook must have a verifier that implements signature verification according to that provider's webhook specification.
 
-**Latest Architecture:** CaptainHook now ships with **built-in verifiers** for common providers:
-- **Stripe** - `stripe.rb`
-- **Square** - `square.rb`  
-- **PayPal** - `paypal.rb`
-- **WebhookSite** - `webhook_site.rb` (testing only)
-- **Base** - `base.rb` (no-op for custom implementations)
+This document provides a comprehensive guide to understanding, creating, and testing webhook verifiers in CaptainHook.
 
-For these providers, **you only need a YAML file** - no verifier code required! Just use `verifier_file: stripe.rb` in your configuration, and CaptainHook will automatically find and use the built-in verifier.
+## Key Concepts
 
-For custom providers not included in CaptainHook, you can still create custom verifiers that live alongside your provider configuration.
+- **Verifier**: Class that validates webhook signatures and extracts event metadata
+- **Signature Verification**: Cryptographic validation that webhook came from legitimate source
+- **Event Extraction**: Parsing event ID, type, and timestamp from webhook payload
+- **Base Verifier**: Parent class providing default implementations
+- **Verifier Helpers**: Module with security utilities for signature verification
+- **Built-in Verifiers**: Pre-built verifiers for common providers (e.g., Stripe)
 
 ## Verifier Responsibilities
 
-An verifier must implement these methods:
+### 1. Signature Verification
 
-1. **`verify_signature(payload:, headers:, provider_config:)`**: Verify the webhook came from the provider
-2. **`extract_timestamp(headers)`**: Extract event timestamp for replay attack prevention
-3. **`extract_event_id(payload)`**: Get the unique event identifier
-4. **`extract_event_type(payload)`**: Determine what type of event this is
+Validate that the webhook request is authentic using cryptographic signatures:
 
-## Using Built-in Verifiers
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  # Extract signature from headers
+  # Generate expected signature using secret
+  # Compare signatures using constant-time comparison
+  # Return true if valid, false otherwise
+end
+```
 
-For supported providers (Stripe, Square, PayPal, WebhookSite), simply reference the verifier file in your YAML:
+**Purpose**: Prevent unauthorized webhook requests and man-in-the-middle attacks.
 
+### 2. Event ID Extraction
+
+Extract unique event identifier from payload:
+
+```ruby
+def extract_event_id(payload)
+  # Return unique event ID (e.g., "evt_123", "whk_abc")
+  # Used for idempotency and deduplication
+end
+```
+
+**Purpose**: Ensure duplicate webhooks aren't processed multiple times.
+
+### 3. Event Type Extraction
+
+Extract event type from payload:
+
+```ruby
+def extract_event_type(payload)
+  # Return event type (e.g., "payment.succeeded", "customer.created")
+  # Used for routing to appropriate actions
+end
+```
+
+**Purpose**: Route webhooks to correct action handlers.
+
+### 4. Timestamp Extraction (Optional)
+
+Extract timestamp for replay attack prevention:
+
+```ruby
+def extract_timestamp(headers)
+  # Return Unix timestamp if provider includes it
+  # Return nil if not supported
+end
+```
+
+**Purpose**: Reject old webhooks that might be replayed by attackers.
+
+## Base Verifier
+
+All verifiers should inherit from `CaptainHook::Verifiers::Base`:
+
+```ruby
+module CaptainHook
+  module Verifiers
+    class Base
+      include CaptainHook::VerifierHelpers
+
+      def verify_signature(payload:, headers:, provider_config:)
+        # Default: accepts all webhooks (no verification)
+        true
+      end
+
+      def extract_timestamp(headers)
+        # Default: no timestamp support
+        nil
+      end
+
+      def extract_event_id(payload)
+        # Default: tries common fields, falls back to UUID
+        payload["id"] || payload["event_id"] || SecureRandom.uuid
+      end
+
+      def extract_event_type(payload)
+        # Default: tries common fields, falls back to generic type
+        payload["type"] || payload["event_type"] || "webhook.received"
+      end
+    end
+  end
+end
+```
+
+**Key Features**:
+- Includes `VerifierHelpers` for security utilities
+- Provides sensible defaults for all methods
+- Always returns `true` for signature verification (override in subclasses!)
+- Attempts to extract common fields from payloads
+
+## Built-in Verifiers
+
+### Stripe Verifier
+
+CaptainHook includes a production-ready Stripe verifier:
+
+**Location**: `lib/captain_hook/verifiers/stripe.rb`
+
+**Implementation**:
+```ruby
+module CaptainHook
+  module Verifiers
+    class Stripe < Base
+      SIGNATURE_HEADER = "Stripe-Signature"
+      TIMESTAMP_TOLERANCE = 300 # 5 minutes
+
+      def verify_signature(payload:, headers:, provider_config:)
+        signature_header = extract_header(headers, SIGNATURE_HEADER)
+        return false if signature_header.blank?
+
+        # Parse: "t=1234567890,v1=sig1,v0=sig2"
+        parsed = parse_kv_header(signature_header)
+        timestamp = parsed["t"]
+        signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+
+        return false if timestamp.blank? || signatures.empty?
+
+        # Validate timestamp tolerance
+        if provider_config.timestamp_validation_enabled?
+          tolerance = provider_config.timestamp_tolerance_seconds || TIMESTAMP_TOLERANCE
+          return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+        end
+
+        # Generate expected signature
+        signed_payload = "#{timestamp}.#{payload}"
+        expected_signature = generate_hmac(provider_config.signing_secret, signed_payload)
+
+        # Check if any signature matches (Stripe sends v1 and v0)
+        signatures.any? { |sig| secure_compare(sig, expected_signature) }
+      end
+
+      def extract_timestamp(headers)
+        signature_header = extract_header(headers, SIGNATURE_HEADER)
+        return nil if signature_header.blank?
+
+        parsed = parse_kv_header(signature_header)
+        parsed["t"]&.to_i
+      end
+
+      def extract_event_id(payload)
+        payload["id"]
+      end
+
+      def extract_event_type(payload)
+        payload["type"]
+      end
+    end
+  end
+end
+```
+
+**Usage in Provider YAML**:
 ```yaml
 # captain_hook/stripe/stripe.yml
 name: stripe
 display_name: Stripe
-verifier_file: stripe.rb  # CaptainHook will find the built-in verifier!
+verifier_file: stripe.rb  # References built-in verifier
 signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
-active: true
 ```
 
-No need to create the verifier file - CaptainHook includes it!
+**Features**:
+- Implements Stripe's signature scheme (HMAC-SHA256 with timestamp)
+- Supports both v1 and v0 signatures
+- Validates timestamp tolerance (default 5 minutes)
+- Parses Stripe's key-value signature header format
+- Extracts event ID and type from Stripe payload structure
+
+**Reference**: [Stripe Webhook Signature Verification](https://stripe.com/docs/webhooks/signatures)
 
 ## Creating Custom Verifiers
 
-For providers not included in CaptainHook, you can create custom verifiers that live alongside your provider configuration:
+### Directory Structure
 
-### 1. Create Provider Directory
+Place custom verifiers in your provider directory:
 
-Create a folder for your provider in `captain_hook/`:
-
-```bash
-mkdir -p captain_hook/acme_payments/actions
+```
+captain_hook/
+└── <provider_name>/
+    ├── <provider_name>.yml       # Provider configuration
+    ├── <provider_name>.rb         # Custom verifier
+    └── actions/                   # Action classes
 ```
 
-### 2. Create the Verifier Class
-
-Create the verifier file (e.g., `acme_payments.rb`) that uses the `CaptainHook::VerifierHelpers` module:
+### Verifier Class Template
 
 ```ruby
-# captain_hook/acme_payments/acme_payments.rb
-class AcmePaymentsVerifier
+# captain_hook/custom_api/custom_api.rb
+class CustomApiVerifier
   include CaptainHook::VerifierHelpers
 
-  # Define provider-specific header names
-  SIGNATURE_HEADER = "X-Acme-Signature"
-  TIMESTAMP_HEADER = "X-Acme-Timestamp"
+  SIGNATURE_HEADER = "X-Signature"
+  TIMESTAMP_HEADER = "X-Timestamp"
 
-  # Implement signature verification
   def verify_signature(payload:, headers:, provider_config:)
+    # 1. Extract signature from headers
     signature = extract_header(headers, SIGNATURE_HEADER)
-    timestamp = extract_header(headers, TIMESTAMP_HEADER)
-    
-    return false if signature.blank? || timestamp.blank?
+    return false if signature.blank?
 
-    # Check timestamp tolerance if enabled
-    if provider_config.timestamp_validation_enabled?
-      tolerance = provider_config.timestamp_tolerance_seconds || 300
-      return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
+    # 2. Optional: Validate timestamp
+    timestamp = extract_timestamp(headers)
+    if timestamp && provider_config.timestamp_validation_enabled?
+      tolerance = provider_config.timestamp_tolerance_seconds
+      return false unless timestamp_within_tolerance?(timestamp, tolerance)
     end
 
-    # Generate expected signature using provider's algorithm
-    expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
+    # 3. Generate expected signature
+    expected = generate_hmac(provider_config.signing_secret, payload)
+
+    # 4. Constant-time comparison
     secure_compare(signature, expected)
   end
 
-  # Extract timestamp from headers
   def extract_timestamp(headers)
-    extract_header(headers, TIMESTAMP_HEADER)&.to_i
+    timestamp_str = extract_header(headers, TIMESTAMP_HEADER)
+    parse_timestamp(timestamp_str)
   end
 
-  # Extract event ID from payload
   def extract_event_id(payload)
-    payload["transaction_id"] || payload["id"]
+    payload["id"] || payload["event_id"]
   end
 
-  # Extract event type from payload
   def extract_event_type(payload)
-    payload["event_type"] || payload["type"]
+    payload["type"] || payload["event"]
   end
 end
 ```
 
-### 3. Create Provider Configuration
+### Naming Conventions
 
-Create the YAML configuration file:
+**Class Name**: `<Provider>Verifier` or just `<Provider>`
+- `StripeVerifier` ✅
+- `GithubVerifier` ✅
+- `CustomApiVerifier` ✅
+- `Stripe` ✅ (also acceptable)
+
+**File Name**: Must match provider directory name
+- Provider: `stripe` → File: `stripe/stripe.rb` ✅
+- Provider: `github` → File: `github/github.rb` ✅
+- Provider: `custom_api` → File: `custom_api/custom_api.rb` ✅
+
+**Module Namespacing**: Optional but recommended for gems
+```ruby
+# In gem: payment_gem/captain_hook/stripe/stripe.rb
+module PaymentGem
+  class StripeVerifier
+    include CaptainHook::VerifierHelpers
+    # ...
+  end
+end
+```
+
+### Provider YAML Configuration
+
+Reference your verifier in the provider YAML:
 
 ```yaml
-# captain_hook/acme_payments/acme_payments.yml
-name: acme_payments
-display_name: AcmePayments
-description: AcmePayments webhook provider
-verifier_file: acme_payments.rb
-signing_secret: ENV[ACME_PAYMENTS_SECRET]
-timestamp_tolerance_seconds: 300
-active: true
+# captain_hook/custom_api/custom_api.yml
+name: custom_api
+display_name: Custom API
+verifier_file: custom_api.rb
+signing_secret: ENV[CUSTOM_API_SECRET]
 ```
 
-### 4. Scan for Providers
+## Verifier Method Reference
 
-Run "Discover New" or "Full Sync" in the admin UI, and your verifier will be automatically discovered and loaded!
+### `verify_signature(payload:, headers:, provider_config:)`
 
-## Available Helper Methods
+**Purpose**: Verify webhook signature authenticity
 
-All verifiers inherit from `Base` and have access to these helpers:
+**Parameters**:
+- `payload` (String): Raw request body (unparsed)
+- `headers` (Hash): Request headers
+- `provider_config` (ProviderConfig): Provider configuration with secret
 
-### `secure_compare(a, b)`
-Constant-time string comparison to prevent timing attacks:
+**Returns**: `Boolean` - `true` if signature valid, `false` otherwise
 
+**Example**:
 ```ruby
-secure_compare(received_signature, expected_signature)
-```
-
-### `generate_hmac(secret, data)`
-Generate HMAC-SHA256 signature:
-
-```ruby
-expected_sig = generate_hmac(provider_config.signing_secret, payload)
-```
-
-## Available Helper Methods
-
-The `CaptainHook::VerifierHelpers` module provides these helper methods for all verifiers:
-
-### Security Helpers
-
-#### `secure_compare(a, b)`
-Constant-time string comparison to prevent timing attacks:
-
-```ruby
-secure_compare(signature, expected_signature)
-```
-
-#### `skip_verification?(secret)`
-Check if signature verification should be skipped:
-
-```ruby
-if skip_verification?(provider_config.signing_secret)
-  log_verification("provider", "Status" => "Skipping verification")
-  return true
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Hub-Signature-256")
+  return false if signature.blank?
+  
+  # Remove "sha256=" prefix if present
+  signature = signature.sub(/^sha256=/, "")
+  
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  secure_compare(signature, expected)
 end
 ```
 
-### HMAC Generation
+**Best Practices**:
+- Always use `secure_compare` for timing-attack prevention
+- Extract raw payload, not parsed JSON
+- Return `false` on any validation failure
+- Use helper methods from `VerifierHelpers`
 
-#### `generate_hmac(secret, data)`
-Generate hex-encoded HMAC-SHA256 signature:
+---
 
+### `extract_event_id(payload)`
+
+**Purpose**: Extract unique event identifier
+
+**Parameters**:
+- `payload` (Hash): Parsed JSON payload
+
+**Returns**: `String` - Unique event ID
+
+**Example**:
 ```ruby
-expected = generate_hmac(provider_config.signing_secret, "#{timestamp}.#{payload}")
+def extract_event_id(payload)
+  payload["id"] || payload["event_id"] || payload["webhook_id"]
+end
 ```
 
-#### `generate_hmac_base64(secret, data)`
-Generate Base64-encoded HMAC-SHA256 signature:
+**Best Practices**:
+- Return provider's unique event ID
+- Provide fallbacks for different field names
+- Return `SecureRandom.uuid` as last resort (not recommended)
 
+**Used For**:
+- Idempotency (preventing duplicate processing)
+- Event tracking and logging
+- Database uniqueness constraints
+
+---
+
+### `extract_event_type(payload)`
+
+**Purpose**: Extract event type for action routing
+
+**Parameters**:
+- `payload` (Hash): Parsed JSON payload
+
+**Returns**: `String` - Event type identifier
+
+**Example**:
 ```ruby
-expected = generate_hmac_base64(provider_config.signing_secret, payload)
+def extract_event_type(payload)
+  payload["type"] || payload["event"] || payload["event_type"]
+end
 ```
 
-### Header Extraction
+**Best Practices**:
+- Return exactly as provider sends (don't transform)
+- Provide fallbacks for common field names
+- Use consistent format (e.g., `resource.action`)
 
-#### `extract_header(headers, *keys)`
-Extract header case-insensitively:
+**Used For**:
+- Matching webhooks to action classes
+- Event filtering and routing
+- Logging and metrics
 
+---
+
+### `extract_timestamp(headers)` (Optional)
+
+**Purpose**: Extract timestamp for replay attack prevention
+
+**Parameters**:
+- `headers` (Hash): Request headers
+
+**Returns**: `Integer | nil` - Unix timestamp or `nil` if not supported
+
+**Example**:
 ```ruby
-signature = extract_header(headers, "X-Signature", "X-Hub-Signature")
+def extract_timestamp(headers)
+  # From header
+  timestamp_str = extract_header(headers, "X-Timestamp")
+  parse_timestamp(timestamp_str)
+  
+  # Or from signature header
+  sig_header = extract_header(headers, "X-Signature")
+  parsed = parse_kv_header(sig_header)
+  parsed["t"]&.to_i
+end
 ```
 
-#### `parse_kv_header(header_value)`
-Parse key-value header format (e.g., Stripe's `t=123,v1=abc`):
+**Best Practices**:
+- Return Unix timestamp (seconds since epoch)
+- Return `nil` if provider doesn't send timestamp
+- Use `parse_timestamp` helper for format flexibility
 
-```ruby
-parsed = parse_kv_header(headers["Stripe-Signature"])
-timestamp = parsed["t"]
-signature = parsed["v1"]
-```
+**Used For**:
+- Timestamp validation in `verify_signature`
+- Replay attack prevention
+- Webhook age tracking
 
-### Timestamp Validation
+## Common Signature Schemes
 
-#### `timestamp_within_tolerance?(timestamp, tolerance)`
-Check if timestamp is within acceptable range:
+### 1. Simple HMAC-SHA256 (Hex)
 
-```ruby
-return false unless timestamp_within_tolerance?(timestamp.to_i, 300)
-```
+**Description**: Most common scheme - HMAC signature in header
 
-#### `parse_timestamp(time_string)`
-Parse various timestamp formats:
+**Example Providers**: GitHub, Shopify, Slack
 
-```ruby
-timestamp = parse_timestamp(headers["X-Timestamp"])
-```
-
-### Logging
-
-#### `log_verification(provider, details)`
-Log signature verification steps:
-
-```ruby
-log_verification("stripe", 
-  "Signature" => "present",
-  "Timestamp" => timestamp,
-  "Result" => "✓ Passed"
-)
-```
-
-### URL Building
-
-#### `build_webhook_url(path, provider_token: nil)`
-Build complete webhook URL:
-
-```ruby
-url = build_webhook_url("/captain_hook/stripe", provider_token: "abc123")
-```
-
-## Common Signature Verification Patterns
-
-### HMAC-SHA256 with Timestamp (Stripe-style)
-
+**Implementation**:
 ```ruby
 def verify_signature(payload:, headers:, provider_config:)
   signature = extract_header(headers, "X-Signature")
-  timestamp = extract_header(headers, "X-Timestamp")
-  
-  return false if signature.blank? || timestamp.blank?
-  
-  # Validate timestamp
-  if provider_config.timestamp_validation_enabled?
-    tolerance = provider_config.timestamp_tolerance_seconds || 300
-    return false unless timestamp_within_tolerance?(timestamp.to_i, tolerance)
-  end
-  
-  # Verify signature
-  signed_payload = "#{timestamp}.#{payload}"
-  expected = generate_hmac(provider_config.signing_secret, signed_payload)
+  expected = generate_hmac(provider_config.signing_secret, payload)
   secure_compare(signature, expected)
 end
 ```
 
-### Simple Token Header
-
-```ruby
-def verify_signature(payload:, headers:, provider_config:)
-  token = extract_header(headers, "X-Webhook-Token")
-  
-  if skip_verification?(provider_config.signing_secret)
-    return true
-  end
-  
-  secure_compare(token, provider_config.signing_secret)
-end
+**Header Format**:
+```
+X-Signature: a1b2c3d4e5f6...
 ```
 
-### Base64 HMAC (Square-style)
+---
 
+### 2. HMAC-SHA256 with Prefix
+
+**Description**: Signature with algorithm prefix
+
+**Example Providers**: GitHub (`sha256=...`)
+
+**Implementation**:
 ```ruby
 def verify_signature(payload:, headers:, provider_config:)
-  signature = extract_header(headers, "X-Square-Signature")
+  sig_header = extract_header(headers, "X-Hub-Signature-256")
+  return false if sig_header.blank?
   
-  return false if signature.blank?
+  # Remove "sha256=" prefix
+  signature = sig_header.sub(/^sha256=/, "")
   
-  expected = generate_hmac_base64(provider_config.signing_secret, payload)
+  expected = generate_hmac(provider_config.signing_secret, payload)
   secure_compare(signature, expected)
 end
 ```
 
-### Complex Header Parsing (Stripe-style)
+**Header Format**:
+```
+X-Hub-Signature-256: sha256=a1b2c3d4e5f6...
+```
 
+---
+
+### 3. HMAC with Timestamp (Stripe-style)
+
+**Description**: Includes timestamp in signed payload
+
+**Example Providers**: Stripe
+
+**Implementation**:
 ```ruby
 def verify_signature(payload:, headers:, provider_config:)
-  signature_header = extract_header(headers, "Stripe-Signature")
-  return false if signature_header.blank?
-
-  # Parse: t=timestamp,v1=signature
-  parsed = parse_kv_header(signature_header)
+  sig_header = extract_header(headers, "Stripe-Signature")
+  return false if sig_header.blank?
+  
+  # Parse: "t=1234567890,v1=sig"
+  parsed = parse_kv_header(sig_header)
   timestamp = parsed["t"]
   signature = parsed["v1"]
   
   return false if timestamp.blank? || signature.blank?
   
+  # Validate timestamp age
+  return false unless timestamp_within_tolerance?(timestamp.to_i, 300)
+  
+  # Sign with timestamp included
   signed_payload = "#{timestamp}.#{payload}"
   expected = generate_hmac(provider_config.signing_secret, signed_payload)
+  
   secure_compare(signature, expected)
 end
 ```
 
-## Testing Your Verifier
+**Header Format**:
+```
+Stripe-Signature: t=1234567890,v1=a1b2c3d4...,v0=x9y8z7...
+```
 
-### Unit Test Example
+---
+
+### 4. Base64-Encoded HMAC
+
+**Description**: HMAC signature encoded as Base64
+
+**Example Providers**: Twilio, SendGrid
+
+**Implementation**:
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  expected = generate_hmac_base64(provider_config.signing_secret, payload)
+  secure_compare(signature, expected)
+end
+```
+
+**Header Format**:
+```
+X-Signature: UDH+PZicbRU3oBP6...
+```
+
+---
+
+### 5. JWT-Based Signatures
+
+**Description**: JSON Web Token for verification
+
+**Example Providers**: Some OAuth providers
+
+**Implementation**:
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  token = extract_header(headers, "Authorization")
+  return false if token.blank?
+  
+  # Remove "Bearer " prefix
+  token = token.sub(/^Bearer /, "")
+  
+  begin
+    decoded = JWT.decode(
+      token,
+      provider_config.signing_secret,
+      true,
+      algorithm: "HS256"
+    )
+    true
+  rescue JWT::DecodeError
+    false
+  end
+end
+```
+
+**Requires**: `gem 'jwt'`
+
+---
+
+## Signature Scheme Examples
+
+### GitHub Webhook Verifier
 
 ```ruby
-# test/verifiers/acme_payments_verifier_test.rb
-require 'test_helper'
+# captain_hook/github/github.rb
+class GithubVerifier
+  include CaptainHook::VerifierHelpers
 
-class AcmePaymentsVerifierTest < ActiveSupport::TestCase
-  def setup
-    @config = OpenStruct.new(
-      signing_secret: "test-secret",
-      timestamp_tolerance_seconds: 300,
-      timestamp_validation_enabled?: true
-    )
-    @verifier = AcmePaymentsVerifier.new
+  SIGNATURE_HEADER = "X-Hub-Signature-256"
+  EVENT_HEADER = "X-GitHub-Event"
+  DELIVERY_HEADER = "X-GitHub-Delivery"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    sig_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if sig_header.blank?
+    
+    # GitHub format: "sha256=abc123..."
+    signature = sig_header.sub(/^sha256=/, "")
+    
+    expected = generate_hmac(provider_config.signing_secret, payload)
+    secure_compare(signature, expected)
+  end
+
+  def extract_event_id(payload)
+    # GitHub uses header for delivery ID, not payload
+    payload["hook_id"]&.to_s || payload["id"]
+  end
+
+  def extract_event_type(payload)
+    # GitHub sends event type in header, but also check payload
+    payload["action"] ? "#{payload['action']}" : "unknown"
+  end
+
+  # Custom method to extract event from headers
+  def extract_event_from_headers(headers)
+    extract_header(headers, EVENT_HEADER)
+  end
+end
+```
+
+**GitHub Webhook Headers**:
+```
+X-Hub-Signature-256: sha256=abc123...
+X-GitHub-Event: push
+X-GitHub-Delivery: 12345678-1234-1234-1234-123456789012
+```
+
+---
+
+### Shopify Webhook Verifier
+
+```ruby
+# captain_hook/shopify/shopify.rb
+class ShopifyVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "X-Shopify-Hmac-SHA256"
+  TOPIC_HEADER = "X-Shopify-Topic"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature.blank?
+    
+    # Shopify uses Base64-encoded HMAC
+    expected = generate_hmac_base64(provider_config.signing_secret, payload)
+    secure_compare(signature, expected)
+  end
+
+  def extract_event_id(payload)
+    payload["id"]&.to_s || payload["admin_graphql_api_id"]
+  end
+
+  def extract_event_type(payload)
+    # Shopify sends event type in header
+    # Format: "orders/create", "products/update"
+    payload["topic"] || "webhook.received"
+  end
+
+  def extract_topic_from_headers(headers)
+    extract_header(headers, TOPIC_HEADER)
+  end
+end
+```
+
+---
+
+### Twilio Webhook Verifier
+
+```ruby
+# captain_hook/twilio/twilio.rb
+class TwilioVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "X-Twilio-Signature"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature.blank?
+    
+    # Twilio signs the full URL + POST parameters
+    # This is a simplified version
+    expected = generate_hmac_base64(provider_config.signing_secret, payload)
+    secure_compare(signature, expected)
+  end
+
+  def extract_event_id(payload)
+    payload["MessageSid"] || payload["CallSid"] || payload["Sid"]
+  end
+
+  def extract_event_type(payload)
+    payload["EventType"] || payload["MessageStatus"] || "webhook.received"
+  end
+end
+```
+
+**Note**: Twilio's actual verification is more complex - see Twilio docs for complete implementation.
+
+---
+
+## Testing Verifiers
+
+### Unit Testing
+
+```ruby
+# test/verifiers/custom_api_verifier_test.rb
+require "test_helper"
+
+class CustomApiVerifierTest < ActiveSupport::TestCase
+  setup do
+    @verifier = CustomApiVerifier.new
+    @secret = "test_secret_key"
+    @payload = '{"id":"evt_123","type":"test.event"}'
   end
 
   test "verifies valid signature" do
-    payload = '{"id":"evt_123","event_type":"payment.completed"}'
-    timestamp = Time.current.to_i.to_s
+    signature = @verifier.generate_hmac(@secret, @payload)
+    headers = { "X-Signature" => signature }
+    config = build_config(signing_secret: @secret)
     
-    # Generate expected signature
-    expected_sig = OpenSSL::HMAC.hexdigest('SHA256', @config.signing_secret, "#{timestamp}.#{payload}")
+    result = @verifier.verify_signature(
+      payload: @payload,
+      headers: headers,
+      provider_config: config
+    )
     
-    headers = {
-      "X-Acme-Signature" => expected_sig,
-      "X-Acme-Timestamp" => timestamp
-    }
-    
-    assert @verifier.verify_signature(payload: payload, headers: headers, provider_config: @config)
+    assert result, "Should verify valid signature"
   end
 
   test "rejects invalid signature" do
-    payload = '{"id":"evt_123"}'
-    headers = {
-      "X-Acme-Signature" => "invalid",
-      "X-Acme-Timestamp" => Time.current.to_i.to_s
-    }
+    headers = { "X-Signature" => "invalid_signature" }
+    config = build_config(signing_secret: @secret)
     
-    refute @verifier.verify_signature(payload: payload, headers: headers, provider_config: @config)
+    result = @verifier.verify_signature(
+      payload: @payload,
+      headers: headers,
+      provider_config: config
+    )
+    
+    refute result, "Should reject invalid signature"
+  end
+
+  test "rejects missing signature" do
+    config = build_config(signing_secret: @secret)
+    
+    result = @verifier.verify_signature(
+      payload: @payload,
+      headers: {},
+      provider_config: config
+    )
+    
+    refute result, "Should reject missing signature"
+  end
+
+  test "extracts event ID" do
+    payload = { "id" => "evt_123" }
+    assert_equal "evt_123", @verifier.extract_event_id(payload)
+  end
+
+  test "extracts event type" do
+    payload = { "type" => "test.event" }
+    assert_equal "test.event", @verifier.extract_event_type(payload)
+  end
+
+  test "extracts timestamp" do
+    timestamp = Time.current.to_i
+    headers = { "X-Timestamp" => timestamp.to_s }
+    assert_equal timestamp, @verifier.extract_timestamp(headers)
+  end
+
+  private
+
+  def build_config(signing_secret:)
+    OpenStruct.new(
+      signing_secret: signing_secret,
+      timestamp_validation_enabled?: true,
+      timestamp_tolerance_seconds: 300
+    )
   end
 end
 ```
+
+---
 
 ### Integration Testing
 
-Use the admin sandbox to test with real payloads:
-
-1. Go to `/captain_hook/admin/sandbox`
-2. Select your provider
-3. Paste a real webhook payload
-4. Add required headers
-5. Click "Test Webhook" (dry-run mode)
-
-## Example Provider Verifiers
-
-### Stripe
-- **File**: `captain_hook/stripe/stripe.rb`
-- **Signature**: HMAC-SHA256 with timestamp validation
-- **Headers**: `Stripe-Signature` (format: `t=timestamp,v1=signature`)
-- **Documentation**: https://stripe.com/docs/webhooks/signatures
-
-### Square
-- **File**: `captain_hook/square/square.rb`
-- **Signature**: Base64-encoded HMAC-SHA256 of notification URL + payload
-- **Headers**: `X-Square-Hmacsha256-Signature` or `X-Square-Signature`
-- **Documentation**: https://developer.squareup.com/docs/webhooks
-
-### PayPal
-- **File**: `captain_hook/paypal/paypal.rb`
-- **Signature**: Complex certificate-based verification (simplified for testing)
-- **Headers**: Multiple headers including `Paypal-Transmission-Sig`, `Paypal-Transmission-Id`
-- **Documentation**: https://developer.paypal.com/api/rest/webhooks/
-
-### WebhookSite (Testing Only)
-- **File**: `captain_hook/webhook_site/webhook_site.rb`
-- **Signature**: No-op verification (always returns true)
-- **Use**: For development and testing only - **DO NOT USE IN PRODUCTION**
-- **Documentation**: https://webhook.site
-
-## Using VerifierHelpers in Your Host App
-
-The `CaptainHook::VerifierHelpers` module is available for use in your host application or other gems. Simply include it in any class:
-
 ```ruby
-# app/services/custom_webhook_verifier.rb
-class CustomWebhookVerifier
-  include CaptainHook::VerifierHelpers
-  
-  def verify_custom_webhook(payload, headers, secret)
-    signature = extract_header(headers, "X-Custom-Signature")
-    expected = generate_hmac(secret, payload)
-    secure_compare(signature, expected)
+# test/integration/custom_api_webhook_test.rb
+require "test_helper"
+
+class CustomApiWebhookTest < ActionDispatch::IntegrationTest
+  setup do
+    @provider = captain_hook_providers(:custom_api)
+    @secret = ENV["CUSTOM_API_SECRET"]
+    @payload = { id: "evt_123", type: "test.event" }.to_json
+  end
+
+  test "accepts webhook with valid signature" do
+    verifier = CustomApiVerifier.new
+    signature = verifier.generate_hmac(@secret, @payload)
+    
+    post captain_hook.incoming_path(@provider.name, @provider.token),
+         params: @payload,
+         headers: {
+           "X-Signature" => signature,
+           "Content-Type" => "application/json"
+         }
+    
+    assert_response :created
+    
+    event = CaptainHook::IncomingEvent.last
+    assert_equal "evt_123", event.external_id
+    assert_equal "test.event", event.event_type
+  end
+
+  test "rejects webhook with invalid signature" do
+    post captain_hook.incoming_path(@provider.name, @provider.token),
+         params: @payload,
+         headers: {
+           "X-Signature" => "invalid_signature",
+           "Content-Type" => "application/json"
+         }
+    
+    assert_response :unauthorized
+    assert_equal 0, CaptainHook::IncomingEvent.count
+  end
+
+  test "rejects webhook with missing signature" do
+    post captain_hook.incoming_path(@provider.name, @provider.token),
+         params: @payload,
+         headers: { "Content-Type" => "application/json" }
+    
+    assert_response :unauthorized
   end
 end
 ```
 
-This gives you access to all the security-hardened helper methods for your custom webhook handling needs.
+---
 
-## Security Best Practices
+### Testing with Real Provider Data
 
-1. **Always verify signatures**: Never skip signature verification in production
-2. **Use constant-time comparison**: Prevents timing attacks (use `secure_compare` helper)
-3. **Validate timestamps**: Prevents replay attacks (enable `timestamp_tolerance_seconds`)
-4. **Check payload size**: Prevents DoS attacks (set `max_payload_size_bytes`)
-5. **Rate limit**: Prevents abuse (set `rate_limit_requests` and `rate_limit_period`)
-6. **Use HTTPS**: Always use HTTPS for webhook endpoints in production
-7. **Rotate secrets**: Periodically rotate signing secrets
-8. **Test thoroughly**: Use sandbox mode before deploying to production
-
-## Environment Variable Override
-
-Verifiers automatically support ENV variable override for signing secrets:
-
-```bash
-# .env
-STRIPE_WEBHOOK_SECRET=whsec_your_secret_here
-SQUARE_WEBHOOK_SECRET=your_square_secret
-PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
+```ruby
+# test/verifiers/stripe_verifier_test.rb
+test "verifies real Stripe webhook" do
+  # Actual Stripe webhook payload
+  payload = File.read(Rails.root.join("test/fixtures/stripe_webhook.json"))
+  
+  # Generate signature like Stripe does
+  timestamp = Time.current.to_i
+  signed_payload = "#{timestamp}.#{payload}"
+  signature = @verifier.generate_hmac(@secret, signed_payload)
+  
+  headers = {
+    "Stripe-Signature" => "t=#{timestamp},v1=#{signature}"
+  }
+  
+  config = build_config(signing_secret: @secret)
+  
+  result = @verifier.verify_signature(
+    payload: payload,
+    headers: headers,
+    provider_config: config
+  )
+  
+  assert result, "Should verify real Stripe webhook"
+end
 ```
 
-This overrides the database value when set, useful for:
-- Local development with different secrets
-- Production secrets in secure vaults
-- CI/CD pipelines
-- Multi-environment deployments
+---
+
+## Verifier Loading and Discovery
+
+### How Verifiers Are Loaded
+
+1. **Provider Discovery**: CaptainHook scans `captain_hook/` directories
+2. **File Loading**: Loads `<provider>/<provider>.rb` file via `load`
+3. **Class Detection**: Finds classes including `VerifierHelpers` or ending in `Verifier`
+4. **Registration**: Associates verifier class with provider configuration
+
+### Automatic Loading
+
+```ruby
+# lib/captain_hook/services/provider_discovery.rb
+verifier_file = File.join(subdir, "#{provider_name}.rb")
+if File.exist?(verifier_file)
+  load verifier_file  # Loads the verifier class
+end
+```
+
+### Manual Registration (Advanced)
+
+```ruby
+# config/initializers/captain_hook.rb
+CaptainHook.configure do |config|
+  config.register_verifier("custom_api", CustomApiVerifier)
+end
+```
+
+---
+
+## Verifier Best Practices
+
+### Security
+
+#### Always Use Constant-Time Comparison
+
+```ruby
+# ✅ GOOD: Timing-attack safe
+secure_compare(signature, expected)
+
+# ❌ BAD: Vulnerable to timing attacks
+signature == expected
+```
+
+#### Include Timestamp in Signature
+
+```ruby
+# ✅ GOOD: Timestamp is part of signed data
+signed_data = "#{timestamp}.#{payload}"
+generate_hmac(secret, signed_data)
+
+# ❌ BAD: Timestamp not protected
+generate_hmac(secret, payload)
+```
+
+#### Validate Timestamp Tolerance
+
+```ruby
+# ✅ GOOD: Prevents replay attacks
+unless timestamp_within_tolerance?(timestamp, 300)
+  return false
+end
+
+# ❌ BAD: No timestamp validation
+```
+
+---
+
+### Performance
+
+#### Cache Verifier Instances
+
+```ruby
+# ProviderConfig caches verifier instance
+def verifier
+  @verifier ||= verifier_class.constantize.new
+end
+```
+
+#### Fail Fast
+
+```ruby
+# ✅ GOOD: Return early on failures
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  return false if signature.blank?  # Fail fast
+  
+  # Continue with verification...
+end
+
+# ❌ BAD: Unnecessary work before failing
+def verify_signature(payload:, headers:, provider_config:)
+  expected = generate_hmac(secret, payload)  # Wasted work
+  signature = extract_header(headers, "X-Signature")
+  return false if signature.blank?
+end
+```
+
+---
+
+### Code Organization
+
+#### Use Constants for Headers
+
+```ruby
+# ✅ GOOD: Clear and maintainable
+SIGNATURE_HEADER = "X-Hub-Signature-256"
+EVENT_HEADER = "X-GitHub-Event"
+
+def verify_signature(...)
+  signature = extract_header(headers, SIGNATURE_HEADER)
+end
+
+# ❌ BAD: Magic strings scattered
+def verify_signature(...)
+  signature = extract_header(headers, "X-Hub-Signature-256")
+end
+```
+
+#### Document Signature Schemes
+
+```ruby
+# ✅ GOOD: Clear documentation
+# Stripe webhook verifier
+# Implements Stripe's webhook signature verification scheme
+# Reference: https://stripe.com/docs/webhooks/signatures
+#
+# Signature format: "t=<timestamp>,v1=<signature>,v0=<old_signature>"
+# Signed payload: "<timestamp>.<raw_body>"
+class StripeVerifier
+  # ...
+end
+```
+
+---
+
+### Error Handling
+
+#### Return False, Don't Raise
+
+```ruby
+# ✅ GOOD: Returns false on error
+def verify_signature(...)
+  return false if signature.blank?
+  return false unless valid_timestamp?
+  secure_compare(signature, expected)
+end
+
+# ❌ BAD: Raises exceptions
+def verify_signature(...)
+  raise ArgumentError, "Missing signature" if signature.blank?
+end
+```
+
+#### Log Verification Failures
+
+```ruby
+# ✅ GOOD: Log for debugging
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  
+  if signature.blank?
+    log_verification("custom_api", { error: "Missing signature" })
+    return false
+  end
+  
+  # Continue...
+end
+```
+
+---
 
 ## Troubleshooting
 
-### Signature verification fails
+### Signature Verification Always Fails
 
-1. Check signing secret is correctly configured
-2. Verify you're using the raw request body (not parsed JSON)
-3. Check header name casing (use `extract_header()`)
-4. Enable debug logging with `log_verification()`
-5. Compare expected vs received signatures character-by-character
+**Problem**: Valid webhooks are rejected
 
-### Timestamp validation fails
+**Diagnosis**:
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  
+  # Debug logging
+  log_verification("provider", {
+    received_signature: signature,
+    expected_signature: expected,
+    payload_length: payload.bytesize,
+    secret_present: provider_config.signing_secret.present?,
+    match: secure_compare(signature, expected)
+  })
+  
+  secure_compare(signature, expected)
+end
+```
 
-1. Check server time is synchronized (NTP)
-2. Verify timestamp format matches provider's spec
-3. Adjust `timestamp_tolerance_seconds` if needed
-4. Check timezone handling
+**Common Causes**:
 
-### Provider not found
+1. **Using parsed payload instead of raw**:
+```ruby
+# ❌ WRONG: Using parsed/modified payload
+parsed = JSON.parse(request.body.read)
+signature = generate_hmac(secret, parsed.to_json)
 
-1. Ensure YAML file exists in `captain_hook/<provider_name>/`
-2. Ensure .rb file exists in the same directory
-3. Run "Discover New" or "Full Sync" in admin UI
-4. Check `verifier_file` in YAML references the correct .rb file
+# ✅ CORRECT: Using raw payload
+raw_payload = request.raw_post
+signature = generate_hmac(secret, raw_payload)
+```
 
-## Contributing
+2. **Wrong secret**:
+```yaml
+# Check environment variable name
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]  # ← Must match .env
+```
 
-Want to contribute an verifier for a popular provider? Great!
+3. **Wrong header name**:
+```ruby
+# Try multiple variations
+signature = extract_header(
+  headers,
+  "X-Signature",
+  "HTTP_X_SIGNATURE",
+  "X_Signature"
+)
+```
 
-### Steps to Contribute
+4. **Wrong encoding (Hex vs Base64)**:
+```ruby
+# Hex (most common)
+generate_hmac(secret, payload)
 
-1. **Create provider folder** in `captain_hook/<provider>/actions/`
-2. **Create verifier** file `<provider>.rb` using `CaptainHook::VerifierHelpers`
-3. **Create configuration** file `<provider>.yml` with provider details
-4. **Create example** in `captain_hook/<provider>/<provider>.yml`
-5. **Write tests** to demonstrate signature verification
-6. **Update documentation** with your verifier details
-7. **Submit pull request** with clear description
+# Base64 (some providers)
+generate_hmac_base64(secret, payload)
+```
+
+---
+
+### Verifier Not Loading
+
+**Problem**: Verifier class not found
+
+**Diagnosis**:
+```ruby
+# Check if file was loaded
+Rails.logger.debug("Loaded verifier from #{verifier_file}")
+
+# Check class exists
+CustomApiVerifier  # Should not raise NameError
+```
+
+**Common Causes**:
+
+1. **File name mismatch**:
+```
+# ✅ CORRECT
+captain_hook/stripe/stripe.rb
+
+# ❌ WRONG
+captain_hook/stripe/verifier.rb
+captain_hook/stripe/stripe_verifier.rb
+```
+
+2. **Class name mismatch**:
+```ruby
+# ✅ CORRECT: Ends with "Verifier"
+class StripeVerifier
+  include CaptainHook::VerifierHelpers
+end
+
+# ✅ ALSO CORRECT: Matches provider name
+class Stripe
+  include CaptainHook::VerifierHelpers
+end
+
+# ❌ WRONG: Doesn't match convention
+class CustomVerifier  # Should be CustomApiVerifier
+end
+```
+
+3. **Missing VerifierHelpers**:
+```ruby
+# ✅ CORRECT
+class CustomApiVerifier
+  include CaptainHook::VerifierHelpers
+end
+
+# ❌ WRONG: Missing include
+class CustomApiVerifier
+end
+```
+
+---
+
+### Timestamp Validation Too Strict
+
+**Problem**: Valid webhooks rejected due to timestamp
+
+**Diagnosis**:
+```ruby
+def verify_signature(...)
+  timestamp = extract_timestamp(headers)
+  age = Time.current.to_i - timestamp
+  
+  Rails.logger.debug "Timestamp age: #{age} seconds"
+  Rails.logger.debug "Tolerance: #{provider_config.timestamp_tolerance_seconds}"
+end
+```
+
+**Solutions**:
+
+1. **Increase tolerance**:
+```yaml
+# captain_hook/provider/provider.yml
+timestamp_tolerance_seconds: 600  # 10 minutes (relaxed)
+```
+
+2. **Check clock sync**:
+```bash
+# Verify server time is synchronized
+timedatectl status
+```
+
+3. **Disable timestamp validation** (development only):
+```yaml
+timestamp_tolerance_seconds: 0  # Disables validation
+```
+
+---
+
+### Event Type Not Matching Actions
+
+**Problem**: Webhooks received but no actions executed
+
+**Diagnosis**:
+```ruby
+def extract_event_type(payload)
+  event_type = payload["type"]
+  Rails.logger.debug "Extracted event type: #{event_type}"
+  event_type
+end
+```
+
+**Common Causes**:
+
+1. **Event type transformation**:
+```ruby
+# ❌ WRONG: Transforming event type
+def extract_event_type(payload)
+  payload["type"].gsub(".", "_")  # Changes "payment.succeeded" to "payment_succeeded"
+end
+
+# ✅ CORRECT: Return as-is
+def extract_event_type(payload)
+  payload["type"]  # Returns "payment.succeeded"
+end
+```
+
+2. **Action class event_type mismatch**:
+```ruby
+# Verifier returns:
+"payment_intent.succeeded"
+
+# Action expects:
+def self.details
+  { event_type: "payment.succeeded" }  # ← Mismatch!
+end
+```
+
+**Solution**: Ensure verifier returns exact event type from provider.
+
+---
+
+## Advanced Topics
+
+### Multi-Signature Verification
+
+Support multiple signature versions:
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  sig_header = extract_header(headers, "X-Signatures")
+  parsed = parse_kv_header(sig_header)
+  
+  # Try v3, v2, v1 in order
+  ["v3", "v2", "v1"].each do |version|
+    signature = parsed[version]
+    next if signature.blank?
+    
+    expected = generate_signature_for_version(version, payload, provider_config.signing_secret)
+    return true if secure_compare(signature, expected)
+  end
+  
+  false
+end
+
+def generate_signature_for_version(version, payload, secret)
+  case version
+  when "v3" then OpenSSL::HMAC.hexdigest("SHA512", secret, payload)
+  when "v2" then generate_hmac_base64(secret, payload)
+  when "v1" then generate_hmac(secret, payload)
+  end
+end
+```
+
+---
+
+### Custom Header Extraction
+
+Extract data from custom header formats:
+
+```ruby
+def extract_event_metadata(headers)
+  {
+    event_id: extract_header(headers, "X-Event-ID"),
+    event_type: extract_header(headers, "X-Event-Type"),
+    retry_count: extract_header(headers, "X-Retry-Count")&.to_i || 0,
+    correlation_id: extract_header(headers, "X-Correlation-ID")
+  }
+end
+```
+
+---
+
+### Conditional Verification
+
+Skip verification in specific scenarios:
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  # Skip verification if secret not configured (development)
+  return true if skip_verification?(provider_config.signing_secret)
+  
+  # Skip verification for specific IP addresses (if whitelisted)
+  if provider_config.whitelist_ips.present?
+    client_ip = headers["X-Forwarded-For"]
+    return true if provider_config.whitelist_ips.include?(client_ip)
+  end
+  
+  # Normal verification
+  signature = extract_header(headers, "X-Signature")
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  secure_compare(signature, expected)
+end
+```
+
+**Warning**: Only use in development/testing! Always verify in production.
+
+---
+
+## See Also
+
+- [Verifier Helpers](VERIFIER_HELPERS.md) - Security utility methods
+- [Provider Discovery](PROVIDER_DISCOVERY.md) - How verifiers are loaded
+- [GEM_WEBHOOK_SETUP.md](GEM_WEBHOOK_SETUP.md) - Creating verifiers in gems
+- [Signing Secret Storage](SIGNING_SECRET_STORAGE.md) - Managing webhook secrets
+- [TECHNICAL_PROCESS.md](../TECHNICAL_PROCESS.md) - Complete webhook processing flow

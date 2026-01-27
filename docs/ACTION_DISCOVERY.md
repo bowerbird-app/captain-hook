@@ -1,442 +1,621 @@
-# Action Discovery System
+# Action Discovery and Registration
 
 ## Overview
 
-CaptainHook uses automatic filesystem scanning to discover webhook action handlers. This eliminates the need for manual action registration and makes it easier to add new webhook handlers.
+CaptainHook uses an **automatic action discovery system** that scans your filesystem for action classes and registers them with the system. Actions are discovered at application boot and synced to the database, where they can be managed and executed when matching webhook events arrive.
 
-## How It Works
+## Key Concepts
 
-### 1. Boot-Time Scanning
+- **Action**: A Ruby class that processes a specific webhook event type
+- **Action Discovery**: Automatic scanning of `captain_hook/<provider>/actions/` directories for action classes
+- **Action Registry**: In-memory registry that holds action configurations (used as fallback)
+- **Action Sync**: Process that syncs discovered actions to the database
+- **Action Lookup**: Service that finds actions (database-first, with registry fallback)
 
-When your Rails application boots, CaptainHook automatically scans for action files in all load paths:
+## How Action Discovery Works
+
+### Discovery Process
+
+1. **Application Boot**: When Rails starts, CaptainHook automatically scans for actions
+2. **Filesystem Scan**: Searches all load paths for `captain_hook/<provider>/actions/**/*.rb` files
+3. **Class Loading**: Loads action files and finds action classes
+4. **Metadata Extraction**: Reads action metadata from the `.details` class method
+5. **Database Sync**: Creates or updates `Action` records in the database
+
+### Discovery Flow
 
 ```
-captain_hook/<provider>/actions/**/*.rb
+Application Boot
+    ↓
+Engine Initializer
+    ↓
+ActionDiscovery.new.call
+    ↓
+┌─────────────────────────────────────┐
+│ Scan Rails.root/captain_hook/       │
+│ - Find stripe/actions/*.rb          │
+│ - Load action classes               │
+│ - Extract metadata from .details    │
+└─────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────┐
+│ Scan All Loaded Gems                │
+│ - Check $LOAD_PATH for actions      │
+│ - Find captain_hook/*/actions/*.rb  │
+│ - Load and extract metadata         │
+└─────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────┐
+│ Sync to Database (ActionSync)       │
+│ - Create new Action records         │
+│ - Update existing Action records    │
+│ - Skip soft-deleted actions         │
+└─────────────────────────────────────┘
+    ↓
+Actions Ready to Execute
 ```
 
-This includes:
-- Host application files (e.g., `/path/to/app/captain_hook/stripe/actions/*.rb`)
-- Gem files (e.g., `/path/to/gems/my_gem/captain_hook/stripe/actions/*.rb`)
+## Action File Structure
 
-### 2. Action Structure
+### Directory Structure
 
-Each action file must:
-1. Define a class namespaced under the provider name
-2. Include a `self.details` class method
-3. Include a `webhook_action` instance method
+Actions must be placed in the correct directory structure to be discovered:
 
-Example:
+```
+captain_hook/
+└── <provider_name>/
+    └── actions/
+        ├── <event_name>_action.rb
+        ├── <another_event>_action.rb
+        └── subdirectory/           # Subdirectories are supported
+            └── <more_actions>.rb
+```
+
+### Example Structure
+
+```
+captain_hook/
+└── stripe/
+    └── actions/
+        ├── payment_intent_created_action.rb
+        ├── payment_intent_succeeded_action.rb
+        ├── charge_refunded_action.rb
+        └── subscriptions/
+            ├── subscription_created_action.rb
+            └── subscription_cancelled_action.rb
+```
+
+## Creating an Action Class
+
+### Basic Action Template
+
 ```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
+# captain_hook/stripe/actions/payment_intent_created_action.rb
 module Stripe
-  class PaymentSucceededAction
-    # REQUIRED: Metadata for discovery
+  class PaymentIntentCreatedAction
+    # Required: Define action metadata
     def self.details
       {
-        description: "Handles Stripe payment succeeded events",
-        event_type: "payment.succeeded",  # REQUIRED
-        priority: 100,                    # Optional (default: 100)
-        async: true,                      # Optional (default: true)
-        max_attempts: 5,                  # Optional (default: 5)
-        retry_delays: [30, 60, 300]      # Optional (default: [30, 60, 300, 900, 3600])
+        event_type: "payment_intent.created",
+        description: "Process new payment intents",
+        priority: 100,           # Lower = higher priority (default: 100)
+        async: true,             # Run in background job (default: true)
+        max_attempts: 5,         # Number of retry attempts (default: 5)
+        retry_delays: [30, 60, 300, 900, 3600]  # Retry delays in seconds (optional)
       }
     end
 
-    # REQUIRED: Webhook processing method
-    def webhook_action(event:, payload:, metadata:)
+    # Required: Process the webhook event
+    def webhook_action(event:, payload:, metadata: {})
+      # event: CaptainHook::IncomingEvent record
+      # payload: Parsed JSON payload as Hash
+      # metadata: Additional metadata (reserved for future use)
+      
+      payment_intent_id = payload.dig("data", "object", "id")
+      amount = payload.dig("data", "object", "amount")
+      
+      Rails.logger.info "Processing payment intent: #{payment_intent_id}"
+      
       # Your business logic here
+      # - Create/update records
+      # - Send notifications
+      # - Trigger other processes
     end
   end
 end
 ```
 
-### 3. Class Name Transformation
+### Action Metadata (`.details` method)
 
-When storing actions in the database, class names are transformed:
+The `.details` class method must return a hash with the following fields:
 
-**From gems or engines:**
-- Input: `CaptainHook::Stripe::Actions::PaymentSucceededAction`
-- Stored: `Stripe::PaymentSucceededAction`
-- Removes: `CaptainHook::` prefix and `::Actions::` namespace
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `event_type` | String | **Yes** | N/A | Event type to match (e.g., `"payment_intent.created"`) |
+| `description` | String | No | `nil` | Human-readable description |
+| `priority` | Integer | No | `100` | Execution priority (lower = higher priority) |
+| `async` | Boolean | No | `true` | Whether to run in background job |
+| `max_attempts` | Integer | No | `5` | Maximum retry attempts on failure |
+| `retry_delays` | Array | No | `[30, 60, 300, 900, 3600]` | Retry delays in seconds |
 
-**From host applications:**
-- Input: `Stripe::PaymentSucceededAction`
-- Stored: `Stripe::PaymentSucceededAction`
-- No transformation needed
+### Event Type Matching
 
-**The transformation ensures consistent naming regardless of where the action is defined.**
-
-### 4. Provider Extraction
-
-The provider name is extracted from the directory structure:
-
-```
-captain_hook/stripe/actions/payment_action.rb  → provider: "stripe"
-captain_hook/paypal/actions/payment_action.rb  → provider: "paypal"
-captain_hook/square/actions/payment_action.rb  → provider: "square"
-```
-
-### 5. Database Synchronization
-
-After discovery, actions are synced to the `captain_hook_actions` table:
+Actions can match specific events or use wildcards:
 
 ```ruby
-CaptainHook::Action.create!(
-  provider: "stripe",
-  event_type: "payment.succeeded",
-  action_class: "Stripe::PaymentSucceededAction",
-  priority: 100,
-  async: true,
-  max_attempts: 5,
-  retry_delays: [30, 60, 300, 900, 3600]
-)
+# Exact match
+def self.details
+  { event_type: "payment_intent.created" }
+end
+
+# Wildcard match (all payment_intent.* events)
+def self.details
+  { event_type: "payment_intent.*" }
+end
+
+# Match all events for a provider
+def self.details
+  { event_type: "*" }
+end
 ```
 
-## File Naming Conventions
+**Note**: Multiple actions can match the same event. They will be executed in priority order.
 
-### File Names
-Files should be in snake_case and end with `_action.rb`:
+### Priority and Execution Order
 
-✅ Good:
-- `payment_succeeded_action.rb`
-- `charge_updated_action.rb`
-- `invoice_payment_failed_action.rb`
+When multiple actions match an event, they execute in order:
 
-❌ Bad:
-- `PaymentSucceededAction.rb` (PascalCase)
-- `payment_succeeded.rb` (missing `_action`)
-- `payment-succeeded-action.rb` (hyphens)
-
-### Class Names
-Classes should be in PascalCase and match the file name:
-
-✅ Good:
-- File: `payment_succeeded_action.rb` → Class: `PaymentSucceededAction`
-- File: `charge_updated_action.rb` → Class: `ChargeUpdatedAction`
-
-❌ Bad:
-- File: `payment_succeeded_action.rb` → Class: `PaymentSucceeded`
-- File: `payment_succeeded_action.rb` → Class: `payment_succeeded_action`
-
-### Provider Prefix in File Names
-
-**You can optionally prefix file names with the provider name**, but it will be stripped when determining the class name:
-
-✅ Both work:
-- `stripe_payment_action.rb` → expects `class PaymentAction`
-- `payment_action.rb` → expects `class PaymentAction`
-
-The discovery system automatically removes the provider prefix if present.
-
-## Event Type Wildcards
-
-Actions can use wildcards to match multiple event types:
+1. **Priority** (ascending): Lower numbers run first
+2. **Action Class Name** (alphabetically): For deterministic ordering when priorities are equal
 
 ```ruby
-module Square
-  class BankAccountAction
+# Runs first (priority 50)
+class HighPriorityAction
+  def self.details
+    { event_type: "payment.created", priority: 50 }
+  end
+end
+
+# Runs second (priority 100, default)
+class NormalPriorityAction
+  def self.details
+    { event_type: "payment.created" }
+  end
+end
+
+# Runs last (priority 200)
+class LowPriorityAction
+  def self.details
+    { event_type: "payment.created", priority: 200 }
+  end
+end
+```
+
+## Naming Conventions
+
+### Module Namespace
+
+Actions **must** be namespaced under a module matching the provider name:
+
+```ruby
+# ✅ CORRECT: Namespaced under provider module
+module Stripe
+  class PaymentIntentAction
+    # ...
+  end
+end
+
+# ❌ WRONG: Not namespaced
+class StripePaymentIntentAction
+  # ...
+end
+```
+
+### File Naming
+
+File names should follow this pattern:
+
+- Use snake_case
+- Typically end with `_action.rb`
+- Should match the class name (snake_cased)
+
+```
+payment_intent_created_action.rb  → Stripe::PaymentIntentCreatedAction
+charge_refunded_action.rb         → Stripe::ChargeRefundedAction
+webhook_handler.rb                → Stripe::WebhookHandler (custom name)
+```
+
+### Provider Detection
+
+The provider is automatically detected from the directory structure:
+
+```
+captain_hook/stripe/actions/...    → Provider: "stripe"
+captain_hook/github/actions/...    → Provider: "github"
+captain_hook/custom_api/actions/...→ Provider: "custom_api"
+```
+
+## Gem-Based Actions
+
+### Creating Actions in Gems
+
+Gems can provide webhook actions by including `captain_hook/<provider>/actions/` directories:
+
+```
+your_gem/
+├── lib/
+│   └── your_gem.rb
+└── captain_hook/
+    └── stripe/
+        └── actions/
+            ├── payment_intent_action.rb
+            └── charge_action.rb
+```
+
+### Gem Action Namespacing
+
+Actions from gems are automatically namespaced to prevent conflicts:
+
+```ruby
+# In your gem: captain_hook/stripe/actions/payment_action.rb
+module Stripe
+  class PaymentAction
     def self.details
-      {
-        event_type: "bank_account.*",  # Matches bank_account.created, bank_account.verified, etc.
-        priority: 100,
-        async: true
-      }
+      { event_type: "payment.created" }
     end
-
-    def webhook_action(event:, payload:, metadata:)
-      # event.event_type contains the specific event (e.g., "bank_account.verified")
-      case event.event_type
-      when "bank_account.created"
-        # Handle created
-      when "bank_account.verified"
-        # Handle verified
-      end
-    end
+    # ...
   end
 end
 ```
 
-## Discovery Process Flow
+**Stored in database as**: `YourGem::Stripe::PaymentAction`
+
+This allows multiple gems to provide actions for the same event without conflicts.
+
+### Host App vs Gem Precedence
+
+When both a gem and the host application provide actions for the same event:
+
+- **Both actions execute** (they don't override each other)
+- Execution order is determined by **priority**, not source
+- You can disable a gem's action by soft-deleting it in the admin UI
+
+## Action Discovery Locations
+
+The discovery system searches for actions in these locations (in order):
+
+### 1. Rails Root Directory
 
 ```
-1. Rails Boot
-   ↓
-2. CaptainHook::Engine initializer runs
-   ↓
-3. ActionDiscovery.new.call scans filesystem
-   ↓
-4. For each action file:
-   - Extract provider from path
-   - Require the file
-   - Find the action class
-   - Call .details to get metadata
-   - Transform class name
-   - Create action definition hash
-   ↓
-5. ActionSync.new(definitions).call syncs to database
-   ↓
-6. Actions are ready to process webhooks
+Rails.root/captain_hook/<provider>/actions/**/*.rb
 ```
 
-## Debugging Discovery
+Example: `/app/captain_hook/stripe/actions/payment_action.rb`
 
-### Enable Debug Logging
+### 2. Ruby Load Path ($LOAD_PATH)
 
-In your Rails console or initializer:
+```
+$LOAD_PATH[*]/captain_hook/<provider>/actions/**/*.rb
+```
+
+Includes directories added by gems via `lib/` directories.
+
+### 3. Loaded Gem Directories
+
+```
+Gem.loaded_specs[*].full_gem_path/captain_hook/<provider>/actions/**/*.rb
+```
+
+All gems with `captain_hook/` directories are scanned.
+
+## Manual Action Registration
+
+While automatic discovery is recommended, you can also manually register actions:
+
+### Using Configuration Block
+
 ```ruby
 # config/initializers/captain_hook.rb
-Rails.logger.level = :debug
-```
-
-You'll see messages like:
-```
-🔍 CaptainHook: Auto-scanning providers and actions...
-✅ Discovered action: Stripe::PaymentSucceededAction for stripe:payment.succeeded
-✅ Discovered action: Square::BankAccountAction for square:bank_account.*
-✅ CaptainHook: Synced actions - Created: 2, Updated: 0, Skipped: 0
-```
-
-### Manual Discovery
-
-You can manually trigger discovery in the Rails console:
-
-```ruby
-# Discover all actions
-discovery = CaptainHook::Services::ActionDiscovery.new
-definitions = discovery.call
-
-# View discovered actions
-definitions.each do |defn|
-  puts "#{defn['provider']}:#{defn['event']} → #{defn['action']}"
-end
-
-# Sync to database
-sync = CaptainHook::Services::ActionSync.new(definitions, update_existing: true)
-results = sync.call
-
-puts "Created: #{results[:created].count}"
-puts "Updated: #{results[:updated].count}"
-puts "Skipped: #{results[:skipped].count}"
-```
-
-### Check Discovered Actions
-
-```ruby
-# View all actions in database
-CaptainHook::Action.all.each do |action|
-  puts "#{action.provider}:#{action.event_type} → #{action.action_class}"
-end
-
-# Check specific provider
-CaptainHook::Action.where(provider: "stripe")
-
-# Check specific event type
-CaptainHook::Action.where(event_type: "payment.succeeded")
-```
-
-## Common Issues
-
-### Action not discovered
-
-**Symptom:** Action file exists but doesn't appear in `CaptainHook::Action.all`
-
-**Causes:**
-1. File not in `captain_hook/<provider>/actions/` directory
-2. Missing `self.details` method
-3. Missing `:event_type` in details hash
-4. Class not properly namespaced
-5. File not loaded (check `$LOAD_PATH`)
-6. Server not restarted after creating file
-
-**Solution:**
-```bash
-# Restart Rails server
-bin/rails restart
-
-# Or manually trigger discovery in console
-CaptainHook::Engine.sync_actions
-```
-
-### Wrong class name
-
-**Symptom:** Error like "Could not find class Stripe::StripePaymentAction"
-
-**Cause:** File name doesn't match class name
-
-**Example:**
-```ruby
-# ❌ BAD
-# File: stripe_payment_action.rb
-module Stripe
-  class PaymentAction  # Wrong! Should be StripePaymentAction or just PaymentAction
-  end
-end
-
-# ✅ GOOD - Option 1: Include provider in class name
-# File: stripe_payment_action.rb  
-module Stripe
-  class StripePaymentAction
-  end
-end
-
-# ✅ GOOD - Option 2: Omit provider from file name
-# File: payment_action.rb
-module Stripe
-  class PaymentAction
-  end
-end
-```
-
-### Namespace error
-
-**Symptom:** Error like "uninitialized constant Stripe"
-
-**Cause:** Missing provider module
-
-**Solution:**
-```ruby
-# ❌ BAD
-class PaymentAction  # Not namespaced!
-end
-
-# ✅ GOOD
-module Stripe
-  class PaymentAction
-  end
-end
-```
-
-## Migration Guide
-
-### From Manual Registration
-
-**Old way (manual registration):**
-```ruby
-# lib/your_gem/engine.rb
-config.after_initialize do
-  CaptainHook.register_action(
+CaptainHook.configure do |config|
+  config.action_registry.register(
     provider: "stripe",
-    event_type: "payment.succeeded",
-    action_class: "YourGem::Webhooks::PaymentSucceededAction",
-    priority: 100,
+    event_type: "payment_intent.succeeded",
+    action_class: "Stripe::PaymentIntentSucceededAction",
     async: true,
-    max_attempts: 3
+    priority: 100,
+    max_attempts: 5,
+    retry_delays: [30, 60, 300, 900, 3600]
   )
 end
 ```
 
-**New way (automatic discovery):**
+### Using Convenience Method
+
 ```ruby
-# captain_hook/stripe/actions/payment_succeeded_action.rb
+# config/initializers/captain_hook.rb
+CaptainHook.register_action(
+  provider: "stripe",
+  event_type: "charge.failed",
+  action_class: "Stripe::ChargeFailedAction",
+  async: true,
+  priority: 50
+)
+```
+
+**Note**: Manually registered actions:
+- Are stored in the **in-memory registry only** (not synced to database)
+- Will be used as fallback if no database records exist
+- Won't appear in the admin UI unless manually created in the database
+
+## Action Lookup (Runtime)
+
+When a webhook arrives, CaptainHook looks up actions using **ActionLookup** service:
+
+### Lookup Priority
+
+1. **Database (Active Actions)**: Check for active actions in database
+2. **Skip if Soft-Deleted**: If deleted records exist, respect deletion (don't fall back)
+3. **Registry Fallback**: If no database records at all, fall back to in-memory registry
+
+```ruby
+# Internal lookup process
+actions = ActionLookup.actions_for(
+  provider: "stripe",
+  event_type: "payment_intent.created"
+)
+
+# Returns ActionConfig objects ready for execution
+```
+
+### Soft-Delete Behavior
+
+When you delete an action through the admin UI:
+
+- The action is **soft-deleted** (marked as `deleted_at`)
+- The action **will not execute** even if discovered in code
+- Discovery won't re-create the action
+- Registry fallback is disabled for that specific action
+
+**To restore**: Manually update the database or use the admin UI
+
+## Triggering Manual Discovery
+
+### Rescan Actions
+
+Force a re-scan of the filesystem and sync to database:
+
+```ruby
+# In Rails console or code
+CaptainHook::Engine.sync_actions
+```
+
+This will:
+- Scan all action files
+- Create new Action records
+- Update existing Action records
+- Skip soft-deleted actions
+- Log results
+
+### Discovery Service (Low-Level)
+
+For discovery without database sync:
+
+```ruby
+# Returns array of action definition hashes
+action_definitions = CaptainHook::Services::ActionDiscovery.new.call
+
+action_definitions.each do |definition|
+  puts "#{definition['provider']}:#{definition['event']} → #{definition['action']}"
+end
+
+# Example output:
+# stripe:payment_intent.created → Stripe::PaymentIntentCreatedAction
+# stripe:charge.refunded → Stripe::ChargeRefundedAction
+```
+
+## Database Schema
+
+Actions are stored in the `captain_hook_actions` table:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `provider` | String | Provider name (e.g., "stripe") |
+| `event_type` | String | Event type (e.g., "payment_intent.created") |
+| `action_class` | String | Full class name (e.g., "Stripe::PaymentIntentAction") |
+| `async` | Boolean | Whether to run asynchronously |
+| `max_attempts` | Integer | Maximum retry attempts |
+| `priority` | Integer | Execution priority (lower = first) |
+| `retry_delays` | JSON | Array of retry delays in seconds |
+| `deleted_at` | DateTime | Soft-delete timestamp |
+
+**Unique Key**: `[provider, event_type, action_class]`
+
+## Action Execution
+
+When a webhook event arrives:
+
+1. **Event Received**: Webhook is validated and saved as `IncomingEvent`
+2. **Action Lookup**: Find all matching actions via ActionLookup
+3. **Execution Records Created**: Create `IncomingEventAction` records
+4. **Job Enqueue**: Enqueue background jobs for each action
+5. **Retry Logic**: Failed actions retry based on `retry_delays` configuration
+
+```
+Webhook Arrives
+    ↓
+IncomingEvent Created
+    ↓
+ActionLookup.actions_for(provider, event_type)
+    ↓
+Create IncomingEventAction Records
+    ↓
+Enqueue ProcessWebhookJob(s)
+    ↓
+Execute action.webhook_action(...)
+    ↓
+Mark as success/failed
+    ↓
+Retry if failed (up to max_attempts)
+```
+
+## Complete Example
+
+### File: `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`
+
+```ruby
+# frozen_string_literal: true
+
 module Stripe
-  class PaymentSucceededAction
+  class PaymentIntentSucceededAction
+    # Define action metadata
     def self.details
       {
-        event_type: "payment.succeeded",
+        event_type: "payment_intent.succeeded",
+        description: "Process successful payment intents and update orders",
         priority: 100,
         async: true,
-        max_attempts: 3
+        max_attempts: 5,
+        retry_delays: [30, 60, 300, 900, 3600]
       }
     end
 
-    def webhook_action(event:, payload:, metadata:)
-      # Same business logic as before
+    # Process the webhook event
+    def webhook_action(event:, payload:, metadata: {})
+      # Extract Stripe data
+      payment_intent = payload.dig("data", "object")
+      payment_intent_id = payment_intent["id"]
+      amount = payment_intent["amount"]
+      currency = payment_intent["currency"]
+      
+      # Log the event
+      Rails.logger.info "💰 Payment succeeded: #{payment_intent_id}"
+      Rails.logger.info "   Amount: #{amount} #{currency.upcase}"
+      
+      # Your business logic
+      order = Order.find_by(stripe_payment_intent_id: payment_intent_id)
+      
+      if order
+        order.update!(
+          status: "paid",
+          paid_at: Time.current,
+          payment_amount: amount,
+          payment_currency: currency
+        )
+        
+        # Send confirmation email
+        OrderMailer.payment_confirmation(order).deliver_later
+        
+        Rails.logger.info "   Order ##{order.id} marked as paid"
+      else
+        Rails.logger.warn "   No order found for payment intent #{payment_intent_id}"
+      end
+      
+    rescue StandardError => e
+      # Log the error - it will be retried automatically
+      Rails.logger.error "❌ Failed to process payment intent: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      # Re-raise to trigger retry
+      raise
     end
   end
 end
 ```
 
-### Steps to Migrate
+### Application Boot
 
-1. **Create action files** in `captain_hook/<provider>/actions/`
-2. **Add `self.details` method** to each action class
-3. **Namespace classes** under provider module
-4. **Remove registration calls** from initializers/engine files
-5. **Restart server** to trigger discovery
-6. **Verify** actions were discovered using Rails console
+After placing the file, restart your application. You should see:
 
-## Performance Considerations
-
-### Boot Time Impact
-
-Discovery runs once during Rails boot. Impact is minimal:
-- ~1-5ms per action file to scan and load
-- ~10-20ms for database sync
-- Total: ~50-100ms for 10-20 actions
-
-### Caching
-
-Discovered actions are cached in the database. Changes require:
-1. Restart Rails server, OR
-2. Manual re-sync via `CaptainHook::Engine.sync_actions`
-
-### Optimization Tips
-
-1. **Keep action files small** - Only include webhook processing logic
-2. **Use wildcards** when appropriate - Reduce number of action files
-3. **Avoid heavy computations** in `self.details` - It's called during discovery
-4. **Lazy load dependencies** - Don't require heavy gems at the top of action files
-
-## Testing
-
-### Testing Discovery
-
-```ruby
-# test/services/action_discovery_test.rb
-require "test_helper"
-
-class ActionDiscoveryTest < ActiveSupport::TestCase
-  test "discovers stripe actions" do
-    discovery = CaptainHook::Services::ActionDiscovery.new
-    actions = discovery.call
-    
-    stripe_actions = actions.select { |a| a["provider"] == "stripe" }
-    assert stripe_actions.size > 0
-    
-    payment_action = stripe_actions.find { |a| a["event"] == "payment.succeeded" }
-    assert_equal "Stripe::PaymentSucceededAction", payment_action["action"]
-  end
-end
+```
+🔍 CaptainHook: Found 1 registered action(s)
+✅ Created action: Stripe::PaymentIntentSucceededAction for stripe:payment_intent.succeeded
+✅ CaptainHook: Synced actions - Created: 1, Updated: 0, Skipped: 0
 ```
 
-### Testing Actions
+### When Webhook Arrives
 
-```ruby
-# test/captain_hook/stripe/actions/payment_succeeded_action_test.rb
-require "test_helper"
-
-class Stripe::PaymentSucceededActionTest < ActiveSupport::TestCase
-  test "has required details" do
-    details = Stripe::PaymentSucceededAction.details
-    
-    assert details[:event_type].present?
-    assert details[:priority].present?
-  end
-
-  test "processes payment succeeded webhook" do
-    action = Stripe::PaymentSucceededAction.new
-    event = captain_hook_incoming_events(:stripe_payment_succeeded)
-    
-    result = action.webhook_action(
-      event: event,
-      payload: JSON.parse(event.payload),
-      metadata: {}
-    )
-    
-    assert result
-  end
-end
 ```
+POST /captain_hook/stripe/:token
+Content-Type: application/json
+{
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_123456",
+      "amount": 5000,
+      "currency": "usd"
+    }
+  }
+}
+
+→ IncomingEvent created
+→ Found 1 matching action: Stripe::PaymentIntentSucceededAction
+→ IncomingEventAction created
+→ ProcessWebhookJob enqueued
+→ webhook_action executed
+→ Order marked as paid
+→ Email sent
+```
+
+## Troubleshooting
+
+### Action Not Discovered
+
+**Problem**: Action file exists but isn't discovered
+
+**Solutions**:
+1. Check file is in correct directory: `captain_hook/<provider>/actions/**/*.rb`
+2. Verify class is namespaced correctly: `module Stripe; class ActionName; end; end`
+3. Ensure `.details` method exists and returns required fields
+4. Check Rails logs for loading errors
+5. Manually trigger discovery: `CaptainHook::Engine.sync_actions`
+
+### Action Not Executing
+
+**Problem**: Action discovered but doesn't execute for webhooks
+
+**Solutions**:
+1. Check `event_type` in `.details` matches webhook event type exactly
+2. Verify action is active in database: `CaptainHook::Action.where(deleted_at: nil)`
+3. Check action wasn't soft-deleted: `CaptainHook::Action.with_deleted.find_by(...)`
+4. Review logs for execution errors
+5. Verify webhook was received: `CaptainHook::IncomingEvent.last`
+
+### Multiple Actions Execute
+
+**Problem**: Multiple actions run for one event (unexpected)
+
+**Explanation**: This is **by design**. Multiple actions can match one event:
+- Specific event: `payment_intent.created`
+- Wildcard: `payment_intent.*`
+- Catch-all: `*`
+
+**Solutions**:
+- Use priority to control execution order
+- Soft-delete unwanted actions in admin UI
+- Use more specific event types
+
+### Gem Actions Conflict
+
+**Problem**: Gem action conflicts with host app action
+
+**Solution**: Both will execute. Use priority to control order, or soft-delete the unwanted one.
 
 ## Best Practices
 
-1. **One action per event type** - Keep actions focused
-2. **Use descriptive class names** - `PaymentSucceededAction` not `PSA`
-3. **Document business logic** - Comment what the action does
-4. **Handle errors gracefully** - Use rescue blocks for external API calls
-5. **Log important events** - Use Rails.logger for visibility
-6. **Keep actions idempotent** - Actions may be retried
-7. **Validate payloads** - Check for required fields before processing
-8. **Use transactions** - For database operations
-9. **Test thoroughly** - Both happy path and error cases
-10. **Monitor performance** - Track action execution times
+1. **Use Descriptive Names**: `PaymentIntentSucceededAction` > `PaymentAction`
+2. **Namespace Correctly**: Always use provider module namespace
+3. **Set Appropriate Priorities**: High-priority actions < 100, normal = 100, low > 100
+4. **Handle Errors Gracefully**: Use begin/rescue, re-raise to trigger retry
+5. **Log Meaningful Messages**: Include event ID, amounts, and actions taken
+6. **Keep Actions Focused**: One action per event type (or use wildcards carefully)
+7. **Test Actions Thoroughly**: Unit test the `webhook_action` method
+8. **Use Idempotency**: Actions may be retried, ensure they're idempotent
+9. **Leverage Async**: Use `async: true` for slow operations
+10. **Document Event Types**: Comment what events the action handles
+
+## See Also
+
+- [Action Management](ACTION_MANAGEMENT.md) - Managing actions in the admin UI
+- [TECHNICAL_PROCESS.md](../TECHNICAL_PROCESS.md) - Complete technical documentation
+- [Provider Discovery](PROVIDER_DISCOVERY.md) - How providers are discovered

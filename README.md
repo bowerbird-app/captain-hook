@@ -517,7 +517,7 @@ your_rails_app/
 Captain Hook uses four main tables:
 
 **captain_hook_providers** - Provider configurations
-- `name` - Provider identifier (stripe, square, etc.)
+- `name` - Provider identifier (e.g., stripe)
 - `token` - Unique webhook URL token
 - `active` - Enable/disable provider
 

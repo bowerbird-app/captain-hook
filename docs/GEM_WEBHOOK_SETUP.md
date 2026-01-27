@@ -1,822 +1,1323 @@
-# Setting Up Webhooks in Your Gem with CaptainHook
-
-This guide shows you how to set up webhook handling for any third-party provider (Stripe, PayPal, Square, etc.) in your gem using CaptainHook.
+# Gem Webhook Setup Guide
 
 ## Overview
 
-When building a Rails gem that integrates with third-party services, you often need to receive and process webhooks from these services. CaptainHook is a Rails engine that handles the heavy lifting of webhook management, allowing your gem to focus on business logic.
+This guide shows **gem authors** how to integrate webhook handling into their gems using CaptainHook. When developers install your gem alongside CaptainHook in their Rails applications, your webhook providers and actions will be automatically discovered and made available without any additional configuration.
 
-While this guide uses **Stripe as the example provider**, the same pattern applies to any webhook provider (PayPal, Square, Shopify, GitHub, etc.).
+## What This Guide Covers
 
-### Why This Setup?
+- Setting up the correct directory structure in your gem
+- Creating provider configurations (YAML files)
+- Creating custom verifiers for signature verification
+- Creating webhook actions that process events
+- Testing your gem integration
+- Publishing and documenting your gem
 
-Instead of implementing webhook handling from scratch in every gem, CaptainHook provides:
+## Who This Guide Is For
 
-- **Signature Verification**: Ensures webhooks are authentic and from the claimed provider
-- **Event Storage**: Persists all incoming webhooks for audit trails and debugging
-- **Action Registration**: Routes events to your business logic automatically
-- **Admin UI**: Provides visibility into webhook traffic and processing status
-- **Reliability**: Built-in retry logic, background job processing, and error tracking
+- Gem authors building integrations with third-party APIs
+- Developers creating reusable webhook handlers
+- Library maintainers providing webhook support
+- Anyone wanting to package webhook integrations as gems
 
-### Built-in Verifiers
+## Prerequisites
 
-**CaptainHook ships with verifiers for common webhook providers:**
-- **Stripe** - `CaptainHook::Verifiers::Stripe`
-- **Square** - `CaptainHook::Verifiers::Square`
-- **PayPal** - `CaptainHook::Verifiers::Paypal`
-- **WebhookSite** - `CaptainHook::Verifiers::WebhookSite` (testing only)
+Your gem users will need:
+- Rails 6.0 or higher
+- CaptainHook gem installed in their application
+- Ruby 2.7 or higher
 
-These verifiers are maintained within the CaptainHook gem and provide secure, tested webhook signature verification. If you need a verifier for a provider not listed above, see the "Contributing New Verifiers" section at the end of this guide.
+Your gem should:
+- Be compatible with Rails engines
+- Follow Ruby gem conventions
+- Have proper gemspec configuration
 
-### How It Works
+## Quick Start
 
-Your gem provides two key components:
-
-1. **Provider Config** - YAML file specifying which built-in verifier to use
-2. **Actions** - Job classes that process specific event types (your business logic)
-
-When installed in a Rails app, CaptainHook:
-- Discovers your provider configuration
-- Uses the specified built-in verifier for signature verification
-- Registers your actions
-- Routes incoming webhooks to your code
-- Manages the entire webhook lifecycle
-
-This keeps your gem focused on **what to do** with webhook data, while CaptainHook handles **how to receive it safely**.
-
-## Important: One Provider, Many Actions
-
-**Before creating a new provider, check if one already exists!**
-
-If your Rails app or another gem already has a provider for your service (e.g., `stripe`), you typically **don't need to create a new one**. Instead, just register your actions for the existing provider.
-
-### When to Share a Provider
-
-**Share the same provider when:**
-- You're using the same webhook URL and signing secret
-- Multiple gems/parts of your app need to process different event types from the same account
-- Example: One gem handles `invoice.paid`, another handles `subscription.updated`
-
-**Your app:**
-```ruby
-# captain_hook/providers/stripe/stripe.yml already exists
-CaptainHook.register_action(
-  provider: "stripe",
-  event_type: "payment_intent.created",
-  action_class: "MyApp::PaymentAction"
-)
-```
-
-**Your gem:**
-```ruby
-# DON'T create a new stripe provider - use the existing one!
-CaptainHook.register_action(
-  provider: "stripe",  # Same provider name
-  event_type: "invoice.paid",
-  action_class: "MyGem::InvoiceAction"
-)
-```
-
-Both actions use the **same webhook endpoint** and **same signature verification**.
-
-### When to Create a New Provider
-
-**Create a separate provider only when:**
-- You need different webhook URLs (multi-tenant: different Stripe accounts)
-- You need different signing secrets
-- You're using different API credentials
-
-**Multi-tenant example:**
-```ruby
-# Provider for Account A
-# captain_hook/providers/stripe_primary/stripe_primary.yml
-name: stripe_primary
-signing_secret: ENV[STRIPE_PRIMARY_SECRET]
-
-# Provider for Account B
-# captain_hook/providers/stripe_secondary/stripe_secondary.yml
-name: stripe_secondary
-signing_secret: ENV[STRIPE_SECONDARY_SECRET]
-```
-
-**CaptainHook will warn you** if it detects duplicate provider names during scanning and provide guidance on whether to merge or rename.
-
-## Directory Structure
-
-Create this structure in your gem:
+Here's a minimal example of a gem that provides Stripe webhook integration:
 
 ```
 your_gem/
-├── captain_hook/                      # Action handlers and provider config (REQUIRED)
-│   ├── providers/
-│   │   └── your_provider/             # Provider-specific directory
-│   │       └── your_provider.yml      # Configuration (e.g., stripe.yml)
-│   └── your_provider/                 # Provider name (e.g., stripe, paypal)
-│       └── actions/                   # Action classes directory
-│           ├── event_one_action.rb    # e.g., payment_succeeded_action.rb
-│           ├── event_two_action.rb    # e.g., refund_processed_action.rb
-│           └── event_three_action.rb  # e.g., subscription_updated_action.rb
 ├── lib/
+│   ├── your_gem.rb
 │   └── your_gem/
-│       └── engine.rb                  # Rails engine (if applicable)
-└── your_gem.gemspec                   # Gem dependencies (REQUIRED)
+│       └── version.rb
+├── captain_hook/
+│   └── stripe/
+│       ├── stripe.yml        # Provider configuration
+│       ├── stripe.rb          # Custom verifier (optional)
+│       └── actions/           # Webhook actions
+│           └── payment_intent_succeeded_action.rb
+├── your_gem.gemspec
+└── README.md
 ```
 
-### Why Each Directory?
+When installed, CaptainHook will:
+1. Discover your `captain_hook/` directory
+2. Load provider configurations from YAML files
+3. Register custom verifiers
+4. Discover and sync actions to the database
+5. Route webhooks to your actions automatically
 
-- **Provider Config (`captain_hook/providers/stripe/stripe.yml`)**: Declarative configuration that tells CaptainHook about your provider - what it's called, which built-in verifier to use, where to get secrets from environment variables, and security settings.
+## Directory Structure
 
-- **Actions (`captain_hook/stripe/actions/*.rb`)**: Your business logic. Each action processes a specific event type (e.g., "payment succeeded"). They run as background jobs, so heavy processing won't block the webhook response. **Actions are automatically discovered on boot!**
+### Required Structure
 
-- **Gemspec**: Ensures all webhook-related files are included when your gem is packaged and distributed.
+Your gem must follow this structure for CaptainHook to discover your webhook integrations:
 
-## Step 1: Create Provider Configuration (YAML)
+```
+your_gem/
+├── captain_hook/                    # Root directory (required)
+│   ├── <provider_name>/             # One directory per provider
+│   │   ├── <provider_name>.yml      # Provider config (required)
+│   │   ├── <provider_name>.rb       # Verifier class (optional)
+│   │   └── actions/                 # Actions directory (optional)
+│   │       ├── action1.rb
+│   │       ├── action2.rb
+│   │       └── subdirectory/        # Subdirectories supported
+│   │           └── action3.rb
+│   └── <another_provider>/
+│       └── ...
+```
 
-**CaptainHook includes built-in verifiers for common providers!** You only need to create a YAML configuration file that references the appropriate built-in verifier.
+### Key Rules
 
-### Available Built-in Verifiers:
+1. **`captain_hook/` at gem root**: Must be at the root level of your gem, not inside `lib/`
+2. **Provider name**: Directory name becomes the provider identifier (use lowercase with underscores)
+3. **YAML file naming**: Must match provider directory name (e.g., `stripe/stripe.yml`)
+4. **Ruby file naming**: Verifier file should match provider name (e.g., `stripe/stripe.rb`)
+5. **Actions directory**: Optional, but must be named exactly `actions/` if present
 
-- **`stripe`** - For Stripe webhooks (`CaptainHook::Verifiers::Stripe`)
-- **`square`** - For Square webhooks (`CaptainHook::Verifiers::Square`)
-- **`paypal`** - For PayPal webhooks (`CaptainHook::Verifiers::Paypal`)
-- **`webhook_site`** - For WebhookSite testing (`CaptainHook::Verifiers::WebhookSite`)
+### Example with Multiple Providers
 
-### Step 1: Create Provider Configuration
+```
+payment_integrations_gem/
+├── lib/
+│   └── payment_integrations.rb
+└── captain_hook/
+    ├── stripe/
+    │   ├── stripe.yml
+    │   ├── stripe.rb
+    │   └── actions/
+    │       ├── payment_succeeded_action.rb
+    │       └── refund_created_action.rb
+    ├── paypal/
+    │   ├── paypal.yml
+    │   ├── paypal.rb
+    │   └── actions/
+    │       └── payment_captured_action.rb
+    └── square/
+        ├── square.yml
+        └── actions/
+            └── payment_updated_action.rb
+```
 
-Create a YAML file that defines your provider's webhook settings. The `name` field should be lowercase and URL-friendly (it becomes part of the webhook endpoint).
+## Provider Configuration (YAML)
 
-### Example: Stripe Configuration
+### Basic Configuration
 
-Create `captain_hook/providers/stripe/stripe.yml` in your gem:
+Create a YAML file at `captain_hook/<provider>/<provider>.yml`:
 
 ```yaml
-# Provider configuration for Stripe
-# Place this file in: captain_hook/providers/stripe/stripe.yml
-name: stripe                                    # URL-friendly identifier (lowercase, no spaces)
-display_name: Stripe                            # Human-readable name
-description: Stripe payment processing webhooks # Brief description
-
-# Reference the built-in Stripe verifier
-verifier_class: stripe                          # Use built-in Stripe verifier (CaptainHook::Verifiers::Stripe)
-
-# Signing secret from environment variable
-# Set this in your .env file or environment:
-# STRIPE_WEBHOOK_SECRET=whsec_...
-signing_secret: ENV[STRIPE_WEBHOOK_SECRET]      # Environment variable reference
+# captain_hook/stripe/stripe.yml
+name: stripe
+display_name: Stripe Payments
+description: Webhook integration for Stripe payment events
+verifier_file: stripe.rb
 
 # Security settings
-timestamp_tolerance_seconds: 300  # 5 minutes
-max_payload_size_bytes: 1048576   # 1 MB
-
-# Rate limiting
-rate_limit_requests: 100
-rate_limit_period: 60  # 60 seconds
-
-# Active by default
-active: true
-```
-
-### Other Provider Examples:
-
-**PayPal Configuration** (`captain_hook/providers/paypal/paypal.yml`):
-```yaml
-name: paypal
-display_name: PayPal
-description: PayPal payment webhooks
-verifier_class: paypal  # Uses CaptainHook::Verifiers::Paypal
-signing_secret: ENV[PAYPAL_WEBHOOK_ID]
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
 timestamp_tolerance_seconds: 300
-active: true
+max_payload_size_bytes: 1048576
 ```
 
-**Square Configuration** (`captain_hook/providers/square/square.yml`):
+### Configuration Fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `name` | **Yes** | String | Provider identifier (must match directory name) |
+| `display_name` | No | String | Human-readable name for admin UI |
+| `description` | No | String | Brief description of the provider |
+| `verifier_file` | **Yes** | String | Name of verifier Ruby file (can reference built-in verifiers) |
+| `signing_secret` | **Yes** | String | ENV variable reference for webhook secret |
+| `timestamp_tolerance_seconds` | No | Integer | Seconds to allow for clock skew (default: 300) |
+| `max_payload_size_bytes` | No | Integer | Maximum webhook payload size (default: 1048576) |
+
+### Environment Variable Pattern
+
+**Always** use the `ENV[VARIABLE_NAME]` pattern for secrets:
+
 ```yaml
-name: square
-display_name: Square
-description: Square payment webhooks
-verifier_class: square  # Uses CaptainHook::Verifiers::Square
-signing_secret: ENV[SQUARE_SIGNATURE_KEY]
-timestamp_tolerance_seconds: 300
-active: true
+# ✅ CORRECT: References environment variable
+signing_secret: ENV[YOUR_GEM_STRIPE_WEBHOOK_SECRET]
+
+# ❌ WRONG: Hardcoded secret (security risk!)
+signing_secret: whsec_abc123...
+
+# ❌ WRONG: Rails.application.credentials won't work
+signing_secret: Rails.application.credentials.stripe_webhook_secret
 ```
 
-### Multi-Tenant Support
+### Using Built-in Verifiers
 
-If you need multiple instances of the same provider (e.g., supporting multiple Stripe accounts), create separate provider directories:
+CaptainHook includes a built-in Stripe verifier. Reference it directly:
 
 ```yaml
-# captain_hook/providers/stripe_primary/stripe_primary.yml
-name: stripe_primary
-display_name: Stripe (Primary Account)
-verifier_class: stripe  # Both use the same built-in Stripe verifier
-signing_secret: ENV[STRIPE_PRIMARY_SECRET]
+# captain_hook/stripe/stripe.yml
+name: stripe
+display_name: Stripe (via YourGem)
+description: Stripe webhooks provided by YourGem
+verifier_file: stripe.rb  # Uses CaptainHook's built-in Stripe verifier
 
-# captain_hook/providers/stripe_secondary/stripe_secondary.yml
-name: stripe_secondary
-display_name: Stripe (Secondary Account)
-verifier_class: stripe  # Both use the same built-in Stripe verifier
-signing_secret: ENV[STRIPE_SECONDARY_SECRET]
+signing_secret: ENV[YOUR_GEM_STRIPE_SECRET]
 ```
 
-Each instance gets its own webhook URL and actions, but they share the same signature verification logic from the built-in verifier.
+**Built-in verifiers available:**
+- `stripe.rb` - Stripe signature verification
 
-## Step 2: Create Action Classes
+### Namespacing Your Provider
 
-⚠️ **IMPORTANT CHANGE**: Actions are now automatically discovered from the filesystem! You no longer need to manually register them in an initializer.
+To avoid conflicts with host app or other gems, consider namespacing:
 
-Create action classes in `captain_hook/<provider>/actions/` directories. Each action must have a `self.details` class method that returns metadata about the action.
+```yaml
+# Option 1: Prefix with gem name
+name: your_gem_stripe
+display_name: Stripe (via YourGem)
 
-### Example Action Structure
+# Option 2: Use descriptive suffix
+name: stripe_marketplace
+display_name: Stripe Marketplace Webhooks
+```
 
-Create `captain_hook/stripe/actions/payment_intent_succeeded_action.rb`:
+## Custom Verifiers
+
+### When to Create a Custom Verifier
+
+Create a custom verifier when:
+- The provider's signature scheme isn't built into CaptainHook
+- You need custom validation logic
+- The provider uses non-standard authentication
+
+### Verifier Template
+
+Create `captain_hook/<provider>/<provider>.rb`:
 
 ```ruby
+# captain_hook/custom_provider/custom_provider.rb
 # frozen_string_literal: true
 
-# Action for Stripe payment_intent.succeeded events
-# Actions are automatically discovered by scanning captain_hook/*/actions directories
+# Define at gem root level (not inside module)
+class CustomProviderVerifier
+  # Include helper methods (HMAC, header extraction, secure compare, etc.)
+  include CaptainHook::VerifierHelpers
+
+  # Required: Define signature header name
+  SIGNATURE_HEADER = "X-Custom-Provider-Signature"
+  TIMESTAMP_HEADER = "X-Custom-Provider-Timestamp"
+
+  # Required: Implement signature verification
+  # @param payload [String] Raw request body
+  # @param headers [Hash] Request headers (case-insensitive)
+  # @param provider_config [CaptainHook::ProviderConfig] Provider configuration
+  # @return [Boolean] true if signature is valid, false otherwise
+  def verify_signature(payload:, headers:, provider_config:)
+    # Extract signature from headers
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    return false if signature.blank?
+
+    # Extract timestamp if provider uses it
+    timestamp = extract_header(headers, TIMESTAMP_HEADER)
+    
+    # Validate timestamp (optional but recommended)
+    if provider_config.timestamp_validation_enabled? && timestamp.present?
+      return false unless timestamp_within_tolerance?(
+        timestamp.to_i,
+        provider_config.timestamp_tolerance_seconds
+      )
+    end
+
+    # Generate expected signature
+    # This depends on your provider's algorithm
+    data_to_sign = "#{timestamp}.#{payload}"
+    expected_signature = generate_hmac(provider_config.signing_secret, data_to_sign)
+
+    # Constant-time comparison (prevents timing attacks)
+    secure_compare(signature, expected_signature)
+  end
+end
+```
+
+### Available Helper Methods
+
+CaptainHook provides these helper methods via `VerifierHelpers`:
+
+```ruby
+# HMAC generation
+generate_hmac(secret, data)           # Returns hex-encoded HMAC-SHA256
+generate_hmac_base64(secret, data)    # Returns base64-encoded HMAC-SHA256
+
+# Header extraction
+extract_header(headers, "X-Signature") # Case-insensitive header lookup
+extract_header(headers, "Key1", "Key2") # Try multiple keys
+
+# Header parsing
+parse_kv_header("t=123,v1=abc")       # Parses key=value header format
+# => {"t"=>"123", "v1"=>"abc"}
+
+# Security
+secure_compare(a, b)                  # Constant-time string comparison
+timestamp_within_tolerance?(ts, tol)  # Check if timestamp is recent
+
+# Validation
+missing_signing_secret?(provider_config) # Check if secret is configured
+```
+
+### Example: HMAC-SHA256 with Timestamp
+
+```ruby
+class HmacProviderVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "X-Provider-Signature"
+  TIMESTAMP_HEADER = "X-Provider-Timestamp"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    timestamp = extract_header(headers, TIMESTAMP_HEADER)
+    
+    return false if signature.blank? || timestamp.blank?
+
+    # Validate timestamp
+    if provider_config.timestamp_validation_enabled?
+      return false unless timestamp_within_tolerance?(
+        timestamp.to_i,
+        provider_config.timestamp_tolerance_seconds
+      )
+    end
+
+    # Create signature: HMAC-SHA256(timestamp.payload, secret)
+    data_to_sign = "#{timestamp}.#{payload}"
+    expected = generate_hmac(provider_config.signing_secret, data_to_sign)
+    
+    secure_compare(signature, expected)
+  end
+end
+```
+
+### Example: Multi-Version Signatures (Stripe-style)
+
+```ruby
+class VersionedSignatureVerifier
+  include CaptainHook::VerifierHelpers
+
+  SIGNATURE_HEADER = "X-Signature"
+
+  def verify_signature(payload:, headers:, provider_config:)
+    sig_header = extract_header(headers, SIGNATURE_HEADER)
+    return false if sig_header.blank?
+
+    # Parse header: "t=1234567890,v1=abc123,v0=def456"
+    parsed = parse_kv_header(sig_header)
+    timestamp = parsed["t"]
+    signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+
+    return false if timestamp.blank? || signatures.empty?
+
+    # Validate timestamp
+    if provider_config.timestamp_validation_enabled?
+      return false unless timestamp_within_tolerance?(
+        timestamp.to_i,
+        provider_config.timestamp_tolerance_seconds
+      )
+    end
+
+    # Try all signature versions
+    data_to_sign = "#{timestamp}.#{payload}"
+    expected = generate_hmac(provider_config.signing_secret, data_to_sign)
+    
+    signatures.any? { |sig| secure_compare(sig, expected) }
+  end
+end
+```
+
+## Creating Actions
+
+### Action Structure
+
+Actions process webhook events. Create them in `captain_hook/<provider>/actions/`:
+
+```ruby
+# captain_hook/stripe/actions/payment_intent_succeeded_action.rb
+# frozen_string_literal: true
+
+# Namespace with provider module (required!)
 module Stripe
   class PaymentIntentSucceededAction
-    # REQUIRED: self.details class method for automatic discovery
-    # This tells CaptainHook what event type this action handles
+    # Required: Define action metadata
     def self.details
       {
-        description: "Handles Stripe payment intent succeeded events",
-        event_type: "payment_intent.succeeded",  # REQUIRED: exact event type from webhook
-        priority: 100,                           # Optional: lower = higher priority (default: 100)
-        async: true,                             # Optional: run in background (default: true)
-        max_attempts: 5,                         # Optional: max retry attempts (default: 5)
-        retry_delays: [30, 60, 300, 900, 3600]  # Optional: retry delays in seconds
+        event_type: "payment_intent.succeeded",
+        description: "Process successful Stripe payment intents",
+        priority: 100,           # Lower = runs first (default: 100)
+        async: true,             # Run in background (default: true)
+        max_attempts: 5,         # Retry attempts (default: 5)
+        retry_delays: [30, 60, 300, 900, 3600]  # Retry delays in seconds
       }
     end
 
-    # Required method signature: webhook_action(event:, payload:, metadata:)
-    # @param event [CaptainHook::IncomingEvent] The stored webhook event
-    # @param payload [Hash] The parsed webhook payload
-    # @param metadata [Hash] Additional metadata about the webhook
-    def webhook_action(event:, payload:, metadata:)
-      payment_intent_id = payload.dig("data", "object", "id")
-      amount = payload.dig("data", "object", "amount")
-      currency = payload.dig("data", "object", "currency")
-      customer_id = payload.dig("data", "object", "customer")
-
-      # Your business logic here
-      Rails.logger.info "Payment succeeded: #{payment_intent_id} for #{amount} #{currency}"
-
-      # Example: Update your database
-      # Payment.find_by(stripe_payment_intent_id: payment_intent_id)&.mark_as_paid!
-
-      # Example: Send confirmation email
-      # PaymentMailer.payment_confirmation(payment_intent_id).deliver_later
+    # Required: Process webhook event
+    # @param event [CaptainHook::IncomingEvent] Database record of the webhook
+    # @param payload [Hash] Parsed JSON payload
+    # @param metadata [Hash] Additional metadata (reserved for future use)
+    def webhook_action(event:, payload:, metadata: {})
+      # Extract data from payload
+      payment_intent = payload.dig("data", "object")
+      payment_intent_id = payment_intent["id"]
       
-      # Example: Create a record
-      # YourGem::Payment.create!(
-      #   stripe_payment_intent_id: payment_intent_id,
-      #   amount: amount,
-      #   currency: currency
-      # )
+      # Your business logic here
+      Rails.logger.info "Processing payment: #{payment_intent_id}"
+      
+      # Example: Update your models
+      order = find_order_by_payment_intent(payment_intent_id)
+      order&.mark_as_paid!
+      
+      # Example: Send notifications
+      OrderMailer.payment_confirmation(order).deliver_later if order
+      
+    rescue StandardError => e
+      # Log error for debugging
+      Rails.logger.error "Failed to process payment: #{e.message}"
+      Rails.logger.error e.backtrace.join("\n")
+      
+      # Re-raise to trigger retry
+      raise
+    end
+    
+    private
+    
+    def find_order_by_payment_intent(payment_intent_id)
+      # Your gem's logic to find associated record
+      # This depends on your gem's data model
     end
   end
 end
 ```
 
-**Example: Stripe Charge Succeeded**
+### Action Metadata (`.details` method)
 
-Create `captain_hook/stripe/actions/charge_succeeded_action.rb`:
+The `.details` class method **must** return a hash with these fields:
+
+| Field | Required | Type | Default | Description |
+|-------|----------|------|---------|-------------|
+| `event_type` | **Yes** | String | N/A | Event type or pattern (e.g., `"payment.succeeded"`) |
+| `description` | No | String | `nil` | Human-readable description |
+| `priority` | No | Integer | `100` | Execution order (lower = first) |
+| `async` | No | Boolean | `true` | Run in background job |
+| `max_attempts` | No | Integer | `5` | Maximum retry attempts |
+| `retry_delays` | No | Array | `[30, 60, 300, 900, 3600]` | Retry delays in seconds |
+
+### Event Type Patterns
+
+Actions support wildcards:
 
 ```ruby
+# Exact match
+def self.details
+  { event_type: "payment_intent.succeeded" }
+end
+
+# Wildcard: all payment_intent.* events
+def self.details
+  { event_type: "payment_intent.*" }
+end
+
+# Catch-all: all events for this provider
+def self.details
+  { event_type: "*" }
+end
+```
+
+### Module Namespacing (Critical!)
+
+**Always namespace actions with the provider module:**
+
+```ruby
+# ✅ CORRECT: Namespaced with provider
+module Stripe
+  class PaymentIntentAction
+    # ...
+  end
+end
+
+# ❌ WRONG: No namespace
+class StripePaymentIntentAction
+  # Won't be discovered!
+end
+
+# ❌ WRONG: Wrong namespace
+module MyGem
+  class PaymentIntentAction
+    # Won't be discovered!
+  end
+end
+```
+
+### Gem Action Namespacing
+
+CaptainHook automatically namespaces your gem's actions to prevent conflicts:
+
+```ruby
+# Your gem defines:
+# captain_hook/stripe/actions/payment_action.rb
+module Stripe
+  class PaymentAction
+    # ...
+  end
+end
+
+# Stored in database as:
+# "YourGemName::Stripe::PaymentAction"
+# 
+# This prevents conflicts if:
+# - Host app defines Stripe::PaymentAction
+# - Another gem defines Stripe::PaymentAction
+```
+
+All three can coexist and will execute in priority order!
+
+### File Naming Conventions
+
+```ruby
+# File: payment_intent_succeeded_action.rb
+# Class: Stripe::PaymentIntentSucceededAction
+
+# File: charge_refunded_action.rb
+# Class: Stripe::ChargeRefundedAction
+
+# File: webhook_logger.rb (custom name)
+# Class: Stripe::WebhookLogger
+```
+
+### Multiple Actions Per Provider
+
+You can provide multiple actions:
+
+```ruby
+# captain_hook/stripe/actions/
+├── payment_intent_succeeded_action.rb    # High priority
+├── payment_intent_failed_action.rb       # Normal priority
+├── charge_refunded_action.rb             # Normal priority
+└── logging/
+    └── all_events_logger_action.rb       # Low priority, wildcard
+```
+
+## Complete Example: Building a Payment Gem
+
+Let's create a complete example gem that provides Stripe webhook integration:
+
+### Gem Structure
+
+```
+stripe_toolkit/
+├── lib/
+│   ├── stripe_toolkit.rb
+│   └── stripe_toolkit/
+│       ├── version.rb
+│       └── models/
+│           └── payment.rb
+├── captain_hook/
+│   └── stripe/
+│       ├── stripe.yml
+│       └── actions/
+│           ├── payment_succeeded_action.rb
+│           ├── payment_failed_action.rb
+│           └── refund_created_action.rb
+├── stripe_toolkit.gemspec
+└── README.md
+```
+
+### Provider Configuration
+
+```yaml
+# captain_hook/stripe/stripe.yml
+name: stripe
+display_name: Stripe (via StripeToolkit)
+description: Stripe webhook integration provided by StripeToolkit gem
+verifier_file: stripe.rb
+
+signing_secret: ENV[STRIPE_TOOLKIT_WEBHOOK_SECRET]
+timestamp_tolerance_seconds: 300
+max_payload_size_bytes: 2097152
+```
+
+### Payment Success Action
+
+```ruby
+# captain_hook/stripe/actions/payment_succeeded_action.rb
 # frozen_string_literal: true
 
 module Stripe
-  class ChargeSucceededAction
+  class PaymentSucceededAction
     def self.details
       {
-        description: "Handles Stripe charge succeeded events",
-        event_type: "charge.succeeded",
-        priority: 100,
+        event_type: "payment_intent.succeeded",
+        description: "Mark payments as successful and notify users",
+        priority: 50,
         async: true,
-        max_attempts: 3
+        max_attempts: 5,
+        retry_delays: [30, 60, 300, 900, 3600]
       }
     end
 
-    def webhook_action(event:, payload:, metadata:)
-      charge_id = payload.dig("data", "object", "id")
-      amount = payload.dig("data", "object", "amount")
-      receipt_url = payload.dig("data", "object", "receipt_url")
-
-      Rails.logger.info "Charge succeeded: #{charge_id} for #{amount}"
-
-      # Your business logic here
+    def webhook_action(event:, payload:, metadata: {})
+      payment_intent = payload.dig("data", "object")
+      
+      # Find or create payment record
+      payment = StripeToolkit::Payment.find_or_initialize_by(
+        stripe_payment_intent_id: payment_intent["id"]
+      )
+      
+      payment.update!(
+        status: "succeeded",
+        amount: payment_intent["amount"],
+        currency: payment_intent["currency"],
+        succeeded_at: Time.current,
+        metadata: payment_intent["metadata"]
+      )
+      
+      # Trigger gem's notification system
+      StripeToolkit::Notifications.payment_succeeded(payment)
+      
+      Rails.logger.info "[StripeToolkit] Payment succeeded: #{payment.id}"
     end
   end
 end
 ```
 
-**Example: Using Wildcards for Multiple Events**
-
-Create `captain_hook/square/actions/bank_account_action.rb`:
+### Payment Failed Action
 
 ```ruby
+# captain_hook/stripe/actions/payment_failed_action.rb
 # frozen_string_literal: true
 
-module Square
-  class BankAccountAction
+module Stripe
+  class PaymentFailedAction
     def self.details
       {
-        description: "Handles all Square bank account events",
-        event_type: "bank_account.*",  # Wildcard matches all bank_account.* events
-        priority: 100,
+        event_type: "payment_intent.payment_failed",
+        description: "Handle failed payments and notify users",
+        priority: 50,
         async: true,
-        max_attempts: 3
+        max_attempts: 3,  # Fewer retries for failures
+        retry_delays: [30, 60, 300]
       }
     end
 
-    def webhook_action(event:, payload:, metadata:)
-      # event.event_type will be the specific event (e.g., "bank_account.verified")
-      case event.event_type
-      when "bank_account.created"
-        # Handle created
-      when "bank_account.verified"
-        # Handle verified
-      when "bank_account.disabled"
-        # Handle disabled
-      end
+    def webhook_action(event:, payload:, metadata: {})
+      payment_intent = payload.dig("data", "object")
+      error = payment_intent.dig("last_payment_error", "message")
+      
+      payment = StripeToolkit::Payment.find_or_initialize_by(
+        stripe_payment_intent_id: payment_intent["id"]
+      )
+      
+      payment.update!(
+        status: "failed",
+        error_message: error,
+        failed_at: Time.current
+      )
+      
+      # Trigger gem's notification system
+      StripeToolkit::Notifications.payment_failed(payment, error)
+      
+      Rails.logger.warn "[StripeToolkit] Payment failed: #{payment.id} - #{error}"
     end
   end
 end
 ```
 
-### Important Notes About Actions
-
-**Namespacing**: Actions MUST be namespaced with a module matching the provider name:
-- For provider "stripe": `module Stripe; class YourAction; end; end`
-- For provider "paypal": `module Paypal; class YourAction; end; end`
-- For provider "square": `module Square; class YourAction; end; end`
-
-**File Location**: Actions MUST be in `captain_hook/<provider>/actions/` directory
-
-**Class Name**: The file name should match the class name in snake_case:
-- `payment_intent_action.rb` → `class PaymentIntentAction`
-- `charge_succeeded_action.rb` → `class ChargeSucceededAction`
-
-**Required Methods**:
-1. `self.details` - Class method returning a hash with at minimum `:event_type`
-2. `webhook_action(event:, payload:, metadata:)` - Instance method that processes the webhook
-
-**Actions are NOT ActiveJob classes!** They are plain Ruby classes with a `webhook_action` method. CaptainHook wraps them in its own job system (`IncomingActionJob`) which provides:
-- Automatic retry logic with exponential backoff
-- Priority-based execution
-- Status tracking and logging
-- Optimistic locking to prevent duplicate processing
-
-If you need to enqueue additional background jobs from within a action, you can do so:
+### Refund Action
 
 ```ruby
-def webhook_action(event:, payload:, metadata:)
-  # Process some data immediately
-  payment_id = payload.dig("data", "object", "id")
-  
-  # Enqueue additional background work
-  SendReceiptEmailJob.perform_later(payment_id)
-  UpdateAnalyticsJob.perform_later(payment_id)
+# captain_hook/stripe/actions/refund_created_action.rb
+# frozen_string_literal: true
+
+module Stripe
+  class RefundCreatedAction
+    def self.details
+      {
+        event_type: "charge.refunded",
+        description: "Process refunds and update payment records",
+        priority: 100,
+        async: true,
+        max_attempts: 5
+      }
+    end
+
+    def webhook_action(event:, payload:, metadata: {})
+      charge = payload.dig("data", "object")
+      refunds = charge["refunds"]["data"]
+      
+      refunds.each do |refund|
+        StripeToolkit::Refund.create!(
+          stripe_refund_id: refund["id"],
+          stripe_charge_id: charge["id"],
+          amount: refund["amount"],
+          status: refund["status"],
+          reason: refund["reason"],
+          refunded_at: Time.at(refund["created"])
+        )
+      end
+      
+      Rails.logger.info "[StripeToolkit] Processed #{refunds.length} refund(s)"
+    end
+  end
 end
 ```
 
-## Step 3: Update Your Gemspec
-
-✨ **NEW**: Actions are now automatically discovered! No manual registration needed.
-
-Make sure your gemspec includes the `captain_hook` directory:
+### Gemspec Configuration
 
 ```ruby
-# your_gem.gemspec
+# stripe_toolkit.gemspec
 Gem::Specification.new do |spec|
-  spec.name        = "your_gem"
-  spec.version     = YourGem::VERSION
-  spec.authors     = ["Your Name"]
-  spec.email       = ["your.email@example.com"]
-  spec.summary     = "Your gem description"
-  spec.description = "Your gem description"
-  spec.license     = "MIT"
+  spec.name          = "stripe_toolkit"
+  spec.version       = StripeToolkit::VERSION
+  spec.authors       = ["Your Name"]
+  spec.email         = ["you@example.com"]
 
-  # IMPORTANT: Include captain_hook directory for automatic action discovery
-  spec.files = Dir[
-    "{app,captain_hook,config,db,lib}/**/*",
-    "MIT-LICENSE",
-    "Rakefile",
-    "README.md"
+  spec.summary       = "Stripe integration toolkit with webhook handling"
+  spec.description   = "Provides Stripe webhook integration via CaptainHook"
+  spec.homepage      = "https://github.com/yourusername/stripe_toolkit"
+  spec.license       = "MIT"
+
+  spec.files         = Dir[
+    "lib/**/*",
+    "captain_hook/**/*",  # Important: Include webhook files!
+    "README.md",
+    "LICENSE.txt"
   ]
 
-  # Add CaptainHook as a dependency
-  spec.add_dependency "rails", ">= 7.0"
-  # spec.add_dependency "captain_hook" # Optional: only if you want to require it
+  spec.require_paths = ["lib"]
+
+  # Runtime dependencies
+  spec.add_dependency "rails", ">= 6.0"
+  
+  # Note: Don't add captain_hook as dependency if it's optional
+  # Document it as a peer dependency in README instead
+  
+  # Development dependencies
+  spec.add_development_dependency "rspec", "~> 3.0"
 end
 ```
 
-### How Automatic Discovery Works
+## Testing Your Gem Integration
 
-When your Rails application boots with CaptainHook installed:
-
-1. **Filesystem Scan**: CaptainHook scans all `captain_hook/<provider>/actions/**/*.rb` files in the load path
-2. **Class Loading**: Each action file is loaded and its class is instantiated
-3. **Details Extraction**: The `self.details` method is called to get event type, priority, async settings, etc.
-4. **Registration**: Actions are automatically registered in the ActionRegistry
-5. **Database Sync**: Registered actions are synced to the database for tracking
-
-**You don't need to do anything beyond creating the action files!** Just:
-- Put them in the right directory (`captain_hook/<provider>/actions/`)
-- Namespace them correctly (`module ProviderName; class ActionName`)
-- Include a `self.details` class method
-- Include a `webhook_action` instance method
-
-### Verifying Actions Are Discovered
-
-After installing your gem and restarting the Rails server, check that actions were discovered:
+### Testing Action Discovery
 
 ```ruby
-# Rails console - View discovered actions
-CaptainHook::Action.where(provider: "stripe")
-# Should show your Stripe actions
-
-# Check if a specific action exists
-CaptainHook::Action.find_by(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded",
-  action_class: "Stripe::PaymentIntentSucceededAction"
-)
-# Should return the action record
-
-# View all actions
-CaptainHook::Action.all
-```
-
-You should also see log messages during boot:
-```
-🔍 CaptainHook: Auto-scanning providers and actions...
-✅ Discovered action: Stripe::PaymentIntentSucceededAction for stripe:payment_intent.succeeded
-✅ CaptainHook: Synced actions - Created: 3, Updated: 0, Skipped: 0
-```
-
-## Step 4: Install in Your Rails App
-
-In your Rails application:
-
-### 1. Add to Gemfile:
-
-```ruby
-# Gemfile
-gem "your_gem", path: "../your_gem"
-# or from rubygems:
-# gem "your_gem"
-
-# Make sure captain_hook is also installed
-gem "captain_hook", path: "../captain-hook"
-```
-
-### 2. Bundle install:
-
-```bash
-bundle install
-```
-
-### 3. Set environment variables:
-
-```bash
-# .env or environment
-# The variable name must match what you specified in your provider YAML file
-YOUR_PROVIDER_WEBHOOK_SECRET=your_secret_value
-
-# Examples:
-# STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_signing_secret
-# PAYPAL_WEBHOOK_ID=your_paypal_webhook_id
-# SQUARE_SIGNATURE_KEY=your_square_signature_key
-```
-
-### 4. Restart server:
-
-```bash
-touch tmp/restart.txt
-# or restart your development server
-```
-
-### 5. Scan for providers:
-
-Go to `/captain_hook/admin/providers` and click "Discover New" (for first-time setup) or "Full Sync" (to update existing)
-
-Or in console:
-
-```ruby
-discovery = CaptainHook::Services::ProviderDiscovery.new
-definitions = discovery.call
-
-sync = CaptainHook::Services::ProviderSync.new(definitions, update_existing: true)
-sync.call
-```
-
-## Step 6: Configure Your Provider's Webhook Settings
-
-### Generic Steps
-
-1. Log into your provider's dashboard (Stripe, PayPal, Square, etc.)
-2. Navigate to the webhooks/notifications section
-3. Create a new webhook endpoint
-4. Enter your webhook URL: `https://your-app.com/captain_hook/[provider_name]/[TOKEN]`
-   - Get the token from CaptainHook admin UI after scanning providers
-   - Example: `https://your-app.com/captain_hook/stripe/abc123xyz`
-5. Select which events to receive (or select all)
-6. Copy the signing secret/webhook ID provided by your provider
-7. Set it in your environment using the variable name from your YAML config
-
-### Example: Stripe
-
-1. Go to Stripe Dashboard → Developers → Webhooks
-2. Click "Add endpoint"
-3. Enter URL: `https://your-app.com/captain_hook/stripe/[TOKEN]`
-4. Select events: `payment_intent.succeeded`, `charge.succeeded`, `customer.created`
-5. Copy the webhook signing secret (starts with `whsec_`)
-6. Set: `STRIPE_WEBHOOK_SECRET=whsec_...`
-
-### Example: PayPal
-
-1. Go to PayPal Developer Dashboard → Webhooks
-2. Create webhook
-3. Enter URL: `https://your-app.com/captain_hook/paypal/[TOKEN]`
-4. Select event types
-5. Copy the Webhook ID
-6. Set: `PAYPAL_WEBHOOK_ID=...`
-
-## Step 7: Testing Locally
-
-### Option A: Using Provider CLI Tools (e.g., Stripe CLI)
-
-### 1. Install Stripe CLI:
-
-```bash
-# macOS
-brew install stripe/stripe-cli/stripe
-
-# Or download from https://stripe.com/docs/stripe-cli
-```
-
-### 2. Login:
-
-```bash
-stripe login
-```
-
-### 3. Get webhook URL from admin:
-
-Go to `/captain_hook/admin/providers`, view the Stripe provider, copy the webhook URL.
-
-### 4. Start listening:
-
-```bash
-stripe listen --forward-to https://your-codespace-url.app.github.dev/captain_hook/stripe/[TOKEN]
-```
-
-Copy the webhook signing secret shown and update your environment.
-
-### 5. Trigger test events:
-
-```bash
-stripe trigger payment_intent.succeeded
-stripe trigger charge.succeeded
-stripe trigger customer.created
-```
-
-### 6. Check logs:
-
-Watch your Rails logs to see events being processed:
-
-```bash
-tail -f log/development.log
-```
-
-### Option B: Manual Testing with curl
-
-For providers without CLI tools, you can manually send test webhooks:
-
-```bash
-# Get your webhook URL from CaptainHook admin
-# Create a test payload matching your provider's format
-curl -X POST https://your-app.com/captain_hook/your_provider/[TOKEN] \
-  -H "Content-Type: application/json" \
-  -H "Your-Signature-Header: signature_value" \
-  -d '{"event_type": "test.event", "data": {}}'
-```
-
-### Option C: Use Provider's Test Mode
-
-Most providers offer a test/sandbox mode where you can trigger real events:
-- Stripe: Use test API keys and trigger events via dashboard or CLI
-- PayPal: Use PayPal Sandbox environment
-- Square: Use Square Sandbox with test transactions
-
-## Verification
-
-### Check actions are discovered:
-
-```ruby
-# Rails console - Check actions in database
-CaptainHook::Action.where(provider: "stripe")
-# Should show your Stripe actions
-
-# Check specific action
-CaptainHook::Action.find_by(
-  provider: "stripe",
-  event_type: "payment_intent.succeeded"
-)
-# Should return the action record with class name "Stripe::PaymentIntentSucceededAction"
-
-# View all actions
-CaptainHook::Action.all
-```
-
-### Check provider is created:
-
-```ruby
-# Rails console
-CaptainHook::Provider.find_by(name: "your_provider_name")
-
-# Example:
-CaptainHook::Provider.find_by(name: "stripe")
-```
-
-### Check events are being received:
-
-```ruby
-# Rails console
-CaptainHook::IncomingEvent.where(provider: "your_provider_name").order(created_at: :desc).first
-
-# Example:
-CaptainHook::IncomingEvent.where(provider: "stripe").order(created_at: :desc).first
-```
-
-## Adding More Event Actions
-
-✨ **NEW**: Just create a new action file - no registration needed!
-
-To handle additional events from your provider:
-
-1. **Create a new action file** in `captain_hook/<provider>/actions/`
-2. **Add the `self.details` method** with the event type
-3. **Restart your Rails server** - actions are automatically discovered on boot
-
-### Example: Adding a New Stripe Event
-
-For handling `invoice.payment_succeeded`:
-
-```ruby
-# captain_hook/stripe/actions/invoice_payment_succeeded_action.rb
-# frozen_string_literal: true
-
-module Stripe
-  class InvoicePaymentSucceededAction
-    def self.details
-      {
-        description: "Handles Stripe invoice payment succeeded events",
-        event_type: "invoice.payment_succeeded",
-        priority: 100,
-        async: true,
-        max_attempts: 3
-      }
+# spec/integration/captain_hook_integration_spec.rb
+require "spec_helper"
+
+RSpec.describe "CaptainHook Integration" do
+  describe "action discovery" do
+    it "discovers actions from gem" do
+      discovery = CaptainHook::Services::ActionDiscovery.new
+      actions = discovery.call
+      
+      stripe_actions = actions.select { |a| a["provider"] == "stripe" }
+      
+      expect(stripe_actions).to include(
+        hash_including(
+          "provider" => "stripe",
+          "event" => "payment_intent.succeeded",
+          "action" => "StripeToolkit::Stripe::PaymentSucceededAction"
+        )
+      )
     end
+  end
 
-    def webhook_action(event:, payload:, metadata:)
-      invoice_id = payload.dig("data", "object", "id")
-      # Your logic here
-      Rails.logger.info "Invoice paid: #{invoice_id}"
+  describe "provider discovery" do
+    it "discovers provider from gem" do
+      discovery = CaptainHook::Services::ProviderDiscovery.new
+      providers = discovery.call
+      
+      stripe_provider = providers.find { |p| p["name"] == "stripe" }
+      
+      expect(stripe_provider).to include(
+        "name" => "stripe",
+        "display_name" => "Stripe (via StripeToolkit)",
+        "source" => start_with("gem:")
+      )
     end
   end
 end
 ```
 
-That's it! When you restart the Rails server, CaptainHook will automatically discover this action and register it.
+### Testing Actions
+
+```ruby
+# spec/actions/stripe/payment_succeeded_action_spec.rb
+require "spec_helper"
+
+RSpec.describe Stripe::PaymentSucceededAction do
+  describe ".details" do
+    it "returns correct metadata" do
+      details = described_class.details
+      
+      expect(details[:event_type]).to eq("payment_intent.succeeded")
+      expect(details[:priority]).to eq(50)
+      expect(details[:async]).to be true
+    end
+  end
+
+  describe "#webhook_action" do
+    let(:event) { double(:event, provider: "stripe") }
+    let(:payload) do
+      {
+        "data" => {
+          "object" => {
+            "id" => "pi_123456",
+            "amount" => 5000,
+            "currency" => "usd"
+          }
+        }
+      }
+    end
+
+    it "processes payment successfully" do
+      action = described_class.new
+      
+      expect {
+        action.webhook_action(event: event, payload: payload, metadata: {})
+      }.to change { StripeToolkit::Payment.count }.by(1)
+      
+      payment = StripeToolkit::Payment.last
+      expect(payment.status).to eq("succeeded")
+      expect(payment.amount).to eq(5000)
+    end
+  end
+end
+```
+
+### Testing in a Dummy Rails App
+
+Create a test Rails app that uses your gem:
+
+```ruby
+# spec/dummy/config/application.rb
+require "rails/all"
+require "captain_hook"
+require "stripe_toolkit"
+
+module Dummy
+  class Application < Rails::Application
+    config.load_defaults 7.0
+  end
+end
+```
+
+```ruby
+# spec/integration/webhook_processing_spec.rb
+RSpec.describe "Webhook Processing", type: :request do
+  let(:provider) { CaptainHook::Provider.find_by(name: "stripe") }
+  let(:payload) do
+    {
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: "pi_123456",
+          amount: 5000,
+          currency: "usd"
+        }
+      }
+    }.to_json
+  end
+
+  it "processes webhook and executes action" do
+    post "/captain_hook/stripe/#{provider.token}",
+         params: payload,
+         headers: {
+           "Content-Type" => "application/json",
+           "Stripe-Signature" => generate_valid_signature(payload)
+         }
+
+    expect(response).to have_http_status(:ok)
+    
+    event = CaptainHook::IncomingEvent.last
+    expect(event.provider).to eq("stripe")
+    expect(event.event_type).to eq("payment_intent.succeeded")
+    
+    # Check action was created
+    action = event.incoming_event_actions.first
+    expect(action.action_class).to include("PaymentSucceededAction")
+  end
+end
+```
+
+## Publishing Your Gem
+
+### README Documentation
+
+Document CaptainHook integration in your README:
+
+```markdown
+# StripeToolkit
+
+Stripe integration toolkit with automatic webhook handling.
+
+## Installation
+
+Add to your Gemfile:
+
+```ruby
+gem 'captain_hook'  # Required for webhook handling
+gem 'stripe_toolkit'
+```
+
+Run:
+```bash
+bundle install
+rails captain_hook:install  # Install CaptainHook
+rails db:migrate           # Run CaptainHook migrations
+```
+
+## Webhook Setup
+
+StripeToolkit provides automatic webhook handling via CaptainHook.
+
+### 1. Set Environment Variable
+
+```bash
+# .env
+STRIPE_TOOLKIT_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
+```
+
+### 2. Configure Stripe Dashboard
+
+Set your webhook endpoint in Stripe Dashboard:
+
+```
+https://your-app.com/captain_hook/stripe/:token
+```
+
+Get the token from: `/captain_hook/admin/providers`
+
+### 3. Select Events
+
+Subscribe to these events in Stripe Dashboard:
+- `payment_intent.succeeded`
+- `payment_intent.payment_failed`
+- `charge.refunded`
+
+### 4. Done!
+
+Webhooks are automatically processed. View them at:
+```
+https://your-app.com/captain_hook/admin
+```
+
+## Provided Webhook Actions
+
+| Event Type | Action | Description |
+|------------|--------|-------------|
+| `payment_intent.succeeded` | PaymentSucceededAction | Marks payments as successful |
+| `payment_intent.payment_failed` | PaymentFailedAction | Handles failed payments |
+| `charge.refunded` | RefundCreatedAction | Processes refunds |
+
+## Customization
+
+### Disable Specific Actions
+
+In Rails console or admin UI:
+
+```ruby
+action = CaptainHook::Action.find_by(
+  provider: "stripe",
+  action_class: "StripeToolkit::Stripe::PaymentFailedAction"
+)
+action.soft_delete!
+```
+
+### Override Retry Configuration
+
+```ruby
+action.update!(
+  max_attempts: 10,
+  retry_delays: [60, 120, 300, 600, 1800]
+)
+```
+
+### Add Custom Actions
+
+Create your own action in your Rails app:
+
+```ruby
+# captain_hook/stripe/actions/custom_action.rb
+module Stripe
+  class CustomAction
+    def self.details
+      { event_type: "customer.subscription.updated", priority: 50 }
+    end
+
+    def webhook_action(event:, payload:, metadata: {})
+      # Your custom logic
+    end
+  end
+end
+```
 
 ## Troubleshooting
 
-### Actions not being called?
+### Webhooks Not Processing
 
-**Most common issue**: Actions not discovered or files in wrong location
+1. Check CaptainHook is installed: `bundle list | grep captain_hook`
+2. Check migrations ran: `rails db:migrate:status`
+3. Check provider exists: Visit `/captain_hook/admin/providers`
+4. Check environment variable: `echo $STRIPE_TOOLKIT_WEBHOOK_SECRET`
 
-1. **Verify actions are discovered**:
-   ```ruby
-   # Rails console - Check if action exists in database
-   CaptainHook::Action.find_by(
-     provider: "stripe",
-     event_type: "payment_intent.succeeded"
-   )
-   # Should return an Action record
-   ```
-   
-   If this returns nil, your actions weren't discovered! Check:
-   - Are action files in `captain_hook/<provider>/actions/` directory?
-   - Is the provider name in the path matching the provider in the database? (e.g., "stripe" not "Stripe")
-   - Does the action class have a `self.details` method?
-   - Is the action class properly namespaced (e.g., `module Stripe; class ActionName`)?
-   - Did you restart the Rails server after creating the action file?
+### Actions Not Discovered
 
-2. **Check Rails logs during boot** for discovery messages:
-   ```bash
-   tail -f log/development.log | grep "CaptainHook"
-   ```
-   You should see:
-   ```
-   🔍 CaptainHook: Auto-scanning providers and actions...
-   ✅ Discovered action: Stripe::PaymentIntentSucceededAction for stripe:payment_intent.succeeded
-   ```
+Restart your Rails app:
+```bash
+rails restart
+```
 
-3. **Check if provider exists**: 
-   ```ruby
-   CaptainHook::Provider.find_by(name: "stripe")
-   ```
-   If nil, use "Discover New" or "Full Sync" in the admin UI
+Check logs for discovery messages:
+```
+🔍 CaptainHook: Found 3 registered action(s)
+✅ Created action: StripeToolkit::Stripe::PaymentSucceededAction
+```
 
-4. **Check Sidekiq is running** (actions are background jobs)
-   ```bash
-   bundle exec sidekiq
-   ```
+## Support
 
-5. **Check Rails logs** for errors:
-   ```bash
-   tail -f log/development.log
-   ```
-   Look for action execution errors or job failures
+- Documentation: https://github.com/yourusername/stripe_toolkit
+- Issues: https://github.com/yourusername/stripe_toolkit/issues
+```
 
-5. **Check the engine is loading**:
-   ```ruby
-   # Rails console
-   defined?(YourGem::Engine)
-   # Should return: "constant"
-   ```
+### Changelog
 
-### Signature verification failing?
+Document webhook integration in CHANGELOG:
 
-1. Make sure your signing secret environment variable is set correctly
-2. Verify the environment variable name matches your YAML config
-3. Use test/sandbox secrets when testing locally
-4. Use production secrets for production environment
-5. Check your verifier implementation matches the provider's documentation
-6. Enable debug logging to see the signature verification process
+```markdown
+## [1.0.0] - 2026-01-27
 
-### Provider not discovered?
+### Added
+- CaptainHook webhook integration
+- Automatic Stripe webhook handling
+- PaymentSucceededAction for successful payments
+- PaymentFailedAction for failed payments
+- RefundCreatedAction for refund processing
 
-1. Make sure YAML file is in `captain_hook/providers/stripe.yml`
-2. Make sure gemspec includes `captain_hook/**/*` in files
-3. Run bundle install and restart server
-4. Try scanning again
+### Dependencies
+- Requires CaptainHook gem for webhook functionality
+```
 
-## Complete Example Event Processing Flow
+## Best Practices
 
-1. **Provider sends webhook** → Your Rails app at `/captain_hook/[provider]/[TOKEN]`
-   - Example: `/captain_hook/stripe/abc123` or `/captain_hook/paypal/xyz789`
-2. **CaptainHook receives** → Verifies signature using the built-in verifier
-3. **Creates IncomingEvent** → Stores event in database for audit trail
-4. **Finds registered actions** → Looks up actions for `provider` + `event_type`
-   - Example: `stripe` + `payment_intent.succeeded`
-5. **Enqueues action jobs** → Adds jobs to background queue (Sidekiq/Solid Queue)
-6. **Actions execute** → Your business logic runs in background jobs
-7. **Updates action status** → Marks as completed or failed, with retry logic
+### 1. Namespace Your Provider
 
----
+Avoid conflicts with host app:
 
-## Contributing New Verifiers
+```yaml
+# ✅ GOOD: Namespaced provider name
+name: your_gem_stripe
+display_name: Stripe (via YourGem)
 
-**Need a verifier for a provider not currently supported?**
+# ❌ RISKY: Generic provider name
+name: stripe  # May conflict with host app's Stripe integration
+```
 
-Verifiers can only be created within the CaptainHook gem itself to ensure consistent security verification across all installations. To add support for a new provider:
+### 2. Use Descriptive Environment Variables
 
-1. **Check if it already exists**: Review the list of built-in verifiers in `lib/captain_hook/verifiers/`
+```yaml
+# ✅ GOOD: Unique, descriptive
+signing_secret: ENV[YOUR_GEM_STRIPE_WEBHOOK_SECRET]
 
-2. **Submit a Pull Request** to the CaptainHook repository:
-   - Create a new verifier class in `lib/captain_hook/verifiers/your_provider.rb`
-   - Inherit from `CaptainHook::Verifiers::Base`
-   - Implement the required methods (see [docs/VERIFIERS.md](VERIFIERS.md))
-   - Add comprehensive tests
-   - Include documentation about the provider's webhook signature scheme
+# ❌ BAD: Generic, may conflict
+signing_secret: ENV[STRIPE_WEBHOOK_SECRET]
+```
 
-3. **Example verifier structure**:
-   ```ruby
-   # lib/captain_hook/verifiers/your_provider.rb
-   module CaptainHook
-     module Verifiers
-       class YourProvider < Base
-         def verify_signature(payload:, headers:, provider_config:)
-           # Implementation here
-         end
-         
-         def extract_event_id(payload)
-           # Extract unique event ID
-         end
-         
-         def extract_event_type(payload)
-           # Extract event type string
-         end
-       end
-     end
-   end
-   ```
+### 3. Document Environment Variables
 
-4. **Reference documentation**: See existing verifiers (Stripe, Square, PayPal) in `lib/captain_hook/verifiers/` for examples
+In README, clearly document required environment variables:
 
-For detailed information about creating verifiers, see [docs/VERIFIERS.md](VERIFIERS.md).
+```markdown
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `YOUR_GEM_STRIPE_WEBHOOK_SECRET` | Yes | Stripe webhook signing secret |
+| `YOUR_GEM_STRIPE_API_KEY` | No | Stripe API key for optional features |
+```
+
+### 4. Handle Missing Dependencies Gracefully
+
+```ruby
+# lib/your_gem.rb
+if defined?(CaptainHook)
+  # CaptainHook is available, webhook features enabled
+  Rails.logger.info "YourGem: CaptainHook integration enabled"
+else
+  # CaptainHook not installed, skip webhook features
+  Rails.logger.warn "YourGem: CaptainHook not found. Webhook handling disabled."
+end
+```
+
+### 5. Provide Sensible Defaults
+
+```ruby
+def self.details
+  {
+    event_type: "payment.succeeded",
+    priority: 100,           # Default priority
+    async: true,             # Safe default
+    max_attempts: 5,         # Reasonable retry count
+    retry_delays: [30, 60, 300, 900, 3600]  # Exponential backoff
+  }
+end
+```
+
+### 6. Log Meaningful Information
+
+```ruby
+def webhook_action(event:, payload:, metadata: {})
+  payment_id = payload.dig("data", "object", "id")
+  
+  Rails.logger.info "[YourGem] Processing payment: #{payment_id}"
+  
+  # ... process payment ...
+  
+  Rails.logger.info "[YourGem] Payment #{payment_id} processed successfully"
+rescue StandardError => e
+  Rails.logger.error "[YourGem] Failed to process #{payment_id}: #{e.message}"
+  raise  # Re-raise for retry
+end
+```
+
+### 7. Make Actions Idempotent
+
+Actions may be retried, so ensure they can run multiple times safely:
+
+```ruby
+def webhook_action(event:, payload:, metadata: {})
+  payment_id = payload.dig("data", "object", "id")
+  
+  # ✅ GOOD: find_or_initialize_by is idempotent
+  payment = Payment.find_or_initialize_by(stripe_id: payment_id)
+  payment.update!(status: "succeeded")
+  
+  # ✅ GOOD: Check before creating
+  return if Notification.exists?(payment_id: payment.id)
+  Notification.create!(payment_id: payment.id, type: "success")
+end
+```
+
+### 8. Test Edge Cases
+
+```ruby
+RSpec.describe Stripe::PaymentSucceededAction do
+  it "handles missing payment intent gracefully" do
+    payload = { "data" => { "object" => nil } }
+    
+    action = described_class.new
+    expect {
+      action.webhook_action(event: event, payload: payload, metadata: {})
+    }.not_to raise_error
+  end
+
+  it "handles duplicate webhooks idempotently" do
+    action = described_class.new
+    
+    # Process twice with same payload
+    2.times do
+      action.webhook_action(event: event, payload: payload, metadata: {})
+    end
+    
+    # Should only create one payment record
+    expect(Payment.count).to eq(1)
+  end
+end
+```
+
+## Advanced Topics
+
+### Multiple Provider Support
+
+Support multiple providers in one gem:
+
+```
+your_gem/
+└── captain_hook/
+    ├── stripe/
+    │   ├── stripe.yml
+    │   └── actions/
+    ├── paypal/
+    │   ├── paypal.yml
+    │   └── actions/
+    └── square/
+        ├── square.yml
+        └── actions/
+```
+
+### Conditional Action Loading
+
+Load actions based on gem configuration:
+
+```ruby
+# lib/your_gem.rb
+module YourGem
+  class << self
+    attr_accessor :enable_webhooks, :webhook_providers
+
+    def configure
+      yield self
+    end
+  end
+
+  # Defaults
+  self.enable_webhooks = true
+  self.webhook_providers = [:stripe, :paypal]
+end
+
+# In action file
+return unless YourGem.enable_webhooks
+return unless YourGem.webhook_providers.include?(:stripe)
+```
+
+### Shared Logic Between Actions
+
+Create base classes for common functionality:
+
+```ruby
+# lib/your_gem/webhook_action_base.rb
+module YourGem
+  class WebhookActionBase
+    protected
+
+    def log_webhook(message, level: :info)
+      Rails.logger.public_send(level, "[YourGem] #{message}")
+    end
+
+    def find_or_create_payment(stripe_id)
+      Payment.find_or_create_by!(stripe_payment_intent_id: stripe_id)
+    end
+  end
+end
+
+# In actions
+module Stripe
+  class PaymentSucceededAction < YourGem::WebhookActionBase
+    def webhook_action(event:, payload:, metadata: {})
+      log_webhook("Processing payment success")
+      payment = find_or_create_payment(payload.dig("data", "object", "id"))
+      payment.mark_succeeded!
+    end
+  end
+end
+```
+
+## Troubleshooting
+
+### Actions Not Discovered After Gem Install
+
+**Problem**: Installed gem but actions don't appear
+
+**Solution**: Restart Rails application:
+```bash
+rails restart
+```
+
+CaptainHook discovers actions during application boot.
+
+### Provider Conflicts
+
+**Problem**: Your provider name conflicts with host app's provider
+
+**Solution**: Use namespaced provider names:
+```yaml
+# Instead of: name: stripe
+name: your_gem_stripe
+```
+
+### Missing Environment Variable Errors
+
+**Problem**: Users get signature verification failures
+
+**Solution**: Document environment variables clearly in README and provide helpful error messages:
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  if missing_signing_secret?(provider_config)
+    Rails.logger.error "[YourGem] Missing webhook secret. Set ENV['YOUR_GEM_STRIPE_WEBHOOK_SECRET']"
+    return false
+  end
+  
+  # ... verification logic ...
+end
+```
+
+### Actions Execute Multiple Times
+
+**Problem**: Action runs multiple times for one webhook
+
+**Explanation**: This is expected if multiple actions match (specific + wildcard)
+
+**Solution**: Use specific event types and document this behavior in README.
+
+## Example Gems Using CaptainHook
+
+See these examples for reference:
+
+```ruby
+# Payment processing gem
+gem 'stripe_advanced'  # Stripe webhooks with advanced features
+gem 'paypal_toolkit'   # PayPal webhook integration
+
+# E-commerce integrations
+gem 'shopify_sync'     # Shopify webhook syncing
+gem 'woocommerce_bridge' # WooCommerce webhooks
+
+# SaaS integrations
+gem 'intercom_events'  # Intercom webhook handling
+gem 'segment_webhooks' # Segment webhook processor
+```
+
+## Support and Resources
+
+- **CaptainHook Documentation**: See main README and docs/
+- **Action Discovery**: [docs/ACTION_DISCOVERY.md](ACTION_DISCOVERY.md)
+- **Provider Discovery**: [docs/PROVIDER_DISCOVERY.md](PROVIDER_DISCOVERY.md)
+- **Technical Details**: [TECHNICAL_PROCESS.md](../TECHNICAL_PROCESS.md)
+
+## Checklist
+
+Before publishing your gem:
+
+- [ ] `captain_hook/` directory at gem root
+- [ ] Provider YAML file created with all required fields
+- [ ] Verifier class created (if custom verification needed)
+- [ ] Actions created with correct module namespace
+- [ ] `.details` method returns all required fields
+- [ ] `webhook_action` method handles events correctly
+- [ ] Actions are idempotent (can run multiple times safely)
+- [ ] Environment variables documented in README
+- [ ] Tests written for actions and verifiers
+- [ ] Gemspec includes `captain_hook/**/*` in files
+- [ ] README includes setup instructions
+- [ ] CHANGELOG documents webhook integration
+- [ ] Example webhook payload documented
+- [ ] Troubleshooting section in README
+
+## Summary
+
+To integrate your gem with CaptainHook:
+
+1. **Create directory structure**: `captain_hook/<provider>/`
+2. **Add provider YAML**: Configuration with ENV variable references
+3. **Create verifier** (optional): Custom signature verification
+4. **Create actions**: Namespaced classes with `.details` and `webhook_action`
+5. **Test thoroughly**: Action discovery, execution, idempotency
+6. **Document clearly**: README with setup, env vars, troubleshooting
+7. **Publish**: Include `captain_hook/**/*` in gemspec files
+
+When users install your gem, CaptainHook will automatically discover and enable your webhook integration—no additional configuration required!

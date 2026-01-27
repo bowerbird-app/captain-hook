@@ -22,7 +22,7 @@ CaptainHook is a Rails engine for receiving and processing webhooks from externa
 
 ### Key Concepts
 
-- **Provider**: An external service that sends webhooks (e.g., Stripe, PayPal, Square)
+- **Provider**: An external service that sends webhooks (e.g., Stripe)
 - **Verifier**: A Ruby class that handles signature verification for a specific provider
 - **Registry**: YAML-based configuration files that define provider settings
 - **Discovery**: Automatic scanning of `captain_hook/` directories for provider configurations
@@ -122,7 +122,7 @@ max_payload_size_bytes: 1048576  # Optional, in bytes
 
 #### Step 3: Create Verifier File (Optional)
 
-**Note**: This step is only needed if you're using a provider that doesn't have a built-in verifier. CaptainHook includes verifiers for **Stripe**, **Square**, **PayPal**, and **WebhookSite**. If you're using one of these, you can skip this step and just reference the built-in verifier (e.g., `verifier_file: stripe.rb` will automatically use `CaptainHook::Verifiers::Stripe`).
+**Note**: This step is only needed if you're using a provider that doesn't have a built-in verifier. CaptainHook includes a verifier for **Stripe**. If you're using Stripe, you can skip this step and just reference the built-in verifier (e.g., `verifier_file: stripe.rb` will automatically use `CaptainHook::Verifiers::Stripe`).
 
 For custom providers, create `captain_hook/stripe/stripe.rb`:
 
@@ -190,16 +190,11 @@ your_gem/
 ├── lib/
 │   └── your_gem.rb
 ├── captain_hook/
-│   ├── stripe/
-│   │   ├── stripe.yml
-│   │   ├── stripe.rb
-│   │   └── actions/
-│   │       └── payment_succeeded_action.rb
-│   └── paypal/
-│       ├── paypal.yml
-│       ├── paypal.rb
+│   └── stripe/
+│       ├── stripe.yml
+│       ├── stripe.rb
 │       └── actions/
-│           └── payment_captured_action.rb
+│           └── payment_succeeded_action.rb
 └── your_gem.gemspec
 ```
 
@@ -243,10 +238,6 @@ providers:
   stripe:
     max_payload_size_bytes: 2097152    # 2MB for Stripe
     timestamp_tolerance_seconds: 600    # 10 minutes for Stripe
-  
-  square:
-    max_payload_size_bytes: 524288     # 512KB for Square
-    timestamp_tolerance_seconds: 180    # 3 minutes for Square
 ```
 
 #### Configuration Priority (Highest to Lowest)
@@ -570,7 +561,7 @@ end
 ### Complete Request Lifecycle
 
 ```
-External Provider (Stripe, PayPal, etc.)
+External Provider (e.g., Stripe)
     ↓
 POST /captain_hook/:provider/:token
     ↓
@@ -724,7 +715,7 @@ Webhook providers sign their requests to prove authenticity. Each provider uses 
 
 ### Common Signature Schemes
 
-**HMAC-SHA256 (Stripe, Square, PayPal)**:
+**HMAC-SHA256 (e.g., Stripe)**:
 1. Provider creates signature: `HMAC-SHA256(secret_key, payload_data)`
 2. Signature sent in HTTP header
 3. Receiver recomputes signature with same secret
@@ -888,8 +879,6 @@ end
 ```bash
 # .env file
 STRIPE_WEBHOOK_SECRET=whsec_abc123
-PAYPAL_WEBHOOK_SECRET=paypal_secret_456
-SQUARE_WEBHOOK_SECRET=square_secret_789
 ```
 
 **Production**:
@@ -909,7 +898,6 @@ kubectl create secret generic webhook-secrets \
 ```yaml
 # config/credentials.yml.enc
 stripe_webhook_secret: whsec_abc123
-paypal_webhook_secret: paypal_secret_456
 
 # Access in initializer
 ENV["STRIPE_WEBHOOK_SECRET"] = Rails.application.credentials.stripe_webhook_secret
@@ -949,7 +937,6 @@ STRIPE_SECRET_ACCOUNT_B=whsec_account_b_secret
 # config/initializers/captain_hook.rb
 required_secrets = %w[
   STRIPE_WEBHOOK_SECRET
-  PAYPAL_WEBHOOK_SECRET
 ]
 
 required_secrets.each do |secret|
@@ -999,105 +986,6 @@ class StripeVerifier
   end
 end
 ```
-
-### Square Verifier
-
-**Signature Format**: `X-Square-Signature: abc123...` or `X-Square-HmacSha256-Signature: abc123...`
-
-```ruby
-class SquareVerifier
-  include CaptainHook::VerifierHelpers
-  
-  SIGNATURE_HEADER = "X-Square-Signature"
-  SIGNATURE_HMACSHA256_HEADER = "X-Square-HmacSha256-Signature"
-  
-  def verify_signature(payload:, headers:, provider_config:)
-    signature = extract_header(headers, SIGNATURE_HMACSHA256_HEADER, SIGNATURE_HEADER)
-    return false if signature.blank?
-    
-    # Generate signature: HMAC-SHA256(webhook_url + payload)
-    webhook_url = extract_webhook_url(headers, provider_config)
-    data_to_sign = "#{webhook_url}#{payload}"
-    
-    expected_signature = generate_hmac_base64(provider_config.signing_secret, data_to_sign)
-    
-    secure_compare(signature, expected_signature)
-  end
-  
-  private
-  
-  def extract_webhook_url(headers, provider_config)
-    # Try to get from header first
-    url = extract_header(headers, "X-Square-Webhook-Url")
-    return url if url.present?
-    
-    # Fallback to configured URL
-    ENV["SQUARE_WEBHOOK_URL"] || provider_config.webhook_url
-  end
-end
-```
-
-### PayPal Verifier
-
-**Signature Format**: Multiple headers with transmission ID, timestamp, certificate, etc.
-
-```ruby
-class PaypalVerifier
-  include CaptainHook::VerifierHelpers
-  
-  SIGNATURE_HEADER = "Paypal-Transmission-Sig"
-  CERT_URL_HEADER = "Paypal-Cert-Url"
-  TRANSMISSION_ID_HEADER = "Paypal-Transmission-Id"
-  TRANSMISSION_TIME_HEADER = "Paypal-Transmission-Time"
-  AUTH_ALGO_HEADER = "Paypal-Auth-Algo"
-  WEBHOOK_ID_HEADER = "Paypal-Webhook-Id"
-  
-  def verify_signature(payload:, headers:, provider_config:)
-    signature = extract_header(headers, SIGNATURE_HEADER)
-    transmission_id = extract_header(headers, TRANSMISSION_ID_HEADER)
-    transmission_time = extract_header(headers, TRANSMISSION_TIME_HEADER)
-    webhook_id = provider_config.signing_secret
-    
-    return false if signature.blank? || transmission_id.blank? || transmission_time.blank?
-    
-    # Timestamp validation
-    if provider_config.timestamp_validation_enabled?
-      time = Time.parse(transmission_time).to_i rescue nil
-      return false if time.nil?
-      
-      tolerance = provider_config.timestamp_tolerance_seconds
-      return false unless timestamp_within_tolerance?(time, tolerance)
-    end
-    
-    # Build expected payload
-    expected_payload = "#{transmission_id}|#{transmission_time}|#{webhook_id}|#{crc32(payload)}"
-    expected_signature = generate_hmac_base64(webhook_id, expected_payload)
-    
-    secure_compare(signature, expected_signature)
-  end
-  
-  private
-  
-  def crc32(data)
-    Zlib.crc32(data).to_s
-  end
-end
-```
-
-### WebhookSite Verifier
-
-**No Signature**: Used for testing, always returns true.
-
-```ruby
-class WebhookSiteVerifier
-  def verify_signature(payload:, headers:, provider_config:)
-    # No signature verification for webhook.site
-    true
-  end
-end
-```
-
----
 
 ## Custom Verifiers
 
@@ -1483,13 +1371,6 @@ CaptainHook.configure do |config|
     action_class: "Stripe::ChargeRefundedAction",
     async: true,
     priority: 50
-  )
-  
-  # Register PayPal actions
-  config.register_action(
-    provider: "paypal",
-    event_type: "PAYMENT.CAPTURE.COMPLETED",
-    action_class: "Paypal::PaymentCapturedAction"
   )
 end
 ```
