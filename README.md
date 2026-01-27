@@ -44,7 +44,6 @@ A comprehensive Rails engine for managing webhook integrations with features inc
 ### 📊 Observability
 - **Event Storage** - Persists all incoming webhooks with full audit trail
 - **Action Tracking** - Monitor processing status, attempts, and errors
-- **Metrics** - Track success rates, latency, and throughput ([guide](docs/METRICS.md))
 - **Debugging Tools** - Inspect payloads, view error messages, retry failed actions
 
 ## 🚀 Installation
@@ -71,8 +70,7 @@ The setup wizard will:
 1. ✅ Mount the engine in your routes
 2. ✅ Create configuration files
 3. ✅ Install database migrations
-4. ✅ Set up encryption keys for secure credential storage
-5. ✅ Create an example provider (in development)
+4. ✅ Create an example provider (in development)
 
 Run migrations:
 
@@ -200,9 +198,16 @@ providers:
     timestamp_tolerance_seconds: 180    # 3 minutes for Square
 ```
 
-**Configuration Priority:** Provider YAML file → `captain_hook.yml` provider override → `captain_hook.yml` global defaults
+#### Configuration Priority (Highest to Lowest)
 
-**Note:** Provider-specific settings like rate limits and signing secrets are configured in individual provider YAML files at `captain_hook/<provider_name>/<provider_name>.yml` (see [Adding Custom Providers](#adding-custom-providers)).
+CaptainHook uses a three-tier priority system for configuration values:
+
+1. **`captain_hook.yml` provider-specific override** (highest priority)
+   - Example: `providers.stripe.max_payload_size_bytes`
+2. **Provider YAML file value**
+   - Example: `captain_hook/stripe/stripe.yml` → `max_payload_size_bytes: 1048576`
+3. **`captain_hook.yml` global defaults** (lowest priority, only if provider YAML is empty/nil)
+   - Example: `defaults.max_payload_size_bytes`
 
 ### Environment Variables
 
@@ -464,7 +469,7 @@ http://localhost:3000/captain_hook
 - **Actions** - Monitor action execution status
 - **Retry Failed Actions** - Manually retry failed webhook processing
 - **Inspect Payloads** - View full webhook JSON payloads
-- **Configure Action Retries** - Edit max attempts and retry delays for each action handler
+- **Configure Action Retries** - Edit max attempts and retry delays for each action
 - **Search & Filter** - Find specific webhooks by provider, event type, date
 
 ### Securing the Admin UI
@@ -511,7 +516,6 @@ end
 ⚠️ **Note:** The default admin interface allows viewing full webhook payloads, which may contain:
 - Customer personal information (PII)
 - Payment details
-- API keys or tokens
 - Business-sensitive data
 
 Ensure your authentication and authorization meet your compliance requirements (GDPR, PCI-DSS, HIPAA, etc.).
@@ -543,7 +547,6 @@ Captain Hook uses four main tables:
 - `name` - Provider identifier (stripe, square, etc.)
 - `token` - Unique webhook URL token
 - `active` - Enable/disable provider
-- `signing_secret` - Encrypted webhook secret
 
 **captain_hook_incoming_events** - Webhook event log
 - `provider` - Provider name
@@ -703,74 +706,7 @@ rails captain_hook:doctor
 
 # View status and statistics
 rails captain_hook:status
-
-# Archive old webhooks
-rails captain_hook:archive[90]  # Archive events older than 90 days
-
-# Clean up old events
-rails captain_hook:cleanup[30]  # Delete archived events older than 30 days
-
-# Retry failed actions
-rails captain_hook:retry_failed[24]  # Retry actions that failed in last 24 hours
 ```
-
-## 📊 Monitoring & Instrumentation
-
-Captain Hook emits ActiveSupport notifications for monitoring. For a complete guide on tracking success rates, latency, and throughput, see [METRICS.md](docs/METRICS.md).
-
-### Quick Example
-
-```ruby
-# Subscribe to all webhook events
-ActiveSupport::Notifications.subscribe(/captain_hook/) do |name, start, finish, id, payload|
-  duration = finish - start
-  Rails.logger.info "#{name}: #{duration}ms - #{payload.inspect}"
-end
-```
-
-### Available Events
-
-```ruby
-# Webhook events
-incoming_event.received.captain_hook
-incoming_event.processing.captain_hook
-incoming_event.processed.captain_hook
-incoming_event.failed.captain_hook
-
-# Action events
-action.started.captain_hook
-action.completed.captain_hook
-action.failed.captain_hook
-
-# Security events
-signature.verified.captain_hook
-signature.failed.captain_hook
-rate_limit.exceeded.captain_hook
-```
-
-### Metrics Integration
-
-Send metrics to your monitoring service:
-
-```ruby
-# config/initializers/captain_hook_metrics.rb
-ActiveSupport::Notifications.subscribe("action.completed.captain_hook") do |*args|
-  event = ActiveSupport::Notifications::Event.new(*args)
-  
-  # Send to your metrics service
-  StatsD.histogram("webhook.action.duration", event.payload[:duration] * 1000)
-  StatsD.increment("webhook.action.success")
-end
-
-ActiveSupport::Notifications.subscribe("action.failed.captain_hook") do |*args|
-  event = ActiveSupport::Notifications::Event.new(*args)
-  
-  StatsD.increment("webhook.action.failure", 
-    tags: ["error:#{event.payload[:error]}"])
-end
-```
-
-**For complete metrics implementation examples** (StatsD, Prometheus, New Relic, etc.), see the [Metrics Guide](docs/METRICS.md).
 
 ## 🤝 Contributing
 
@@ -812,19 +748,6 @@ If you're adding support for a common provider:
 ## 📝 License
 
 This project is licensed under the MIT License - see the [MIT-LICENSE](MIT-LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation:** [GitHub Wiki](https://github.com/bowerbird-app/captain-hook/wiki)
-- **Issues:** [GitHub Issues](https://github.com/bowerbird-app/captain-hook/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/bowerbird-app/captain-hook/discussions)
-
-## 🙏 Acknowledgments
-
-Captain Hook is inspired by and builds upon patterns from:
-- [Stripe's webhook handling best practices](https://stripe.com/docs/webhooks/best-practices)
-- [Rails Event Store](https://railseventstore.org/)
-- [Sidekiq's retry mechanism](https://github.com/mperham/sidekiq)
 
 ---
 
