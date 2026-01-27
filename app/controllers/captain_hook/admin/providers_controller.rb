@@ -4,18 +4,14 @@ module CaptainHook
   module Admin
     # Admin controller for managing webhook providers
     class ProvidersController < BaseController
+      include Concerns::ProviderConfigLoader
+
       before_action :set_provider, only: %i[show edit update destroy]
 
       # GET /captain_hook/admin/providers
       def index
-        # Load providers from registry
-        discovery = CaptainHook::Services::ProviderDiscovery.new
-        provider_definitions = discovery.call
-
-        # Convert to ProviderConfig objects
-        @providers = provider_definitions.map do |config_data|
-          CaptainHook::ProviderConfig.new(config_data)
-        end.sort_by(&:name)
+        # Load providers from registry using concern
+        @providers = load_all_provider_configs
 
         # Get database providers for status
         @db_providers = CaptainHook::Provider.all.index_by(&:name)
@@ -26,13 +22,10 @@ module CaptainHook
         @recent_events = @provider.incoming_events.recent.limit(10)
 
         # Load registry config for this provider (with hierarchy applied)
-        discovery = CaptainHook::Services::ProviderDiscovery.new
-        provider_definitions = discovery.call
-        config_data = provider_definitions.find { |p| p["name"] == @provider.name }
-        @registry_config = config_data ? CaptainHook::ProviderConfig.new(config_data) : nil
+        @registry_config = load_registry_config_for_provider(@provider.name)
 
         # Load raw provider YAML (before hierarchy)
-        @provider_yaml = config_data
+        @provider_yaml = find_provider_config_data(@provider.name)
 
         # Load global config
         return unless defined?(CaptainHook::Services::GlobalConfigLoader)
@@ -84,7 +77,7 @@ module CaptainHook
       def set_provider
         @provider = CaptainHook::Provider.find(params[:id])
         # Load registry config for display_name and other metadata
-        @registry_config = CaptainHook.configuration.provider(@provider.name)
+        @registry_config = load_registry_config_for_provider(@provider.name)
       end
 
       def provider_params

@@ -4,6 +4,8 @@ module CaptainHook
   module Admin
     # Admin controller for viewing and managing actions per provider
     class ActionsController < BaseController
+      include Concerns::ProviderConfigLoader
+
       before_action :set_provider
       before_action :set_action, only: %i[show edit update destroy]
 
@@ -16,10 +18,7 @@ module CaptainHook
         @registry_actions = action_registry_for_provider
 
         # Load registry config for display_name
-        discovery = CaptainHook::Services::ProviderDiscovery.new
-        provider_definitions = discovery.call
-        config_data = provider_definitions.find { |p| p["name"] == @provider.name }
-        @registry_config = config_data ? CaptainHook::ProviderConfig.new(config_data) : nil
+        @registry_config = load_registry_config_for_provider(@provider.name)
       end
 
       # GET /captain_hook/admin/providers/:provider_id/actions/:id
@@ -50,7 +49,7 @@ module CaptainHook
       def set_provider
         @provider = CaptainHook::Provider.find(params[:provider_id])
         # Load registry config for display_name
-        @registry_config = CaptainHook.configuration.provider(@provider.name)
+        @registry_config = load_registry_config_for_provider(@provider.name)
       end
 
       def set_action
