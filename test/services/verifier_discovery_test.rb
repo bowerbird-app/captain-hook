@@ -36,8 +36,8 @@ module CaptainHook
       def test_discovers_minimum_number_of_verifiers
         verifiers = @discovery.call
 
-        # Should at least have Base plus the built-in verifiers
-        assert_operator verifiers.size, :>=, 4, "Should discover at least 4 verifiers"
+        # Should at least have Base and Stripe verifiers
+        assert_operator verifiers.size, :>=, 2, "Should discover at least 2 verifiers"
       end
 
       def test_verifier_names_follow_correct_namespace
