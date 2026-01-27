@@ -1,355 +1,371 @@
-# Verifier Helpers Guide
+# Verifier Helpers
 
-The `CaptainHook::VerifierHelpers` module provides reusable helper methods for webhook signature verification, header extraction, HMAC generation, and timestamp validation. These helpers can be used in:
+The `CaptainHook::VerifierHelpers` module provides reusable utility methods for building webhook verifiers. These helpers handle common security operations, header parsing, and timestamp validation.
 
-1. Custom webhook verifiers (provider-specific)
-2. Host application code
-3. Other gems that need webhook verification logic
+## Usage
 
-## Usage in Custom Verifiers
-
-When creating a custom verifier in your provider directory, include the helpers module:
+Include the module in your verifier class:
 
 ```ruby
-# captain_hook/providers/my_provider/my_provider.rb
 class MyProviderVerifier
   include CaptainHook::VerifierHelpers
-  
+
   def verify_signature(payload:, headers:, provider_config:)
-    # Extract signature from custom header
-    signature = extract_header(headers, "X-MyProvider-Signature")
-    return false if signature.blank?
-    
-    # Skip verification if not configured
-    return true if skip_verification?(provider_config.signing_secret)
-    
-    # Generate expected signature
+    signature = extract_header(headers, "X-Signature")
     expected = generate_hmac(provider_config.signing_secret, payload)
-    
-    # Secure comparison
     secure_compare(signature, expected)
-  end
-  
-  def extract_event_id(payload)
-    payload["id"]
-  end
-  
-  def extract_event_type(payload)
-    payload["type"]
-  end
-end
-```
-
-## Usage in Host Application
-
-You can use the helpers directly in your Rails application:
-
-```ruby
-class WebhookVerificationService
-  include CaptainHook::VerifierHelpers
-  
-  def verify_custom_webhook(request)
-    signature = extract_header(request.headers, "X-Custom-Signature")
-    timestamp = extract_header(request.headers, "X-Timestamp")
-    
-    # Validate timestamp
-    return false unless timestamp_within_tolerance?(timestamp.to_i, 300)
-    
-    # Generate and compare signature
-    expected = generate_hmac(ENV['WEBHOOK_SECRET'], request.raw_post)
-    secure_compare(signature, expected)
-  end
-end
-```
-
-## Usage in Other Gems
-
-Other gems can include and use the helpers:
-
-```ruby
-# In your gem
-require 'captain_hook'
-
-module MyGem
-  class WebhookAction
-    include CaptainHook::VerifierHelpers
-    
-    def process_webhook(payload, headers)
-      # Use helper methods
-      signature = extract_header(headers, "X-Signature")
-      timestamp = parse_timestamp(headers["X-Timestamp"])
-      
-      if timestamp_within_tolerance?(timestamp, 300)
-        # Process webhook
-      end
-    end
   end
 end
 ```
 
 ## Available Helper Methods
 
-### Signature Verification
+### Security Methods
 
 #### `secure_compare(a, b)`
-Constant-time string comparison to prevent timing attacks.
+
+Constant-time string comparison to prevent timing attacks. Always use this when comparing signatures or secrets.
 
 ```ruby
-secure_compare("abc123", signature) # => true/false
+def verify_signature(payload:, headers:, provider_config:)
+  received = extract_header(headers, "X-Signature")
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  secure_compare(received, expected)
+end
 ```
+
+**Returns:** `true` if strings match, `false` otherwise
+
+**Note:** Returns `false` if either string is blank or if lengths don't match.
+
+#### `skip_verification?(signing_secret)`
+
+Check if signature verification should be skipped. Returns `true` if the signing secret is blank or contains an ENV placeholder (e.g., `ENV[WEBHOOK_SECRET]`).
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  return true if skip_verification?(provider_config.signing_secret)
+  
+  # ... perform verification
+end
+```
+
+**Use case:** Useful for development/testing environments where you don't have real webhook secrets configured.
+
+### HMAC Generation
 
 #### `generate_hmac(secret, data)`
-Generate HMAC-SHA256 signature (hexadecimal).
+
+Generate HMAC-SHA256 signature, hex-encoded.
 
 ```ruby
-signature = generate_hmac("my_secret", "payload_data")
-# => "a1b2c3d4..."
+def verify_signature(payload:, headers:, provider_config:)
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  received = extract_header(headers, "X-Signature")
+  secure_compare(expected, received)
+end
 ```
+
+**Parameters:**
+- `secret` (String) - The signing secret
+- `data` (String) - The data to sign
+
+**Returns:** Hex-encoded HMAC signature (lowercase)
 
 #### `generate_hmac_base64(secret, data)`
-Generate HMAC-SHA256 signature (Base64-encoded). Used by Square and similar providers.
+
+Generate HMAC-SHA256 signature, Base64-encoded.
 
 ```ruby
-signature = generate_hmac_base64("my_secret", "payload_data")
-# => "SGVsbG8gV29ybGQ="
+def verify_signature(payload:, headers:, provider_config:)
+  expected = generate_hmac_base64(provider_config.signing_secret, payload)
+  received = extract_header(headers, "X-Signature")
+  secure_compare(expected, received)
+end
 ```
 
-#### `generate_hmac_sha1(secret, data)`
-Generate HMAC-SHA1 signature (hexadecimal). Used by older providers.
+**Parameters:**
+- `secret` (String) - The signing secret
+- `data` (String) - The data to sign
+
+**Returns:** Base64-encoded HMAC signature (strict encoding, no padding)
+
+### Header Parsing
+
+#### `extract_header(headers, *keys)`
+
+Extract header value with case-insensitive matching. Tries multiple keys in order and returns the first non-blank value.
 
 ```ruby
-signature = generate_hmac_sha1("my_secret", "payload_data")
+def verify_signature(payload:, headers:, provider_config:)
+  # Will try "X-Signature", "x-signature", "X-SIGNATURE"
+  signature = extract_header(headers, "X-Signature")
+  
+  # Try multiple header names
+  signature = extract_header(headers, "X-Hub-Signature-256", "X-Hub-Signature")
+end
 ```
 
-### Header Extraction
+**Parameters:**
+- `headers` (Hash) - Request headers hash
+- `keys` (Array<String>) - Header keys to try (variable arguments)
 
-#### `extract_header(headers, key)`
-Extract header value with multiple fallback strategies. Handles various formats:
-- Direct key lookup
-- Case variations (downcase, upcase)
-- HTTP_ prefix variations
+**Returns:** Header value (String) or `nil` if not found
+
+#### `parse_kv_header(header_value)`
+
+Parse key-value header format (e.g., Stripe's signature header: `t=123,v1=abc,v0=xyz`).
 
 ```ruby
-signature = extract_header(headers, "X-Webhook-Signature")
-# Works with: "X-Webhook-Signature", "x-webhook-signature", 
-#            "HTTP_X_WEBHOOK_SIGNATURE", etc.
+def extract_timestamp(headers)
+  signature_header = extract_header(headers, "Stripe-Signature")
+  parsed = parse_kv_header(signature_header)
+  # => { "t" => "123", "v1" => "abc", "v0" => "xyz" }
+  
+  timestamp = parsed["t"]
+  signatures = [parsed["v1"], parsed["v0"]].compact
+end
+```
+
+**Parameters:**
+- `header_value` (String) - Header value to parse
+
+**Returns:** Hash of key-value pairs. If a key appears multiple times, the value becomes an array.
+
+**Example:**
+```ruby
+parse_kv_header("t=1234567890,v1=abc123,v0=xyz789")
+# => { "t" => "1234567890", "v1" => "abc123", "v0" => "xyz789" }
+
+parse_kv_header("a=1,b=2,a=3")
+# => { "a" => ["1", "3"], "b" => "2" }
 ```
 
 ### Timestamp Validation
 
-#### `timestamp_within_tolerance?(timestamp, tolerance = 300)`
-Check if timestamp is within tolerance window (default: 5 minutes).
+#### `timestamp_within_tolerance?(timestamp, tolerance)`
+
+Check if a timestamp is within acceptable tolerance to prevent replay attacks.
 
 ```ruby
-timestamp_within_tolerance?(1234567890, 300) # => true/false
+def verify_signature(payload:, headers:, provider_config:)
+  timestamp = extract_timestamp(headers).to_i
+  tolerance = provider_config.timestamp_tolerance_seconds || 300
+  
+  unless timestamp_within_tolerance?(timestamp, tolerance)
+    return false # Timestamp too old or too far in future
+  end
+  
+  # ... verify signature
+end
 ```
 
-#### `parse_timestamp(timestamp_str)`
-Parse ISO 8601 timestamp string to Unix timestamp.
+**Parameters:**
+- `timestamp` (Integer) - Unix timestamp to check
+- `tolerance` (Integer) - Maximum age in seconds
+
+**Returns:** `true` if timestamp is within tolerance, `false` otherwise
+
+**Note:** Checks both past and future timestamps (uses absolute difference).
+
+#### `parse_timestamp(time_string)`
+
+Parse timestamp from various formats. Supports Unix timestamps, ISO8601, and RFC3339.
 
 ```ruby
-timestamp = parse_timestamp("2024-01-16T12:00:00Z")
-# => 1705406400
+parse_timestamp("1234567890")          # => 1234567890
+parse_timestamp(1234567890)            # => 1234567890
+parse_timestamp("2024-01-27T12:00:00Z") # => 1706356800
 ```
 
-### Configuration Helpers
+**Parameters:**
+- `time_string` (String, Integer) - Timestamp in various formats
 
-#### `skip_verification?(secret)`
-Check if signature verification should be skipped (blank or "skip").
+**Returns:** Unix timestamp (Integer) or `nil` if parsing fails
+
+### Debugging
+
+#### `log_verification(provider, details)`
+
+Log signature verification details when debug mode is enabled.
 
 ```ruby
-skip_verification?("") # => true
-skip_verification?("skip") # => true
-skip_verification?("real_secret") # => false
+def verify_signature(payload:, headers:, provider_config:)
+  signature = extract_header(headers, "X-Signature")
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  
+  log_verification("my_provider", {
+    "Received Signature": signature,
+    "Expected Signature": expected,
+    "Match": secure_compare(signature, expected)
+  })
+  
+  secure_compare(signature, expected)
+end
 ```
+
+**Parameters:**
+- `provider` (String) - Provider name
+- `details` (Hash) - Details to log
+
+**Output:** Only logs when `CaptainHook.configuration.debug_mode` is enabled.
 
 ### URL Building
 
 #### `build_webhook_url(path, provider_token: nil)`
-Build full webhook URL. Auto-detects environment (Codespaces, production, local).
+
+Build full webhook URL from path and optional token.
 
 ```ruby
-url = build_webhook_url("/webhooks/stripe", provider_token: "abc123")
-# => "https://myapp.com/webhooks/stripe/abc123"
+webhook_url = build_webhook_url("/captain_hook/stripe")
+# => "https://example.com/captain_hook/stripe"
+
+webhook_url = build_webhook_url("/captain_hook/stripe", provider_token: "abc123")
+# => "https://example.com/captain_hook/stripe?token=abc123"
 ```
 
-#### `detect_base_url`
-Detect the base URL of the application.
+**Parameters:**
+- `path` (String) - Webhook path
+- `provider_token` (String, optional) - Provider token for URL
+
+**Returns:** Full webhook URL (String)
+
+**Environment Variables:**
+- Uses `WEBHOOK_BASE_URL` or falls back to `https://#{HOST}`
+
+## Complete Example
+
+Here's a complete verifier using multiple helpers:
 
 ```ruby
-base = detect_base_url
-# => "https://myapp.com" or "http://localhost:3000"
-```
-
-### Header Parsing
-
-#### `parse_kv_header(header, separator: "=")`
-Parse comma-separated key-value pairs from header (e.g., Stripe format).
-
-```ruby
-parsed = parse_kv_header("t=123,v1=abc,v0=def")
-# => {"t" => "123", "v1" => "abc", "v0" => "def"}
-
-# Supports multiple values for same key
-parsed = parse_kv_header("v1=abc,v1=def")
-# => {"v1" => ["abc", "def"]}
-```
-
-### Payload Parsing
-
-#### `extract_event_fields(payload)`
-Extract common event fields from payload.
-
-```ruby
-fields = extract_event_fields(payload)
-# => {id: "evt_123", type: "payment.success", timestamp: 1234567890}
-```
-
-### Debugging
-
-#### `log_verification(provider, details = {})`
-Log signature verification details (development/test only).
-
-```ruby
-log_verification("stripe", 
-  "Signature" => "present",
-  "Timestamp" => "1234567890",
-  "Result" => "✓ Passed")
-```
-
-## Example: Custom Webhook Provider
-
-Here's a complete example of creating a custom verifier using the helpers:
-
-```ruby
-module CaptainHook
-  module Verifiers
-    class Shopify < Base
-      SIGNATURE_HEADER = "X-Shopify-Hmac-Sha256"
-      
-      def verify_signature(payload:, headers:)
-        # Extract signature using helper
-        signature = extract_header(headers, SIGNATURE_HEADER)
-        
-        # Log for debugging
-        log_verification("shopify", "Verifying" => "started")
-        
-        # Skip if not configured
-        return true if skip_verification?(provider_config.signing_secret)
-        
-        return false if signature.blank?
-        
-        # Shopify uses Base64-encoded HMAC
-        expected = generate_hmac_base64(provider_config.signing_secret, payload)
-        
-        # Secure comparison
-        result = secure_compare(signature, expected)
-        log_verification("shopify", "Result" => result ? "✓" : "✗")
-        result
-      end
-      
-      def extract_event_type(payload)
-        # Use helper for common patterns
-        extract_event_fields(payload)[:type] || "shopify.webhook"
-      end
-    end
-  end
-end
-```
-
-## Example: Standalone Usage
-
-Use helpers outside of verifiers:
-
-```ruby
-class MyWebhookService
+# captain_hook/my_provider/my_provider.rb
+class MyProviderVerifier
   include CaptainHook::VerifierHelpers
-  
-  def verify_github_webhook(request)
-    signature = extract_header(request.headers, "X-Hub-Signature-256")
-    signature = signature.sub("sha256=", "") if signature.present?
+
+  SIGNATURE_HEADER = "X-Provider-Signature"
+  TIMESTAMP_HEADER = "X-Provider-Timestamp"
+  TIMESTAMP_TOLERANCE = 300 # 5 minutes
+
+  def verify_signature(payload:, headers:, provider_config:)
+    # Skip if no secret configured
+    return true if skip_verification?(provider_config.signing_secret)
+
+    # Extract headers
+    signature = extract_header(headers, SIGNATURE_HEADER)
+    timestamp = extract_header(headers, TIMESTAMP_HEADER)
     
-    expected = generate_hmac(ENV["GITHUB_WEBHOOK_SECRET"], request.raw_post)
-    
-    if secure_compare(signature, expected)
-      process_webhook(request.body)
-    else
-      Rails.logger.warn "GitHub webhook signature verification failed"
-      false
+    return false if signature.blank? || timestamp.blank?
+
+    # Validate timestamp
+    unless timestamp_within_tolerance?(timestamp.to_i, TIMESTAMP_TOLERANCE)
+      log_verification("my_provider", {
+        "Error": "Timestamp out of tolerance",
+        "Timestamp": timestamp,
+        "Current Time": Time.current.to_i
+      })
+      return false
     end
+
+    # Generate expected signature
+    signed_payload = "#{timestamp}.#{payload}"
+    expected = generate_hmac(provider_config.signing_secret, signed_payload)
+
+    # Compare signatures
+    result = secure_compare(signature, expected)
+    
+    log_verification("my_provider", {
+      "Received": signature,
+      "Expected": expected,
+      "Match": result
+    })
+    
+    result
   end
-  
-  def verify_twilio_webhook(request)
-    # Twilio includes timestamp in signature
-    timestamp = extract_header(request.headers, "X-Twilio-Timestamp")
-    
-    # Check timestamp freshness
-    return false unless timestamp_within_tolerance?(timestamp.to_i, 600)
-    
-    # Verify signature with timestamp
-    signature = extract_header(request.headers, "X-Twilio-Signature")
-    data = "#{request.url}#{timestamp}#{request.raw_post}"
-    expected = generate_hmac(ENV["TWILIO_AUTH_TOKEN"], data)
-    
-    secure_compare(signature, expected)
+
+  def extract_timestamp(headers)
+    timestamp = extract_header(headers, TIMESTAMP_HEADER)
+    parse_timestamp(timestamp)
+  end
+
+  def extract_event_id(payload)
+    payload["event_id"] || payload["id"]
+  end
+
+  def extract_event_type(payload)
+    payload["event_type"] || payload["type"]
   end
 end
 ```
 
 ## Best Practices
 
-1. **Always use `secure_compare`** for signature comparison to prevent timing attacks
-2. **Use `skip_verification?`** to handle missing configuration gracefully
-3. **Use `extract_header`** for robust header extraction across different environments
-4. **Validate timestamps** when providers include them to prevent replay attacks
-5. **Use `log_verification`** during development to debug signature issues
-6. **Choose the right HMAC method**:
-   - `generate_hmac`: Most common (hex-encoded SHA256)
-   - `generate_hmac_base64`: For providers like Square
-   - `generate_hmac_sha1`: For older providers
+### 1. Always Use Constant-Time Comparison
 
-## Testing with Helpers
+❌ **Don't do this:**
+```ruby
+signature == expected  # Vulnerable to timing attacks
+```
+
+✅ **Do this:**
+```ruby
+secure_compare(signature, expected)  # Safe
+```
+
+### 2. Validate Timestamps
+
+Always validate timestamps to prevent replay attacks:
 
 ```ruby
-RSpec.describe MyWebhookService do
-  include CaptainHook::VerifierHelpers
+def verify_signature(payload:, headers:, provider_config:)
+  timestamp = extract_timestamp(headers)
+  tolerance = provider_config.timestamp_tolerance_seconds || 300
   
-  let(:secret) { "test_secret" }
-  let(:payload) { '{"event": "test"}' }
-  
-  it "generates valid HMAC signature" do
-    signature = generate_hmac(secret, payload)
-    expect(signature).to match(/^[a-f0-9]{64}$/)
+  unless timestamp_within_tolerance?(timestamp, tolerance)
+    return false
   end
   
-  it "performs secure comparison" do
-    sig1 = generate_hmac(secret, payload)
-    sig2 = generate_hmac(secret, payload)
-    
-    expect(secure_compare(sig1, sig2)).to be true
-  end
-  
-  it "validates timestamps" do
-    current = Time.current.to_i
-    old = current - 600
-    
-    expect(timestamp_within_tolerance?(current, 300)).to be true
-    expect(timestamp_within_tolerance?(old, 300)).to be false
-  end
+  # ... rest of verification
 end
 ```
 
-## Environment Variables
+### 3. Handle Missing Secrets Gracefully
 
-The helpers respect these environment variables:
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  # Allow webhooks through in development if secret not configured
+  return true if skip_verification?(provider_config.signing_secret)
+  
+  # ... perform verification
+end
+```
 
-- `APP_URL`: Explicit base URL for webhooks
-- `CODESPACES`: Enables Codespaces URL detection
-- `CODESPACE_NAME`: Codespace identifier
-- `HEROKU_APP_NAME`: Heroku app name
-- `PORT`: Server port (default: 3000)
-- `RAILS_ENV`: Environment (affects logging)
+### 4. Use Case-Insensitive Header Extraction
 
-## Thread Safety
+Headers can arrive in different cases, so always use `extract_header`:
 
-All helper methods are thread-safe and can be used in multi-threaded environments like Puma or Sidekiq.
+```ruby
+# Will find "X-Signature", "x-signature", "X-SIGNATURE", etc.
+signature = extract_header(headers, "X-Signature")
+```
+
+### 5. Try Multiple Signature Versions
+
+Some providers send multiple signature versions:
+
+```ruby
+def verify_signature(payload:, headers:, provider_config:)
+  parsed = parse_kv_header(signature_header)
+  signatures = [parsed["v1"], parsed["v0"]].flatten.compact
+  
+  expected = generate_hmac(provider_config.signing_secret, payload)
+  
+  # Accept if any version matches
+  signatures.any? { |sig| secure_compare(sig, expected) }
+end
+```
+
+## See Also
+
+- [Creating Custom Verifiers](VERIFIERS.md)
+- [Provider Discovery](PROVIDER_DISCOVERY.md)
+- [Built-in Verifiers Examples](../lib/captain_hook/verifiers/)
