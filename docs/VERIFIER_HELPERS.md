@@ -230,9 +230,6 @@ webhook_url = build_webhook_url("/captain_hook/stripe", provider_token: "abc123"
 
 **Returns:** Full webhook URL (String)
 
-**Environment Variables:**
-- Uses `WEBHOOK_BASE_URL` or falls back to `https://#{HOST}`
-
 ## Complete Example
 
 Here's a complete verifier using multiple helpers:

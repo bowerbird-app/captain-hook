@@ -708,43 +708,6 @@ rails captain_hook:doctor
 rails captain_hook:status
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/bowerbird-app/captain-hook.git
-cd captain-hook
-
-# Install dependencies
-bundle install
-
-# Set up test database
-cd test/dummy
-bin/rails db:create db:migrate
-cd ../..
-
-# Run tests
-bundle exec rake test
-
-# Run RSpec tests
-bundle exec rspec
-```
-
-### Adding a New Built-in Verifier
-
-If you're adding support for a common provider:
-
-1. Create verifier in `lib/captain_hook/verifiers/provider_name.rb`
-2. Inherit from `CaptainHook::Verifiers::Base`
-3. Implement `verify_signature` method
-4. Add example config in `captain_hook/provider_name/`
-5. Write comprehensive tests
-6. Submit PR with documentation
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the [MIT-LICENSE](MIT-LICENSE) file for details.
