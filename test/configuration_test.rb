@@ -109,9 +109,9 @@ module CaptainHook
     end
 
     def test_provider_falls_back_to_memory_registration
-      @config.register_provider("webhook_site", signing_secret: "memory_secret")
+      @config.register_provider("test_provider", signing_secret: "memory_secret")
 
-      provider_config = @config.provider("webhook_site")
+      provider_config = @config.provider("test_provider")
       assert_equal "memory_secret", provider_config.signing_secret
     end
 

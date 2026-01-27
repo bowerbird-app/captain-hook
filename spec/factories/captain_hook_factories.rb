@@ -23,24 +23,6 @@ FactoryBot.define do
       verifier_class { "CaptainHook::Verifiers::Stripe" }
     end
 
-    trait :square do
-      name { "square" }
-      display_name { "Square" }
-      verifier_class { "CaptainHook::Verifiers::Square" }
-    end
-
-    trait :paypal do
-      name { "paypal" }
-      display_name { "PayPal" }
-      verifier_class { "CaptainHook::Verifiers::Paypal" }
-    end
-
-    trait :webhook_site do
-      name { "webhook_site" }
-      display_name { "Webhook.site" }
-      verifier_class { "CaptainHook::Verifiers::WebhookSite" }
-    end
-
     trait :with_rate_limiting do
       rate_limit_requests { 10 }
       rate_limit_period { 60 }

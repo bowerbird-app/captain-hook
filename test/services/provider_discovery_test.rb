@@ -14,10 +14,9 @@ module CaptainHook
 
         assert_operator providers.size, :>, 0, "Should discover at least one provider"
 
-        # Check that we found the test providers
+        # Check that we found stripe provider
         provider_names = providers.map { |p| p["name"] }
-        assert_includes provider_names, "square"
-        assert_includes provider_names, "webhook_site"
+        assert_includes provider_names, "stripe"
       end
 
       test "provider definitions include required fields" do
@@ -32,11 +31,11 @@ module CaptainHook
 
       test "provider definitions include optional fields" do
         providers = @discovery.call
-        square_provider = providers.find { |p| p["name"] == "square" }
+        stripe_provider = providers.find { |p| p["name"] == "stripe" }
 
-        assert_not_nil square_provider
-        assert_equal "Square", square_provider["display_name"]
-        assert_equal "square.rb", square_provider["verifier_file"]
+        assert_not_nil stripe_provider
+        assert_equal "Stripe", stripe_provider["display_name"]
+        assert_equal "stripe.rb", stripe_provider["verifier_file"]
       end
 
       test "handles missing directory gracefully" do

@@ -229,95 +229,11 @@ namespace :captain_hook do
     puts "Try running manually: rails db:migrate"
   end
 
+  # No longer creates example provider
+  # Users should refer to the README for Stripe setup instructions
   def create_example_provider
-    puts "Creating example WebhookSite provider..."
-
-    example_dir = Rails.root.join("captain_hook/webhook_site")
-    FileUtils.mkdir_p(example_dir)
-    FileUtils.mkdir_p(File.join(example_dir, "actions"))
-
-    # Create YAML config
-    yaml_content = <<~YAML
-      # Example provider configuration for testing webhooks
-      # Visit https://webhook.site to get a unique URL for testing
-
-      name: webhook_site
-      display_name: Webhook.site (Testing)
-      description: Test webhook provider for development
-      verifier_file: webhook_site.rb
-      active: true
-
-      # No signing secret needed for webhook.site
-      signing_secret: ""
-
-      # Optional: Rate limiting
-      rate_limit_requests: 100
-      rate_limit_period: 60
-    YAML
-
-    File.write(File.join(example_dir, "webhook_site.yml"), yaml_content)
-
-    # Create verifier
-    verifier_content = <<~RUBY
-      # frozen_string_literal: true
-
-      # Simple verifier for testing - accepts all webhooks
-      class WebhookSiteVerifier
-        include CaptainHook::VerifierHelpers
-
-        def verify_signature(payload:, headers:, provider_config:)
-          # Accept all requests for testing
-          true
-        end
-
-        def extract_timestamp(headers)
-          Time.now.to_i
-        end
-
-        def extract_event_id(payload)
-          payload["id"] || SecureRandom.uuid
-        end
-
-        def extract_event_type(payload)
-          payload["event_type"] || "test.event"
-        end
-      end
-    RUBY
-
-    File.write(File.join(example_dir, "webhook_site.rb"), verifier_content)
-
-    # Create example action
-    action_content = <<~RUBY
-      # frozen_string_literal: true
-
-      module WebhookSite
-        class TestAction
-          def self.details
-            {
-              description: "Handles test webhook events",
-              event_type: "*",  # Matches all events
-              priority: 100,
-              async: true,
-              max_attempts: 3
-            }
-          end
-
-          def webhook_action(event:, payload:, metadata:)
-            Rails.logger.info "🎣 WebhookSite test webhook received!"
-            Rails.logger.info "Event ID: \#{event.external_id}"
-            Rails.logger.info "Event Type: \#{event.event_type}"
-            Rails.logger.info "Payload: \#{payload.inspect}"
-          end
-        end
-      end
-    RUBY
-
-    File.write(File.join(example_dir, "actions", "test_action.rb"), action_content)
-
-    puts "✓ Example provider created at captain_hook/webhook_site/"
-    puts "  - Configuration: webhook_site.yml"
-    puts "  - Verifier: webhook_site.rb"
-    puts "  - Action: actions/test_action.rb"
+    # Deprecated - no longer creates example providers
+    puts "Example provider creation is deprecated. Please see README.md for Stripe setup."
   end
 
   def validate_setup
@@ -353,7 +269,7 @@ namespace :captain_hook do
 
     puts "\n4. Register actions:"
     puts "   - Create action classes in captain_hook/<provider>/actions/"
-    puts "   - See example: captain_hook/webhook_site/actions/test_action.rb"
+    puts "   - See README.md for action examples"
 
     puts "\n5. Get webhook URL from admin UI and configure in your provider"
 

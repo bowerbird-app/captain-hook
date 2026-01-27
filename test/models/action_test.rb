@@ -106,9 +106,9 @@ module CaptainHook
     test "active scope excludes deleted actions" do
       @action.save!
       deleted_action = Action.create!(
-        provider: "square",
+        provider: "custom_provider",
         event_type: "payment.succeeded",
-        action_class: "SquareAction",
+        action_class: "CustomAction",
         async: true,
         max_attempts: 5,
         priority: 100,
@@ -124,9 +124,9 @@ module CaptainHook
     test "deleted scope includes only deleted actions" do
       @action.save!
       deleted_action = Action.create!(
-        provider: "square",
+        provider: "custom_provider",
         event_type: "payment.succeeded",
-        action_class: "SquareAction",
+        action_class: "CustomAction",
         async: true,
         max_attempts: 5,
         priority: 100,
@@ -141,10 +141,10 @@ module CaptainHook
 
     test "for_provider scope filters by provider" do
       @action.save!
-      square_action = Action.create!(
-        provider: "square",
+      custom_action = Action.create!(
+        provider: "custom_provider",
         event_type: "payment.succeeded",
-        action_class: "SquareAction",
+        action_class: "CustomAction",
         async: true,
         max_attempts: 5,
         priority: 100,
@@ -153,7 +153,7 @@ module CaptainHook
 
       stripe_actions = Action.for_provider("stripe")
       assert_includes stripe_actions, @action
-      assert_not_includes stripe_actions, square_action
+      assert_not_includes stripe_actions, custom_action
     end
 
     test "registry_key returns formatted key" do
@@ -188,7 +188,7 @@ module CaptainHook
       @action.save!
 
       action2 = Action.create!(
-        provider: "square",
+        provider: "custom_provider",
         event_type: "payment.succeeded",
         action_class: "Action2",
         async: true,
@@ -198,7 +198,7 @@ module CaptainHook
       )
 
       action3 = Action.create!(
-        provider: "paypal",
+        provider: "another_provider",
         event_type: "payment.succeeded",
         action_class: "Action3",
         async: true,

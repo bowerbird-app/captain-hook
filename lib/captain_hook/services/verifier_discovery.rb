@@ -26,10 +26,7 @@ module CaptainHook
         # These are the verifiers that ship with CaptainHook
         gem_verifiers = [
           "CaptainHook::Verifiers::Base",
-          "CaptainHook::Verifiers::Stripe",
-          "CaptainHook::Verifiers::Square",
-          "CaptainHook::Verifiers::Paypal",
-          "CaptainHook::Verifiers::WebhookSite"
+          "CaptainHook::Verifiers::Stripe"
         ]
 
         gem_verifiers.each do |verifier_class|

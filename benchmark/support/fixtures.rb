@@ -58,33 +58,6 @@ module BenchmarkFixtures
     }
   end
 
-  def self.square_payload
-    {
-      merchant_id: "merchant_123",
-      type: "bank_account.verified",
-      event_id: "evt_square_123",
-      created_at: Time.now.iso8601,
-      data: {
-        type: "bank_account",
-        id: "bank_123",
-        object: {
-          bank_account: {
-            id: "bank_123",
-            bank_name: "Test Bank",
-            account_type: "CHECKING",
-            status: "VERIFIED"
-          }
-        }
-      }
-    }
-  end
-
-  def self.square_headers
-    {
-      "X-Square-Hmacsha256-Signature" => Base64.strict_encode64("test_signature")
-    }
-  end
-
   # Create a test provider
   def self.create_test_provider(name: "benchmark_stripe", verifier: "CaptainHook::Verifiers::Stripe")
     CaptainHook::Provider.find_or_create_by!(name: name) do |p|
