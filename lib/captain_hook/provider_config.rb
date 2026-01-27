@@ -158,7 +158,7 @@ module CaptainHook
     rescue NameError => e
       Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
       raise CaptainHook::VerifierNotFoundError,
-            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use a built-in verifier (CaptainHook::Verifiers::Base, Stripe, Square, Paypal, WebhookSite)."
+            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use the built-in Stripe verifier (CaptainHook::Verifiers::Stripe)."
     end
 
     # Load the verifier file from the filesystem

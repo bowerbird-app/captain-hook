@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+- **Removed PayPal, Square, and Webhook.site providers**: CaptainHook now ships with Stripe as the only built-in provider
+  - Removed `CaptainHook::Verifiers::Paypal`
+  - Removed `CaptainHook::Verifiers::Square`
+  - Removed `CaptainHook::Verifiers::WebhookSite`
+  - If you need these providers, implement custom verifiers in your application
+  - See README.md for custom provider implementation guide
 - **Renamed handlers to actions**: Terminology change for consistency and clarity
   - `Handler` → `Action` (class names, model names)
   - `handler` → `action` (method names, variable names)
@@ -27,11 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed inter-gem communication documentation
 
 ### Added
-- **Built-in verifiers**: CaptainHook now ships with verifiers for common webhook providers
+- **Built-in verifier**: CaptainHook now ships with a verifier for Stripe
   - Stripe verifier (`CaptainHook::Verifiers::Stripe`)
-  - Square verifier (`CaptainHook::Verifiers::Square`)
-  - PayPal verifier (`CaptainHook::Verifiers::Paypal`)
-  - WebhookSite verifier (`CaptainHook::Verifiers::WebhookSite`) for testing
 - **Verifier discovery service**: Automatically discovers available verifiers (built-in and custom)
 - **Provider templates**: Example YAML configurations for common providers in `captain_hook/providers/*.yml.example`
 - **Multi-tenant provider support**: Can have multiple instances of the same provider type with different credentials

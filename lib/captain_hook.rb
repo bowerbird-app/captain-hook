@@ -16,9 +16,6 @@ require "captain_hook/verifier_helpers"
 # Load default verifiers bundled with the gem
 require "captain_hook/verifiers/base"
 require "captain_hook/verifiers/stripe"
-require "captain_hook/verifiers/square"
-require "captain_hook/verifiers/paypal"
-require "captain_hook/verifiers/webhook_site"
 
 # Load services
 require "captain_hook/services/base_service"
