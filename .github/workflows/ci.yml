@@ -55,8 +55,15 @@ jobs:
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
     
+    - name: Verify migrations were installed
+      run: ls -la db/migrate/ | grep captain_hook
+      working-directory: test/dummy
+    
     - name: Setup test database
-      run: bundle exec rails db:create db:migrate RAILS_ENV=test
+      run: |
+        bundle exec rails db:create RAILS_ENV=test
+        bundle exec rails db:migrate RAILS_ENV=test
+        bundle exec rails db:test:prepare
       working-directory: test/dummy
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
