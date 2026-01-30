@@ -55,8 +55,8 @@ jobs:
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
     
-    - name: Run database migrations
-      run: bundle exec rails db:migrate RAILS_ENV=test
+    - name: Setup test database
+      run: bundle exec rails db:create db:migrate RAILS_ENV=test
       working-directory: test/dummy
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
