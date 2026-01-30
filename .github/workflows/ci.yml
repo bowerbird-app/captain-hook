@@ -49,21 +49,11 @@ jobs:
         BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
     
-    - name: Install Captain Hook migrations
-      run: bundle exec rails captain_hook:install:migrations
-      working-directory: test/dummy
-      env:
-        DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
-    
-    - name: Verify migrations were installed
-      run: ls -la db/migrate/ | grep captain_hook
-      working-directory: test/dummy
-    
-    - name: Setup test database
+    - name: Setup test database (from dummy app)
       run: |
+        cd test/dummy
         bundle exec rails db:drop db:create RAILS_ENV=test
         bundle exec rails db:migrate RAILS_ENV=test
-      working-directory: test/dummy
       env:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/gem_template_test
 
