@@ -11,6 +11,12 @@ ENV["RAILS_ENV"] = "test"
 $VERBOSE = nil
 
 require_relative "dummy/config/environment"
+
+# The gem's db/migrate contains source migrations that get installed via rake task
+# The dummy app's db/migrate contains the installed migrations that have been run
+# We need to check only the dummy app's migrations
+ActiveRecord::Tasks::DatabaseTasks.migrations_paths = ["#{Rails.root}/db/migrate"]
+
 require "rails/test_help"
 require "minitest/autorun"
 
