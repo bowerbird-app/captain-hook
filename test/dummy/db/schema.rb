@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_20_015225) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_16_041227) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -24,7 +24,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_015225) do
     t.integer "max_attempts", default: 5, null: false
     t.integer "priority", default: 100, null: false
     t.string "provider", null: false
-    t.jsonb "retry_delays", default: [30, 60, 300, 900, 3600], null: false
+    t.json "retry_delays", default: [30, 60, 300, 900, 3600], null: false
     t.datetime "updated_at", null: false
     t.index ["deleted_at"], name: "index_captain_hook_actions_on_deleted_at"
     t.index ["provider", "event_type", "action_class"], name: "idx_captain_hook_actions_unique", unique: true
@@ -55,9 +55,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_015225) do
     t.integer "priority", default: 100, null: false
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
-    t.index ["incoming_event_id"], name: "index_captain_hook_incoming_event_handlers_on_incoming_event_id"
+    t.index ["incoming_event_id"], name: "index_captain_hook_incoming_event_actions_on_incoming_event_id"
     t.index ["locked_at"], name: "index_captain_hook_incoming_event_actions_on_locked_at"
-    t.index ["status", "priority", "action_class"], name: "idx_captain_hook_handlers_processing_order"
+    t.index ["status", "priority", "action_class"], name: "idx_captain_hook_actions_processing_order"
     t.index ["status"], name: "index_captain_hook_incoming_event_actions_on_status"
   end
 
@@ -67,10 +67,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_20_015225) do
     t.string "dedup_state", default: "unique", null: false
     t.string "event_type", null: false
     t.string "external_id", null: false
-    t.jsonb "headers"
+    t.json "headers"
     t.integer "lock_version", default: 0, null: false
-    t.jsonb "metadata"
-    t.jsonb "payload"
+    t.json "metadata"
+    t.json "payload"
     t.string "provider", null: false
     t.string "request_id"
     t.string "status", default: "received", null: false
