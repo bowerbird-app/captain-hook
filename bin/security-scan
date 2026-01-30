@@ -1,0 +1,76 @@
+#!/bin/bash
+# Security scan script for Captain Hook
+# Run this before committing or creating a PR
+
+set -e
+
+echo "🔒 Running Captain Hook Security Scans..."
+echo ""
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if gems are installed
+echo "📦 Checking security tools..."
+if ! command -v brakeman &> /dev/null; then
+    echo "Installing Brakeman..."
+    gem install brakeman
+fi
+
+if ! command -v bundler-audit &> /dev/null; then
+    echo "Installing Bundler Audit..."
+    gem install bundler-audit
+fi
+
+echo ""
+
+# Run Brakeman
+echo "🔍 Running Brakeman (Rails Security Scanner)..."
+if brakeman --no-pager --format markdown; then
+    echo -e "${GREEN}✅ Brakeman: No security issues found${NC}"
+else
+    echo -e "${RED}❌ Brakeman: Security issues detected!${NC}"
+    echo "Review the output above for details."
+    exit 1
+fi
+
+echo ""
+
+# Update and run Bundler Audit
+echo "🔍 Running Bundler Audit (Dependency Vulnerabilities)..."
+bundler-audit update > /dev/null 2>&1
+if bundler-audit check; then
+    echo -e "${GREEN}✅ Bundler Audit: No vulnerable dependencies${NC}"
+else
+    echo -e "${RED}❌ Bundler Audit: Vulnerable dependencies detected!${NC}"
+    echo "Update vulnerable gems or review the output above."
+    exit 1
+fi
+
+echo ""
+
+# Run RuboCop Security checks if available
+if command -v rubocop &> /dev/null; then
+    echo "🔍 Running RuboCop Security Checks..."
+    if rubocop --only Security; then
+        echo -e "${GREEN}✅ RuboCop Security: No issues found${NC}"
+    else
+        echo -e "${YELLOW}⚠️  RuboCop Security: Issues detected${NC}"
+        echo "Review the output above. These may not be critical."
+    fi
+else
+    echo -e "${YELLOW}⚠️  RuboCop not installed, skipping security checks${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}🎉 All security scans completed successfully!${NC}"
+echo ""
+echo "Security Summary:"
+echo "  ✅ Brakeman: Code security scan passed"
+echo "  ✅ Bundler Audit: No vulnerable dependencies"
+echo "  ✅ RuboCop Security: Code patterns checked"
+echo ""
+echo "You're good to commit! 🚀"

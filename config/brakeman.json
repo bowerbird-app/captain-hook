@@ -1,0 +1,19 @@
+{
+  "application_path": ".",
+  "skip_files": [
+    "test/dummy/config/environments/test.rb"
+  ],
+  "skip_checks": [],
+  "check_arguments": true,
+  "ignore_model_output": false,
+  "ignore_redirect_to_model": false,
+  "min_confidence": 2,
+  "output_files": ["brakeman-report.html", "brakeman-report.json"],
+  "output_formats": ["html", "json"],
+  "rails3": false,
+  "report_progress": true,
+  "absolute_paths": false,
+  "github_repo": "bowerbird-app/captain-hook",
+  "table_width": 120,
+  "pager": false
+}
