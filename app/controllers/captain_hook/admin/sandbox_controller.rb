@@ -34,8 +34,16 @@ module CaptainHook
         end
 
         # Get the verifier
-        # Security: Validate verifier class name before constantize
-        unless valid_verifier_class_name?(provider_config.verifier_class)
+        # Security Note: This triggers a Brakeman warning because verifier_class is retrieved
+        # using params[:provider_id], but this is a false positive because:
+        # 1. verifier_class comes from YAML files controlled by app owner (not user input)
+        # 2. Strong validation blocks dangerous patterns (Kernel, Object, File, eval, etc.)
+        # 3. Uses safe_constantize (returns nil) instead of constantize (raises error)
+        # 4. Explicit nil check prevents execution of invalid classes
+        verifier_class_name = provider_config.verifier_class
+
+        # Validate against dangerous patterns
+        unless valid_verifier_class_name?(verifier_class_name)
           render json: {
             success: false,
             error: "Invalid verifier class"
@@ -43,16 +51,18 @@ module CaptainHook
           return
         end
 
-        begin
-          verifier_class = provider_config.verifier_class.constantize
-          verifier = verifier_class.new
-        rescue NameError => e
+        # Safe constantize - returns nil if class doesn't exist
+        verifier_class = verifier_class_name.safe_constantize
+
+        unless verifier_class
           render json: {
             success: false,
-            error: "Verifier class not found: #{provider_config.verifier_class}"
+            error: "Verifier class not found: #{verifier_class_name}"
           }, status: :bad_request
           return
         end
+
+        verifier = verifier_class.new
 
         # Extract event details (dry run - no database)
         event_type = verifier.extract_event_type(payload_hash)
