@@ -3,15 +3,10 @@
 FactoryBot.define do
   factory :captain_hook_provider, class: "CaptainHook::Provider" do
     sequence(:name) { |n| "test_provider_#{n}" }
-    display_name { "Test Provider" }
-    verifier_class { "CaptainHook::Verifiers::Stripe" }
-    signing_secret { "whsec_test_secret_#{SecureRandom.hex(16)}" }
     token { SecureRandom.urlsafe_base64(32) }
     active { true }
-    timestamp_tolerance_seconds { 300 }
     rate_limit_requests { 100 }
     rate_limit_period { 60 }
-    max_payload_size_bytes { 1_048_576 }
 
     trait :inactive do
       active { false }
@@ -19,8 +14,6 @@ FactoryBot.define do
 
     trait :stripe do
       name { "stripe" }
-      display_name { "Stripe" }
-      verifier_class { "CaptainHook::Verifiers::Stripe" }
     end
 
     trait :with_rate_limiting do
@@ -31,14 +24,6 @@ FactoryBot.define do
     trait :without_rate_limiting do
       rate_limit_requests { nil }
       rate_limit_period { nil }
-    end
-
-    trait :with_payload_limit do
-      max_payload_size_bytes { 1024 }
-    end
-
-    trait :without_payload_limit do
-      max_payload_size_bytes { nil }
     end
   end
 

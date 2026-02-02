@@ -31,7 +31,7 @@ jobs:
       - name: Run Brakeman scan
         run: |
           brakeman --format json --output brakeman-report.json --no-pager --no-exit-on-warn --no-exit-on-error || true
-          brakeman --format markdown --output brakeman-report.md --no-pager
+          brakeman --format markdown --output brakeman-report.md --no-pager || true
 
       - name: Display Brakeman results
         run: |

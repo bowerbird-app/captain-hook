@@ -1,5 +1,7 @@
 # ⚓ Captain Hook
 
+[![Security Scan](https://github.com/bowerbird-app/captain-hook/workflows/Security%20Scan/badge.svg)](https://github.com/bowerbird-app/captain-hook/actions/workflows/security.yml)
+
 A comprehensive Rails engine for managing webhook integrations with features including signature verification, action routing, rate limiting, retry logic, and an admin UI.
 
 ## 📋 Table of Contents
@@ -15,6 +17,7 @@ A comprehensive Rails engine for managing webhook integrations with features inc
 - [Admin UI](#-admin-ui)
 - [Architecture](#-architecture)
 - [Testing](#-testing)
+- [Security](#-security)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -681,7 +684,48 @@ rails captain_hook:doctor
 rails captain_hook:status
 ```
 
-## 📝 License
+## � Security
+
+Captain Hook takes security seriously. The engine is designed with multiple layers of defense to protect your webhook infrastructure:
+
+### Security Features
+
+- **Signature Verification**: All webhooks are verified using HMAC-SHA256 signatures with constant-time comparison to prevent timing attacks
+- **Replay Protection**: Timestamp validation and idempotency checks prevent replay attacks
+- **Rate Limiting**: Per-provider rate limits protect against DoS attacks
+- **Payload Size Limits**: Configurable size limits prevent resource exhaustion
+- **Safe Parsing**: Only uses secure JSON parsing - no eval or unsafe deserialization
+- **Encrypted Secrets**: Signing secrets are encrypted at rest using ActiveRecord Encryption
+- **Security Defaults**: All security features enabled by default with safe configurations
+
+### Automated Security Scanning
+
+Every pull request is automatically scanned using:
+- **Brakeman**: Rails security vulnerability scanner
+- **Bundler Audit**: Dependency vulnerability checker
+- **RuboCop Security**: Security-focused code analysis
+
+View our [Security Policy](SECURITY.md) for:
+- Reporting security vulnerabilities
+- Supported versions
+- Security best practices
+- Known security considerations
+
+### Security Best Practices
+
+When using Captain Hook in production:
+
+1. Always use HTTPS endpoints for webhooks
+2. Store secrets in environment variables, never commit them
+3. Rotate signing secrets periodically
+4. Monitor security logs for signature failures and rate limit violations
+5. Keep Captain Hook and dependencies updated
+6. Review webhook payloads for PII and implement appropriate data handling
+7. Use Redis for rate limiting in multi-server deployments
+
+See the full [Security Documentation](SECURITY.md) for detailed security guidance.
+
+## �📝 License
 
 This project is licensed under the MIT License - see the [MIT-LICENSE](MIT-LICENSE) file for details.
 
