@@ -164,13 +164,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_timestamp %>
             <% if global_override_timestamp %>
-              <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
+              <%= badge("captain_hook.yml providers", color: "green", class: "ml-2 px-2 py-1 text-xs bg-green-50") %>
             <% elsif provider_yaml_timestamp %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
             <% elsif global_default_timestamp %>
-              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
+              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% end %>
             <span class="text-gray-500">(±<%= final_timestamp %>s tolerance)</span>
           </dd>
@@ -181,13 +181,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= number_with_delimiter(final_size) %>
             <% if global_override_size %>
-              <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
+              <%= badge("captain_hook.yml providers", color: "green", class: "ml-2 px-2 py-1 text-xs bg-green-50") %>
             <% elsif provider_yaml_size %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
             <% elsif global_default_size %>
-              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
+              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% end %>
             <span class="text-gray-500">(<%= number_to_human_size(final_size) %>)</span>
           </dd>
@@ -198,11 +198,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_requests %>
             <% if db_rate_requests %>
-              <%= badge("database", color: "yellow", class: "ml-2") %>
+              <%= badge("database", color: "red", class: "ml-2 px-2 py-1 text-xs bg-red-50") %>
             <% elsif provider_yaml_rate_requests %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% end %>
             <span class="text-gray-500">(requests)</span>
           </dd>
@@ -213,11 +213,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_period %>
             <% if db_rate_period %>
-              <%= badge("database", color: "yellow", class: "ml-2") %>
+              <%= badge("database", color: "red", class: "ml-2 px-2 py-1 text-xs bg-red-50") %>
             <% elsif provider_yaml_rate_period %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
             <% end %>
             <span class="text-gray-500">(seconds)</span>
           </dd>
