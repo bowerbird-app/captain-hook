@@ -1,3 +1,12 @@
+GIT
+  remote: https://github.com/bowerbird-app/flatpack.git
+  revision: 6cdc2be2c1b7142dc5df393587f99f59d9b778f8
+  specs:
+    flat_pack (0.1.2)
+      rails (~> 8.0)
+      tailwind_merge (~> 0.13)
+      view_component (~> 3.0)
+
 PATH
   remote: .
   specs:
@@ -149,6 +158,7 @@ GEM
       net-smtp
     marcel (1.1.0)
     memory_profiler (1.1.0)
+    method_source (1.1.0)
     mini_mime (1.1.5)
     minitest (6.0.1)
       prism (~> 1.5)
@@ -265,7 +275,7 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.7)
-    rubocop (1.84.0)
+    rubocop (1.84.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -295,6 +305,7 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
+    sin_lru_redux (2.5.2)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -304,6 +315,8 @@ GEM
       activesupport (>= 6.1)
       sprockets (>= 3.0.0)
     stringio (3.2.0)
+    tailwind_merge (0.16.0)
+      sin_lru_redux (~> 2.5)
     thor (1.5.0)
     timeout (0.6.0)
     tsort (0.2.0)
@@ -314,6 +327,10 @@ GEM
     unicode-emoji (4.2.0)
     uri (1.1.1)
     useragent (0.16.11)
+    view_component (3.24.0)
+      activesupport (>= 5.2.0, < 8.2)
+      concurrent-ruby (~> 1)
+      method_source (~> 1.0)
     webmock (3.26.1)
       addressable (>= 2.8.0)
       crack (>= 0.3.2)
@@ -341,6 +358,7 @@ DEPENDENCIES
   debug
   factory_bot_rails (~> 6.4)
   faker (~> 3.2)
+  flat_pack!
   memory_profiler (~> 1.0)
   pg (~> 1.6)
   puma
@@ -386,6 +404,7 @@ CHECKSUMS
   factory_bot (6.5.6) sha256=12beb373214dccc086a7a63763d6718c49769d5606f0501e0a4442676917e077
   factory_bot_rails (6.5.1) sha256=d3cc4851eae4dea8a665ec4a4516895045e710554d2b5ac9e68b94d351bc6d68
   faker (3.6.0) sha256=4ce80bf91c8d09bbfff4c5596690bf862d60eac420f86737ca8ce12a54dc464a
+  flat_pack (0.1.2)
   globalid (1.3.0) sha256=05c639ad6eb4594522a0b07983022f04aa7254626ab69445a0e493aa3786ff11
   hashdiff (1.2.1) sha256=9c079dbc513dfc8833ab59c0c2d8f230fa28499cc5efb4b8dd276cf931457cd1
   i18n (1.14.8) sha256=285778639134865c5e0f6269e0b818256017e8cde89993fdfcbfb64d088824a5
@@ -403,6 +422,7 @@ CHECKSUMS
   mail (2.9.0) sha256=6fa6673ecd71c60c2d996260f9ee3dd387d4673b8169b502134659ece6d34941
   marcel (1.1.0) sha256=fdcfcfa33cc52e93c4308d40e4090a5d4ea279e160a7f6af988260fa970e0bee
   memory_profiler (1.1.0) sha256=79a17df7980a140c83c469785905409d3027ca614c42c086089d128b805aa8f8
+  method_source (1.1.0) sha256=181301c9c45b731b4769bc81e8860e72f9161ad7d66dd99103c9ab84f560f5c5
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
   minitest (6.0.1) sha256=7854c74f48e2e975969062833adc4013f249a4b212f5e7b9d5c040bf838d54bb
   net-imap (0.6.2) sha256=08caacad486853c61676cca0c0c47df93db02abc4a8239a8b67eb0981428acc6
@@ -453,7 +473,7 @@ CHECKSUMS
   rspec-mocks (3.13.7) sha256=0979034e64b1d7a838aaaddf12bf065ea4dc40ef3d4c39f01f93ae2c66c62b1c
   rspec-rails (6.1.5) sha256=d11afce893ceb6e2c3c11db280f83dee6d0120d150228cef6b989d37c7394c4b
   rspec-support (3.13.7) sha256=0640e5570872aafefd79867901deeeeb40b0c9875a36b983d85f54fb7381c47c
-  rubocop (1.84.0) sha256=88dec310153bb685a879f5a7cdb601f6287b8f0ee675d9dc63a17c7204c4190a
+  rubocop (1.84.1) sha256=14cc626f355141f5a2ef53c10a68d66b13bb30639b26370a76559096cc6bcc1a
   rubocop-ast (1.49.0) sha256=49c3676d3123a0923d333e20c6c2dbaaae2d2287b475273fddee0c61da9f71fd
   rubocop-rails (2.34.3) sha256=10d37989024865ecda8199f311f3faca990143fbac967de943f88aca11eb9ad2
   ruby-progressbar (1.13.0) sha256=80fc9c47a9b640d6834e0dc7b3c94c9df37f08cb072b7761e4a71e22cff29b33
@@ -462,9 +482,11 @@ CHECKSUMS
   simplecov (0.22.0) sha256=fe2622c7834ff23b98066bb0a854284b2729a569ac659f82621fc22ef36213a5
   simplecov-html (0.13.2) sha256=bd0b8e54e7c2d7685927e8d6286466359b6f16b18cb0df47b508e8d73c777246
   simplecov_json_formatter (0.1.4) sha256=529418fbe8de1713ac2b2d612aa3daa56d316975d307244399fa4838c601b428
+  sin_lru_redux (2.5.2) sha256=feed104c943afaeeecb1ad83f3f63562088b9785a816625c32b2305eccbd9963
   sprockets (4.2.2) sha256=761e5a49f1c288704763f73139763564c845a8f856d52fba013458f8af1b59b1
   sprockets-rails (3.5.2) sha256=a9e88e6ce9f8c912d349aa5401509165ec42326baf9e942a85de4b76dbc4119e
   stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
+  tailwind_merge (0.16.0) sha256=e2a2b26aaef57ae6af6d0e98380bbcbf324ce4e9778cd56df8e837c30e66005c
   thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
   timeout (0.6.0) sha256=6d722ad619f96ee383a0c557ec6eb8c4ecb08af3af62098a0be5057bf00de1af
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
@@ -473,6 +495,7 @@ CHECKSUMS
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
   uri (1.1.1) sha256=379fa58d27ffb1387eaada68c749d1426738bd0f654d812fcc07e7568f5c57c6
   useragent (0.16.11) sha256=700e6413ad4bb954bb63547fa098dddf7b0ebe75b40cc6f93b8d54255b173844
+  view_component (3.24.0) sha256=ede4e9c0ca1605a9f6b74773b6e93de100807a4f057eae983d20acf069950aee
   webmock (3.26.1) sha256=4f696fb57c90a827c20aadb2d4f9058bbff10f7f043bd0d4c3f58791143b1cd7
   websocket-driver (0.8.0) sha256=ed0dba4b943c22f17f9a734817e808bc84cdce6a7e22045f5315aa57676d4962
   websocket-extensions (0.1.5) sha256=1c6ba63092cda343eb53fc657110c71c754c56484aad42578495227d717a8241

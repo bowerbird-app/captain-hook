@@ -3,71 +3,74 @@
     <h1>Webhook Providers</h1>
   </div>
 
-  <div class="card">
-    <div class="card-body">
-      <% if @providers.any? %>
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Display Name</th>
-                <th>Status</th>
-                <th>Security</th>
-                <th>Actions</th>
-                <th>Operations</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @providers.each do |provider| %>
-                <% db_provider = @db_providers[provider.name] %>
-                <tr>
-                  <td>
-                    <code><%= provider.name %></code>
-                  </td>
-                  <% provider_config = CaptainHook.configuration.provider(provider.name) %>
-                  <td><%= provider_config&.display_name || provider.name.titleize %></td>
-                  <td>
-                    <% if db_provider&.active? %>
-                      <span class="badge bg-success">Active</span>
-                    <% else %>
-                      <span class="badge bg-secondary">Inactive</span>
-                    <% end %>
-                  </td>
-                  <td>
-                    <% if provider.signing_secret.present? %>
-                      <span class="badge bg-success">Configured</span>
-                    <% else %>
-                      <span class="badge bg-warning">No Secret</span>
-                    <% end %>
-                  </td>
-                  <td>
-                    <% if db_provider %>
-                      <%= link_to admin_provider_actions_path(db_provider) do %>
-                        <%= db_provider.actions.count %>
-                      <% end %>
-                    <% else %>
-                      0
-                    <% end %>
-                  </td>
-                  <td>
-                    <% if db_provider %>
-                      <%= link_to "View", [:admin, db_provider], class: "btn btn-sm btn-outline-primary" %>
-                    <% else %>
-                      <span class="text-muted">Not in DB</span>
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% else %>
-        <div class="alert alert-info">
-          <p class="mb-2"><strong>No providers configured yet.</strong></p>
-          <p class="mb-0">Providers are automatically discovered from YAML files in the <code>captain_hook/&lt;provider&gt;/&lt;provider&gt;.yml</code> directory on application boot. Create a provider YAML file and restart the server to add providers.</p>
-        </div>
-      <% end %>
+  <% if @providers.any? %>
+    <%= render FlatPack::Table::Component.new(rows: @providers) do |table| %>
+      <% table.with_column(label: "Name", attribute: :name) %>
+      <% table.with_column(
+        label: "Display Name",
+        formatter: ->(provider) {
+          provider_config = CaptainHook.configuration.provider(provider.name)
+          provider_config&.display_name || provider.name.titleize
+        }
+      ) %>
+      <% table.with_column(
+        label: "Status",
+        formatter: ->(provider) {
+          db_provider = @db_providers[provider.name]
+          if db_provider&.active?
+            '<span class="text-green-600 font-medium">Active</span>'.html_safe
+          else
+            '<span class="text-gray-500">Inactive</span>'.html_safe
+          end
+        }
+      ) %>
+      <% table.with_column(
+        label: "Security",
+        formatter: ->(provider) {
+          provider_config = CaptainHook.configuration.provider(provider.name)
+          if provider_config&.verifier_class.present?
+            '<span class="text-green-600 font-medium">Enabled</span>'.html_safe
+          else
+            '<span class="text-gray-500">None</span>'.html_safe
+          end
+        }
+      ) %>
+      <% table.with_column(
+        label: "Actions",
+        formatter: ->(provider) {
+          db_provider = @db_providers[provider.name]
+          if db_provider
+            link_to(db_provider.actions.count, admin_provider_actions_path(db_provider))
+          else
+            "0"
+          end
+        }
+      ) %>
+      <% table.with_column(
+        label: "Operations",
+        formatter: ->(provider) {
+          db_provider = @db_providers[provider.name]
+          if db_provider
+            render(FlatPack::Button::Component.new(
+              text: "View",
+              url: url_for([:admin, db_provider]),
+              style: :secondary,
+              size: :sm
+            ))
+          else
+            content_tag(:span, "Not in DB", class: "text-muted")
+          end
+        }
+      ) %>
+            content_tag(:span, "Not in DB", class: "text-muted")
+          end
+        }
+      ) %>
+    <% end %>
+  <% else %>
+    <div class="alert alert-info">
+      <p class="mb-2"><strong>No providers configured yet.</strong></p>
+      <p class="mb-0">Providers are automatically discovered from YAML files in the <code>captain_hook/&lt;provider&gt;/&lt;provider&gt;.yml</code> directory on application boot. Create a provider YAML file and restart the server to add providers.</p>
     </div>
-  </div>
+  <% end %>
 </div>

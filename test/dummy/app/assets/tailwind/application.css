@@ -1,5 +1,78 @@
 @import "tailwindcss";
 
+
+/* Tailwind CSS - Scan FlatPack components for classes */
+@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-5137cddc4cc8/app/components";
+
+/* Extend Tailwind theme with FlatPack design tokens */
+@theme {
+  /* Brand Colors */
+  --color-fp-primary: oklch(0.52 0.26 250);
+  --color-fp-primary-hover: oklch(0.42 0.24 250);
+  --color-fp-primary-text: oklch(1.0 0 0);
+  
+  /* Background & Foreground */
+  --color-fp-background: oklch(1.0 0 0);
+  --color-fp-foreground: oklch(0.20 0.01 250);
+  
+  /* Secondary Button Colors */
+  --color-fp-secondary: oklch(0.95 0.01 250);
+  --color-fp-secondary-hover: oklch(0.90 0.02 250);
+  --color-fp-secondary-text: oklch(0.25 0.02 250);
+  
+  /* Ghost Button Colors */
+  --color-fp-ghost: transparent;
+  --color-fp-ghost-hover: oklch(0.96 0.01 250);
+  --color-fp-ghost-text: oklch(0.35 0.02 250);
+  
+  /* Border and Ring Colors */
+  --color-fp-border: oklch(0.89 0.01 250);
+  --color-ring: oklch(0.52 0.26 250);
+  
+  /* Shadows */
+  --shadow-fp-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  
+  /* Border Radius */
+  --radius-md: 0.375rem;
+  
+  /* Transitions */
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Map to Tailwind utility class names */
+  --color-primary: var(--color-fp-primary);
+  --color-primary-hover: var(--color-fp-primary-hover);
+  --color-primary-text: var(--color-fp-primary-text);
+  --color-background: var(--color-fp-background);
+  --color-foreground: var(--color-fp-foreground);
+  --color-secondary: var(--color-fp-secondary);
+  --color-secondary-hover: var(--color-fp-secondary-hover);
+  --color-secondary-text: var(--color-fp-secondary-text);
+  --color-ghost: var(--color-fp-ghost);
+  --color-ghost-hover: var(--color-fp-ghost-hover);
+  --color-ghost-text: var(--color-fp-ghost-text);
+  --color-border: var(--color-fp-border);
+}
+
+/* Map FlatPack CSS variables to :root for component compatibility */
+:root {
+  --color-primary: var(--color-fp-primary);
+  --color-primary-hover: var(--color-fp-primary-hover);
+  --color-primary-text: var(--color-fp-primary-text);
+  --color-background: var(--color-fp-background);
+  --color-foreground: var(--color-fp-foreground);
+  --color-secondary: var(--color-fp-secondary);
+  --color-secondary-hover: var(--color-fp-secondary-hover);
+  --color-secondary-text: var(--color-fp-secondary-text);
+  --color-ghost: var(--color-fp-ghost);
+  --color-ghost-hover: var(--color-fp-ghost-hover);
+  --color-ghost-text: var(--color-fp-ghost-text);
+  --color-border: var(--color-fp-border);
+  --shadow-sm: var(--shadow-fp-sm);
+  --radius-md: var(--radius-md);
+  --transition-base: var(--transition-base);
+  --color-ring: var(--color-ring);
+}
+
 /* Include the engine's views in the Tailwind build */
 @source "../../../../../app/views/**/*.erb";
 

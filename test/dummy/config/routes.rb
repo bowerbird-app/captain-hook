@@ -2,6 +2,9 @@ Rails.application.routes.draw do
   # Mount the CaptainHook engine
   mount CaptainHook::Engine, at: "/captain_hook"
 
+  # FlatPack components demo
+  get "/flatpack", to: "flatpack_demo#index", as: :flatpack_demo
+
   # Mount MakeupArtist style guide (temporarily disabled)
   # mount MakeupArtist::Engine, at: "/makeup_artist"
 
