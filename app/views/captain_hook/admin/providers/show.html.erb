@@ -1,24 +1,39 @@
-<div class="container py-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item active" aria-current="page"><%= @registry_config&.display_name || @provider.name.titleize %></li>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <nav aria-label="breadcrumb" class="mb-6">
+    <ol class="flex items-center space-x-2 text-sm">
+      <li>
+        <%= link_to "Providers", admin_providers_path, class: "text-gray-600 hover:text-gray-900 hover:underline" %>
+      </li>
+      <li class="text-gray-400">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+        </svg>
+      </li>
+      <li class="font-medium text-gray-900">
+        <%= @registry_config&.display_name || @provider.name.titleize %>
+      </li>
     </ol>
   </nav>
 
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><%= @registry_config&.display_name || @provider.name.titleize %></h1>
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-3xl font-bold"><%= @registry_config&.display_name || @provider.name.titleize %></h1>
     <div>
-      <%= link_to "View Actions", admin_provider_actions_path(@provider), class: "btn btn-info" %>
+      <%= render FlatPack::Button::Component.new(
+        text: "View Actions",
+        url: admin_provider_actions_path(@provider),
+        style: :secondary
+      ) %>
     </div>
   </div>
 
   <!-- Status Badge -->
-  <% if @provider.active? %>
-    <span class="badge bg-success mb-3">Active</span>
-  <% else %>
-    <span class="badge bg-secondary mb-3">Inactive</span>
-  <% end %>
+  <div class="mb-4">
+    <% if @provider.active? %>
+      <%= badge("Active", color: "green") %>
+    <% else %>
+      <%= badge("Inactive", color: "gray") %>
+    <% end %>
+  </div>
 
   <!-- Webhook URL Card -->
   <div class="card mb-4">
@@ -27,9 +42,9 @@
     </div>
     <div class="card-body">
       <p class="text-muted mb-2">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
-      <div class="input-group">
-        <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
-        <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
+      <div class="flex gap-2" data-controller="webhook-copy">
+        <input type="text" class="flex-1 px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] font-mono text-sm bg-[var(--color-muted)]" data-webhook-copy-target="input" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
+        <button type="button" data-action="click->webhook-copy#copy" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           📋 Copy
         </button>
       </div>
@@ -79,9 +94,9 @@
         <dt class="col-sm-3">Signing Secret</dt>
         <dd class="col-sm-9">
           <% if @registry_config&.signing_secret.present? %>
-            <span class="badge bg-success">Configured</span>
+            <%= badge("Configured", color: "green") %>
           <% else %>
-            <span class="badge bg-secondary">Not Set</span>
+            <%= badge("Not Set", color: "gray") %>
             <div class="text-muted small mt-1">
               ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
             </div>
@@ -138,13 +153,13 @@
         <dd class="col-sm-8">
           <%= final_timestamp %>
           <% if global_override_timestamp %>
-            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
+            <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
           <% elsif provider_yaml_timestamp %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
           <% elsif global_default_timestamp %>
-            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
+            <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
           <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
+            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
           <% end %>
           <small class="text-muted">(±<%= final_timestamp %>s tolerance)</small>
         </dd>
@@ -153,13 +168,13 @@
         <dd class="col-sm-8">
           <%= number_with_delimiter(final_size) %>
           <% if global_override_size %>
-            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
+            <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
           <% elsif provider_yaml_size %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
           <% elsif global_default_size %>
-            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
+            <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
           <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
+            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
           <% end %>
           <small class="text-muted">(<%= number_to_human_size(final_size) %>)</small>
         </dd>
@@ -168,11 +183,11 @@
         <dd class="col-sm-8">
           <%= final_rate_requests %>
           <% if db_rate_requests %>
-            <span class="badge bg-warning ms-2">database</span>
+            <%= badge("database", color: "yellow", class: "ml-2") %>
           <% elsif provider_yaml_rate_requests %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
           <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
+            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
           <% end %>
           <small class="text-muted">(requests)</small>
         </dd>
@@ -181,11 +196,11 @@
         <dd class="col-sm-8">
           <%= final_rate_period %>
           <% if db_rate_period %>
-            <span class="badge bg-warning ms-2">database</span>
+            <%= badge("database", color: "yellow", class: "ml-2") %>
           <% elsif provider_yaml_rate_period %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
+            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
           <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
+            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
           <% end %>
           <small class="text-muted">(seconds)</small>
         </dd>
@@ -195,9 +210,14 @@
 
   <!-- Recent Events -->
   <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header flex justify-between items-center">
       <h5 class="mb-0">Recent Events</h5>
-      <%= link_to "View All", admin_incoming_events_path(provider: @provider.name), class: "btn btn-sm btn-outline-primary" %>
+      <%= render FlatPack::Button::Component.new(
+        text: "View All",
+        url: admin_incoming_events_path(provider: @provider.name),
+        style: :secondary,
+        size: :sm
+      ) %>
     </div>
     <div class="card-body">
       <% if @recent_events.any? %>
@@ -217,14 +237,17 @@
                 <tr>
                   <td><code><%= event.event_type %></code></td>
                   <td>
-                    <span class="badge bg-<%= status_color(event.status) %>">
-                      <%= event.status&.titleize || 'N/A' %>
-                    </span>
+                    <%= badge(event.status&.titleize || 'N/A', color: status_color(event.status)) %>
                   </td>
                   <td><%= event.incoming_event_actions.count %></td>
                   <td><%= time_ago_in_words(event.created_at) %> ago</td>
                   <td>
-                    <%= link_to "View", [:admin, event], class: "btn btn-sm btn-outline-primary" %>
+                    <%= render FlatPack::Button::Component.new(
+                      text: "View",
+                      url: url_for([:admin, event]),
+                      style: :secondary,
+                      size: :sm
+                    ) %>
                   </td>
                 </tr>
               <% end %>
@@ -237,25 +260,3 @@
     </div>
   </div>
 </div>
-
-<script>
-function copyWebhookUrl() {
-  const input = document.getElementById('webhookUrl');
-  input.select();
-  input.setSelectionRange(0, 99999); // For mobile devices
-  navigator.clipboard.writeText(input.value);
-  
-  // Show feedback
-  const button = event.target;
-  const originalText = button.innerHTML;
-  button.innerHTML = '✓ Copied!';
-  button.classList.remove('btn-outline-secondary');
-  button.classList.add('btn-success');
-  
-  setTimeout(() => {
-    button.innerHTML = originalText;
-    button.classList.remove('btn-success');
-    button.classList.add('btn-outline-secondary');
-  }, 2000);
-}
-</script>
