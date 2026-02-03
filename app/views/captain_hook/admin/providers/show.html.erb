@@ -27,93 +27,103 @@
   </div>
 
   <!-- Status Badge -->
-  <div class="mb-4">
+  <div class="mb-6">
     <% if @provider.active? %>
-      <%= badge("Active", color: "green") %>
+      <%= badge("Active", color: "green", class: "px-3 py-1.5 text-sm") %>
     <% else %>
-      <%= badge("Inactive", color: "gray") %>
+      <%= badge("Inactive", color: "gray", class: "px-3 py-1.5 text-sm bg-gray-100") %>
     <% end %>
   </div>
 
   <!-- Webhook URL Card -->
-  <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-      <h5 class="mb-0">Webhook Endpoint</h5>
+  <div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Webhook Endpoint</h2>
     </div>
-    <div class="card-body">
-      <p class="text-muted mb-2">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
+    <div class="px-6 py-4">
+      <p class="text-gray-600 mb-3">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
       <div class="flex gap-2" data-controller="webhook-copy">
-        <input type="text" class="flex-1 px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-md)] font-mono text-sm bg-[var(--color-muted)]" data-webhook-copy-target="input" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
-        <button type="button" data-action="click->webhook-copy#copy" class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <input type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm bg-gray-50" data-webhook-copy-target="input" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
+        <button type="button" data-action="click->webhook-copy#copy" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           📋 Copy
         </button>
       </div>
-      <small class="text-muted d-block mt-2">
+      <p class="text-sm text-gray-500 mt-3">
         This URL is unique to this provider and includes a secure token for authentication.
-      </small>
+      </p>
     </div>
   </div>
 
   <!-- Provider Details -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Provider Details</h5>
+  <div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Provider Details</h2>
     </div>
-    <div class="card-body">
-      <dl class="row">
-        <dt class="col-sm-3">Name</dt>
-        <dd class="col-sm-9"><code><%= @provider.name %></code></dd>
+    <div class="px-6 py-4">
+      <dl class="grid grid-cols-1 gap-4">
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Name</dt>
+          <dd class="col-span-2 text-sm text-gray-900"><code class="px-2 py-1 bg-gray-100 rounded"><%= @provider.name %></code></dd>
+        </div>
 
-        <dt class="col-sm-3">Display Name</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.display_name.present? %>
-            <%= @registry_config.display_name %>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Display Name</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.display_name.present? %>
+              <%= @registry_config.display_name %>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Description</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.description.present? %>
-            <%= @registry_config.description %>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Description</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.description.present? %>
+              <%= @registry_config.description %>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Verifier File</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.verifier_file.present? %>
-            <code><%= @registry_config.verifier_file %></code>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Verifier File</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.verifier_file.present? %>
+              <code class="px-2 py-1 bg-gray-100 rounded"><%= @registry_config.verifier_file %></code>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Signing Secret</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.signing_secret.present? %>
-            <%= badge("Configured", color: "green") %>
-          <% else %>
-            <%= badge("Not Set", color: "gray") %>
-            <div class="text-muted small mt-1">
-              ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
-            </div>
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Signing Secret</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.signing_secret.present? %>
+              <%= badge("Configured", color: "green") %>
+            <% else %>
+              <%= badge("Not Set", color: "gray") %>
+              <div class="text-sm text-gray-500 mt-1">
+                ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
+              </div>
+            <% end %>
+          </dd>
+        </div>
       </dl>
     </div>
   </div>
 
   <!-- Security Settings -->
   <!-- Configuration hierarchy: captain_hook.yml providers → provider.yml → captain_hook.yml defaults → hardcoded -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Security Settings</h5>
+  <div class="bg-white shadow rounded-lg mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Security Settings</h2>
     </div>
-    <div class="card-body">
-      <dl class="row">
+    <div class="px-6 py-4">
+      <dl class="grid grid-cols-1 gap-4">
         <% 
           # Get values from different sources
           provider_name = @provider.name
@@ -149,69 +159,77 @@
           final_rate_period = db_rate_period || provider_yaml_rate_period || hardcoded_rate_period
         %>
         
-        <dt class="col-sm-4">timestamp_tolerance_seconds</dt>
-        <dd class="col-sm-8">
-          <%= final_timestamp %>
-          <% if global_override_timestamp %>
-            <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
-          <% elsif provider_yaml_timestamp %>
-            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
-          <% elsif global_default_timestamp %>
-            <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
-          <% else %>
-            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
-          <% end %>
-          <small class="text-muted">(±<%= final_timestamp %>s tolerance)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">timestamp_tolerance_seconds</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_timestamp %>
+            <% if global_override_timestamp %>
+              <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
+            <% elsif provider_yaml_timestamp %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+            <% elsif global_default_timestamp %>
+              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
+            <% else %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(±<%= final_timestamp %>s tolerance)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">max_payload_size_bytes</dt>
-        <dd class="col-sm-8">
-          <%= number_with_delimiter(final_size) %>
-          <% if global_override_size %>
-            <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
-          <% elsif provider_yaml_size %>
-            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
-          <% elsif global_default_size %>
-            <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
-          <% else %>
-            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
-          <% end %>
-          <small class="text-muted">(<%= number_to_human_size(final_size) %>)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">max_payload_size_bytes</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= number_with_delimiter(final_size) %>
+            <% if global_override_size %>
+              <%= badge("captain_hook.yml providers", color: "blue", class: "ml-2") %>
+            <% elsif provider_yaml_size %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+            <% elsif global_default_size %>
+              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2") %>
+            <% else %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(<%= number_to_human_size(final_size) %>)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">rate_limit_requests</dt>
-        <dd class="col-sm-8">
-          <%= final_rate_requests %>
-          <% if db_rate_requests %>
-            <%= badge("database", color: "yellow", class: "ml-2") %>
-          <% elsif provider_yaml_rate_requests %>
-            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
-          <% else %>
-            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
-          <% end %>
-          <small class="text-muted">(requests)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">rate_limit_requests</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_rate_requests %>
+            <% if db_rate_requests %>
+              <%= badge("database", color: "yellow", class: "ml-2") %>
+            <% elsif provider_yaml_rate_requests %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+            <% else %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(requests)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">rate_limit_period</dt>
-        <dd class="col-sm-8">
-          <%= final_rate_period %>
-          <% if db_rate_period %>
-            <%= badge("database", color: "yellow", class: "ml-2") %>
-          <% elsif provider_yaml_rate_period %>
-            <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
-          <% else %>
-            <%= badge("hardcoded", color: "gray", class: "ml-2") %>
-          <% end %>
-          <small class="text-muted">(seconds)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">rate_limit_period</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_rate_period %>
+            <% if db_rate_period %>
+              <%= badge("database", color: "yellow", class: "ml-2") %>
+            <% elsif provider_yaml_rate_period %>
+              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2") %>
+            <% else %>
+              <%= badge("hardcoded", color: "gray", class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(seconds)</span>
+          </dd>
+        </div>
       </dl>
     </div>
   </div>
 
   <!-- Recent Events -->
-  <div class="card">
-    <div class="card-header flex justify-between items-center">
-      <h5 class="mb-0">Recent Events</h5>
+  <div class="bg-white shadow rounded-lg">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
       <%= render FlatPack::Button::Component.new(
         text: "View All",
         url: admin_incoming_events_path(provider: @provider.name),
@@ -219,29 +237,29 @@
         size: :sm
       ) %>
     </div>
-    <div class="card-body">
+    <div class="px-6 py-4">
       <% if @recent_events.any? %>
-        <div class="table-responsive">
-          <table class="table table-sm">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
-                <th>Event Type</th>
-                <th>Status</th>
-                <th>Actions</th>
-                <th>Received</th>
-                <th>Actions</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="bg-white divide-y divide-gray-200">
               <% @recent_events.each do |event| %>
                 <tr>
-                  <td><code><%= event.event_type %></code></td>
-                  <td>
+                  <td class="px-3 py-4 whitespace-nowrap text-sm"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= event.event_type %></code></td>
+                  <td class="px-3 py-4 whitespace-nowrap text-sm">
                     <%= badge(event.status&.titleize || 'N/A', color: status_color(event.status)) %>
                   </td>
-                  <td><%= event.incoming_event_actions.count %></td>
-                  <td><%= time_ago_in_words(event.created_at) %> ago</td>
-                  <td>
+                  <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900"><%= event.incoming_event_actions.count %></td>
+                  <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><%= time_ago_in_words(event.created_at) %> ago</td>
+                  <td class="px-3 py-4 whitespace-nowrap text-sm">
                     <%= render FlatPack::Button::Component.new(
                       text: "View",
                       url: url_for([:admin, event]),
@@ -255,7 +273,7 @@
           </table>
         </div>
       <% else %>
-        <p class="text-muted mb-0">No events received yet.</p>
+        <p class="text-gray-500">No events received yet.</p>
       <% end %>
     </div>
   </div>
