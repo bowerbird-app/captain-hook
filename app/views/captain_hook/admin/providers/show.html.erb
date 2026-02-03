@@ -29,9 +29,9 @@
   <!-- Status Badge -->
   <div class="mb-6">
     <% if @provider.active? %>
-      <%= badge("Active", color: "green", class: "px-3 py-1.5 text-sm") %>
+      <%= render FlatPack::Badge::Component.new(text: "Active", variant: :success, size: :md) %>
     <% else %>
-      <%= badge("Inactive", color: "gray", class: "px-3 py-1.5 text-sm bg-gray-100") %>
+      <%= render FlatPack::Badge::Component.new(text: "Inactive", variant: :default, size: :md) %>
     <% end %>
   </div>
 
@@ -44,9 +44,15 @@
       <p class="text-gray-600 mb-3">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
       <div class="flex gap-2" data-controller="webhook-copy">
         <input type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm bg-gray-50" data-webhook-copy-target="input" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
-        <button type="button" data-action="click->webhook-copy#copy" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          📋 Copy
-        </button>
+        <%= render FlatPack::Button::Component.new(
+          text: "📋 Copy",
+          style: :primary,
+          size: :md,
+          html_options: {
+            type: "button",
+            data: { action: "click->webhook-copy#copy" }
+          }
+        ) %>
       </div>
       <p class="text-sm text-gray-500 mt-3">
         This URL is unique to this provider and includes a secure token for authentication.
@@ -103,9 +109,9 @@
           <dt class="text-sm font-medium text-gray-500">Signing Secret</dt>
           <dd class="col-span-2 text-sm text-gray-900">
             <% if @registry_config&.signing_secret.present? %>
-              <%= badge("Configured", color: "green") %>
+              <%= render FlatPack::Badge::Component.new(text: "Configured", variant: :success, size: :sm) %>
             <% else %>
-              <%= badge("Not Set", color: "gray") %>
+              <%= render FlatPack::Badge::Component.new(text: "Not Set", variant: :default, size: :sm) %>
               <div class="text-sm text-gray-500 mt-1">
                 ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
               </div>
@@ -164,13 +170,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_timestamp %>
             <% if global_override_timestamp %>
-              <%= badge("captain_hook.yml providers", color: "green", class: "ml-2 px-2 py-1 text-xs bg-green-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", variant: :success, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_timestamp %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
             <% elsif global_default_timestamp %>
-              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", variant: :default, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(±<%= final_timestamp %>s tolerance)</span>
           </dd>
@@ -181,13 +187,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= number_with_delimiter(final_size) %>
             <% if global_override_size %>
-              <%= badge("captain_hook.yml providers", color: "green", class: "ml-2 px-2 py-1 text-xs bg-green-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", variant: :success, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_size %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
             <% elsif global_default_size %>
-              <%= badge("captain_hook.yml defaults", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", variant: :default, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(<%= number_to_human_size(final_size) %>)</span>
           </dd>
@@ -198,11 +204,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_requests %>
             <% if db_rate_requests %>
-              <%= badge("database", color: "red", class: "ml-2 px-2 py-1 text-xs bg-red-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "database", variant: :warning, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_rate_requests %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(requests)</span>
           </dd>
@@ -213,11 +219,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_period %>
             <% if db_rate_period %>
-              <%= badge("database", color: "red", class: "ml-2 px-2 py-1 text-xs bg-red-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "database", variant: :warning, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_rate_period %>
-              <%= badge("#{provider_name}.yml", color: "blue", class: "ml-2 px-2 py-1 text-xs bg-blue-50") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= badge("hardcoded", color: "gray", class: "ml-2 px-2 py-1 text-xs bg-gray-100") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(seconds)</span>
           </dd>
@@ -252,10 +258,19 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <% @recent_events.each do |event| %>
+                <%
+                  status_variant = case event.status&.to_s
+                  when "pending" then :warning
+                  when "processing" then :info
+                  when "completed", "sent" then :success
+                  when "failed" then :warning
+                  else :default
+                  end
+                %>
                 <tr>
                   <td class="px-3 py-4 whitespace-nowrap text-sm"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= event.event_type %></code></td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm">
-                    <%= badge(event.status&.titleize || 'N/A', color: status_color(event.status)) %>
+                    <%= render FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', variant: status_variant, size: :sm) %>
                   </td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900"><%= event.incoming_event_actions.count %></td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><%= time_ago_in_words(event.created_at) %> ago</td>
