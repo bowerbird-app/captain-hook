@@ -249,48 +249,35 @@
     </div>
     <div class="px-6 py-4">
       <% if @recent_events.any? %>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
-                <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <% @recent_events.each do |event| %>
-                <%
-                  status_variant = case event.status&.to_s
-                  when "pending" then :warning
-                  when "processing" then :info
-                  when "completed", "sent" then :success
-                  when "failed" then :warning
-                  else :default
-                  end
-                %>
-                <tr>
-                  <td class="px-3 py-4 whitespace-nowrap text-sm"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= event.event_type %></code></td>
-                  <td class="px-3 py-4 whitespace-nowrap text-sm">
-                    <%= render FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', style: status_variant, size: :sm) %>
-                  </td>
-                  <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900"><%= event.incoming_event_actions.count %></td>
-                  <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><%= time_ago_in_words(event.created_at) %> ago</td>
-                  <td class="px-3 py-4 whitespace-nowrap text-sm">
-                    <%= render FlatPack::Button::Component.new(
-                      text: "View",
-                      url: url_for([:admin, event]),
-                      style: :secondary,
-                      size: :sm
-                    ) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+        <%= render FlatPack::Table::Component.new(data: @recent_events) do |table| %>
+          <% table.column(title: "Event Type", html: ->(event) {
+            "<code class=\"px-2 py-1 bg-gray-100 rounded text-xs\">#{event.event_type}</code>".html_safe
+          }) %>
+          
+          <% table.column(title: "Status", html: ->(event) {
+            status_variant = case event.status&.to_s
+            when "pending" then :warning
+            when "processing" then :info
+            when "completed", "sent" then :success
+            when "failed" then :warning
+            else :default
+            end
+            render(FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', style: status_variant, size: :sm))
+          }) %>
+          
+          <% table.column(title: "Actions", html: ->(event) { event.incoming_event_actions.count.to_s }) %>
+          
+          <% table.column(title: "Received", html: ->(event) {
+            "#{time_ago_in_words(event.created_at)} ago"
+          }) %>
+          
+          <% table.with_action(
+            text: "View",
+            url: ->(event) { url_for([:admin, event]) },
+            style: :secondary,
+            size: :sm
+          ) %>
+        <% end %>
       <% else %>
         <p class="text-gray-500">No events received yet.</p>
       <% end %>
