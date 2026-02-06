@@ -48,14 +48,15 @@
               <dd class="col-span-2 text-sm text-gray-900">
                 <%
                   status_variant = case @event.status&.to_s
-                  when "pending" then :warning
+                  when "received" then :default
                   when "processing" then :info
-                  when "completed", "sent" then :success
+                  when "processed" then :success
+                  when "partially_processed" then :warning
                   when "failed" then :warning
                   else :default
                   end
                 %>
-                <%= render FlatPack::Badge::Component.new(text: @event.status&.titleize || 'N/A', style: status_variant, size: :sm) %>
+                <%= render FlatPack::Badge::Component.new(text: @event.status&.titleize&.gsub('_', ' ') || 'N/A', style: status_variant, size: :sm) %>
               </dd>
             </div>
 
@@ -98,9 +99,9 @@
                     <strong class="text-sm font-medium text-gray-900"><%= action.action_class %></strong>
                     <%
                       action_status_variant = case action.status&.to_s
-                      when "pending" then :warning
+                      when "pending" then :default
                       when "processing" then :info
-                      when "completed", "sent" then :success
+                      when "completed", "processed" then :success
                       when "failed" then :warning
                       else :default
                       end
