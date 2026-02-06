@@ -1,0 +1,14 @@
+# Sample webhook provider configuration
+# This is a test provider to demonstrate inactive state and no security
+
+name: sample_provider
+display_name: Sample Provider
+description: A sample webhook provider for testing purposes
+active: false
+
+# No verifier_file specified - security will show as "None"
+# verifier_file: sample_provider.rb
+
+# Optional settings
+rate_limit_requests: 50
+rate_limit_period: 60
