@@ -6,7 +6,7 @@
   <% if @providers.any? %>
     <%= render FlatPack::Table::Component.new(data: @providers) do |table| %>
       <% table.column(title: "Name", html: ->(provider) { provider.name }) %>
-      <% table.column(title: "Name", html: ->(provider) { CaptainHook.configuration.provider(provider.name)&.display_name || provider.name.titleize }) %>
+      <% table.column(title: "Display Name", html: ->(provider) { CaptainHook.configuration.provider(provider.name)&.display_name || provider.name.titleize }) %>
       
       <% table.column(title: "Status", html: ->(provider) {
         db_provider = @db_providers[provider.name]
@@ -35,13 +35,19 @@
         end
       }) %>
       
-      <% table.with_action(
-        text: "View",
-        url: ->(provider) { 
-          db_provider = @db_providers[provider.name]
-          db_provider ? url_for([:admin, db_provider]) : nil
-        }
-      ) %>
+      <% table.column(title: "Operations", html: ->(provider) {
+        db_provider = @db_providers[provider.name]
+        if db_provider
+          render(FlatPack::Button::Component.new(
+            text: "View",
+            url: url_for([:admin, db_provider]),
+            style: :ghost,
+            size: :md
+          ))
+        else
+          ''
+        end
+      }) %>
     <% end %>
   <% else %>
     <div class="alert alert-info">
