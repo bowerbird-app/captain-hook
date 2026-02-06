@@ -25,11 +25,11 @@
   </div>
 
   <!-- Webhook URL Card -->
-  <div class="bg-white shadow rounded-lg mb-6">
-    <div class="px-6 py-4 border-b border-gray-200">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Webhook Endpoint</h2>
-    </div>
-    <div class="px-6 py-4">
+    <% end %>
+    <% card.body do %>
       <p class="text-gray-600 mb-3">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
       <div class="flex gap-2 items-start" data-controller="webhook-copy">
         <div class="flex-1">
@@ -50,15 +50,15 @@
       <p class="text-sm text-gray-500 mt-3">
         This URL is unique to this provider and includes a secure token for authentication.
       </p>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Provider Details -->
-  <div class="bg-white shadow rounded-lg mb-6">
-    <div class="px-6 py-4 border-b border-gray-200">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Provider Details</h2>
-    </div>
-    <div class="px-6 py-4">
+    <% end %>
+    <% card.body do %>
       <dl class="grid grid-cols-1 gap-4">
         <div class="grid grid-cols-3 gap-4">
           <dt class="text-sm font-medium text-gray-500">Name</dt>
@@ -112,16 +112,16 @@
           </dd>
         </div>
       </dl>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Security Settings -->
   <!-- Configuration hierarchy: captain_hook.yml providers → provider.yml → captain_hook.yml defaults → hardcoded -->
-  <div class="bg-white shadow rounded-lg mb-6">
-    <div class="px-6 py-4 border-b border-gray-200">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Security Settings</h2>
-    </div>
-    <div class="px-6 py-4">
+    <% end %>
+    <% card.body do %>
       <dl class="grid grid-cols-1 gap-4">
         <% 
           # Get values from different sources
@@ -222,21 +222,23 @@
           </dd>
         </div>
       </dl>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Recent Events -->
-  <div class="bg-white shadow rounded-lg">
-    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-      <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
-      <%= render FlatPack::Button::Component.new(
-        text: "View All",
-        url: admin_incoming_events_path(provider: @provider.name),
-        style: :secondary,
-        size: :sm
-      ) %>
-    </div>
-    <div class="px-6 py-4">
+  <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+    <% card.header do %>
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
+        <%= render FlatPack::Button::Component.new(
+          text: "View All",
+          url: admin_incoming_events_path(provider: @provider.name),
+          style: :secondary,
+          size: :sm
+        ) %>
+      </div>
+    <% end %>
+    <% card.body do %>
       <% if @recent_events.any? %>
         <%= render FlatPack::Table::Component.new(data: @recent_events) do |table| %>
           <% table.column(title: "Event Type", html: ->(event) {
@@ -270,6 +272,6 @@
       <% else %>
         <p class="text-gray-500">No events received yet.</p>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 </div>

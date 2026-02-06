@@ -11,11 +11,11 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2">
       <!-- Event Details -->
-      <div class="bg-white shadow rounded-lg mb-6">
-        <div class="px-6 py-4 border-b border-gray-200">
+      <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+        <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Event Information</h2>
-        </div>
-        <div class="px-6 py-4">
+        <% end %>
+        <% card.body do %>
           <dl class="grid grid-cols-1 gap-4">
             <div class="grid grid-cols-3 gap-4">
               <dt class="text-sm font-medium text-gray-500">Provider</dt>
@@ -61,27 +61,27 @@
               <dd class="col-span-2 text-sm text-gray-900"><%= @event.updated_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
             </div>
           </dl>
-        </div>
-      </div>
+        <% end %>
+      <% end %>
 
       <!-- Payload -->
-      <div class="bg-white shadow rounded-lg mb-6">
-        <div class="px-6 py-4 border-b border-gray-200">
+      <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+        <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Payload</h2>
-        </div>
-        <div class="px-6 py-4">
+        <% end %>
+        <% card.body do %>
           <pre class="bg-gray-50 p-4 rounded overflow-x-auto text-xs"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
-        </div>
-      </div>
+        <% end %>
+      <% end %>
     </div>
 
     <div class="lg:col-span-1">
       <!-- Actions -->
-      <div class="bg-white shadow rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
+      <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+        <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Event Actions</h2>
-        </div>
-        <div class="px-6 py-4">
+        <% end %>
+        <% card.body do %>
           <% if @event.incoming_event_actions.any? %>
             <div class="space-y-4">
               <% @event.incoming_event_actions.order(priority: :asc, created_at: :asc).each do |action| %>
@@ -117,8 +117,8 @@
           <% else %>
             <p class="text-gray-500 text-sm">No actions registered for this event.</p>
           <% end %>
-        </div>
-      </div>
+        <% end %>
+      <% end %>
     </div>
   </div>
 </div>

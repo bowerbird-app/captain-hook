@@ -2,8 +2,8 @@
   <h1 class="text-3xl font-bold text-gray-900 mb-6">Incoming Webhook Events</h1>
 
   <!-- Filters -->
-  <div class="bg-white shadow rounded-lg mb-6">
-    <div class="px-6 py-6">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.body do %>
       <%= form_with url: captain_hook.admin_incoming_events_path, method: :get, local: true do |f| %>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -47,12 +47,12 @@
           </div>
         </div>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Events Table -->
-  <div class="bg-white shadow rounded-lg">
-    <div class="px-6 py-6">
+  <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+    <% card.body do %>
       <% if @events.any? %>
         <%= render FlatPack::Table::Component.new(data: @events) do |table| %>
           <% table.column(
@@ -122,6 +122,6 @@
           </p>
         </div>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 </div>

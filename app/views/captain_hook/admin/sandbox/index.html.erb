@@ -5,17 +5,19 @@
   </div>
 
   <% if @providers.empty? %>
-    <div class="bg-white shadow rounded-lg p-6 text-center">
+    <%= render FlatPack::Card::Component.new(style: :elevated, padding: :lg, class: "text-center") do |card| %>
+      <% card.body do %>
       <p class="text-gray-600 mb-4">No active providers configured.</p>
       <%= render FlatPack::Button::Component.new(
         text: "Create a Provider",
         url: new_admin_provider_path,
         style: :primary
       ) %>
-    </div>
+      <% end %>
+    <% end %>
   <% else %>
-    <div class="bg-white shadow rounded-lg">
-      <div class="px-6 py-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <form id="sandbox-form">
           <!-- Provider Selection -->
           <div class="mb-6">
@@ -65,8 +67,8 @@
             <pre id="result-content" class="bg-gray-900 text-gray-100 p-4 rounded text-xs overflow-auto" style="max-height: 400px;"></pre>
           </div>
         </div>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
 
     <!-- Info Alert -->
     <div class="bg-blue-50 border border-blue-200 rounded-lg mt-6">
