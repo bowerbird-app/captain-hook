@@ -6,7 +6,7 @@ module CaptainHook
     class ProvidersController < BaseController
       include Concerns::ProviderConfigLoader
 
-      before_action :set_provider, only: %i[show edit update destroy]
+      before_action :set_provider, only: %i[show destroy]
 
       # GET /captain_hook/admin/providers
       def index
@@ -39,9 +39,6 @@ module CaptainHook
         @provider = CaptainHook::Provider.new
       end
 
-      # GET /captain_hook/admin/providers/:id/edit
-      def edit; end
-
       # POST /captain_hook/admin/providers
       def create
         @provider = CaptainHook::Provider.new(provider_params)
@@ -50,15 +47,6 @@ module CaptainHook
           redirect_to [:admin, @provider], notice: "Provider was successfully created."
         else
           render :new, status: :unprocessable_entity
-        end
-      end
-
-      # PATCH/PUT /captain_hook/admin/providers/:id
-      def update
-        if @provider.update(provider_params)
-          redirect_to [:admin, @provider], notice: "Provider was successfully updated."
-        else
-          render :edit, status: :unprocessable_entity
         end
       end
 
