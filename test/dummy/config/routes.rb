@@ -5,9 +5,6 @@ Rails.application.routes.draw do
   # FlatPack components demo
   get "/flatpack", to: "flatpack_demo#index", as: :flatpack_demo
 
-  # Mount MakeupArtist style guide (temporarily disabled)
-  # mount MakeupArtist::Engine, at: "/makeup_artist"
-
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

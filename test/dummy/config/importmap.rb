@@ -5,13 +5,10 @@ pin "@hotwired/stimulus", to: "stimulus.min.js"
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 
-# MakeupArtist controllers
+# CaptainHook engine controllers
 begin
-  makeup_artist_path = Bundler.rubygems.find_name("makeup_artist").first&.full_gem_path
-  if makeup_artist_path
-    pin "makeup_artist", to: "makeup_artist/index.js"
-    pin_all_from "#{makeup_artist_path}/app/javascript/makeup_artist/controllers", under: "makeup_artist/controllers"
-  end
+  captain_hook_path = Bundler.rubygems.find_name("captain_hook").first&.full_gem_path || Rails.root.join("../..")
+  pin_all_from "#{captain_hook_path}/app/javascript/controllers", under: "controllers"
 rescue StandardError => e
-  Rails.logger.warn "Could not load makeup_artist importmap: #{e.message}"
+  Rails.logger.warn "Could not load captain_hook importmap: #{e.message}"
 end
