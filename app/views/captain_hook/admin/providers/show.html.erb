@@ -29,9 +29,9 @@
   <!-- Status Badge -->
   <div class="mb-6">
     <% if @provider.active? %>
-      <%= render FlatPack::Badge::Component.new(text: "Active", variant: :success, size: :md) %>
+      <%= render FlatPack::Badge::Component.new(text: "Active", style: :success, size: :md) %>
     <% else %>
-      <%= render FlatPack::Badge::Component.new(text: "Inactive", variant: :default, size: :md) %>
+      <%= render FlatPack::Badge::Component.new(text: "Inactive", style: :default, size: :md) %>
     <% end %>
   </div>
 
@@ -113,9 +113,9 @@
           <dt class="text-sm font-medium text-gray-500">Signing Secret</dt>
           <dd class="col-span-2 text-sm text-gray-900">
             <% if @registry_config&.signing_secret.present? %>
-              <%= render FlatPack::Badge::Component.new(text: "Configured", variant: :success, size: :sm) %>
+              <%= render FlatPack::Badge::Component.new(text: "Configured", style: :success, size: :sm) %>
             <% else %>
-              <%= render FlatPack::Badge::Component.new(text: "Not Set", variant: :default, size: :sm) %>
+              <%= render FlatPack::Badge::Component.new(text: "Not Set", style: :default, size: :sm) %>
               <div class="text-sm text-gray-500 mt-1">
                 ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
               </div>
@@ -174,13 +174,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_timestamp %>
             <% if global_override_timestamp %>
-              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", variant: :success, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", style: :success, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_timestamp %>
-              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
             <% elsif global_default_timestamp %>
-              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", style: :default, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(±<%= final_timestamp %>s tolerance)</span>
           </dd>
@@ -191,13 +191,13 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= number_with_delimiter(final_size) %>
             <% if global_override_size %>
-              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", variant: :success, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", style: :success, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_size %>
-              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
             <% elsif global_default_size %>
-              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", style: :default, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(<%= number_to_human_size(final_size) %>)</span>
           </dd>
@@ -208,11 +208,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_requests %>
             <% if db_rate_requests %>
-              <%= render FlatPack::Badge::Component.new(text: "database", variant: :warning, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "database", style: :warning, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_rate_requests %>
-              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(requests)</span>
           </dd>
@@ -223,11 +223,11 @@
           <dd class="col-span-2 text-sm text-gray-900">
             <%= final_rate_period %>
             <% if db_rate_period %>
-              <%= render FlatPack::Badge::Component.new(text: "database", variant: :warning, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "database", style: :warning, size: :sm, class: "ml-2") %>
             <% elsif provider_yaml_rate_period %>
-              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", variant: :info, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
             <% else %>
-              <%= render FlatPack::Badge::Component.new(text: "hardcoded", variant: :default, size: :sm, class: "ml-2") %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
             <% end %>
             <span class="text-gray-500">(seconds)</span>
           </dd>
@@ -274,7 +274,7 @@
                 <tr>
                   <td class="px-3 py-4 whitespace-nowrap text-sm"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= event.event_type %></code></td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm">
-                    <%= render FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', variant: status_variant, size: :sm) %>
+                    <%= render FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', style: status_variant, size: :sm) %>
                   </td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-900"><%= event.incoming_event_actions.count %></td>
                   <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500"><%= time_ago_in_words(event.created_at) %> ago</td>

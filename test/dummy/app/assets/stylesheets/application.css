@@ -1,10 +1,13 @@
 @import "tailwindcss";
 
 /* Tailwind CSS - Scan FlatPack components for classes */
-@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-0385bd4f07a6/app/components";
+@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-0385bd4f07a6/app/components/**/*.rb";
 
 /* Include the engine's views in the Tailwind build (from test/dummy/app/assets/stylesheets to /workspace/app/views) */
 @source "../../../../../app/views/**/*.erb";
+
+
+
 
 /* Extend Tailwind theme with FlatPack design tokens */
 @theme {
@@ -26,6 +29,8 @@
   --color-fp-ghost: transparent;
   --color-fp-ghost-hover: oklch(0.96 0.01 250);
   --color-fp-ghost-text: oklch(0.35 0.02 250);
+  
+  /* Badge & Status Colors - defined in @layer base below */
   
   /* Border and Ring Colors */
   --color-fp-border: oklch(0.89 0.01 250);
@@ -55,22 +60,13 @@
   --color-border: var(--color-fp-border);
 }
 
-/* Map FlatPack CSS variables to :root for component compatibility */
-:root {
-  --color-primary: var(--color-fp-primary);
-  --color-primary-hover: var(--color-fp-primary-hover);
-  --color-primary-text: var(--color-fp-primary-text);
-  --color-background: var(--color-fp-background);
-  --color-foreground: var(--color-fp-foreground);
-  --color-secondary: var(--color-fp-secondary);
-  --color-secondary-hover: var(--color-fp-secondary-hover);
-  --color-secondary-text: var(--color-fp-secondary-text);
-  --color-ghost: var(--color-fp-ghost);
-  --color-ghost-hover: var(--color-fp-ghost-hover);
-  --color-ghost-text: var(--color-fp-ghost-text);
-  --color-border: var(--color-fp-border);
-  --shadow-sm: var(--shadow-fp-sm);
-  --radius-md: var(--radius-md);
-  --transition-base: var(--transition-base);
-  --color-ring: var(--color-ring);
+/* Runtime CSS variables in @layer base so Tailwind doesn't strip them */
+@layer base {
+  :root {
+    --color-muted: oklch(0.95 0.01 250);
+    --color-success: oklch(0.55 0.15 160);
+    --color-success-text: oklch(1.0 0 0);
+    --color-warning: oklch(0.75 0.15 80);
+    --color-warning-text: oklch(0.20 0.01 80);
+  }
 }
