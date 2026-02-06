@@ -4,66 +4,42 @@
   </div>
 
   <% if @providers.any? %>
-    <%= render FlatPack::Table::Component.new(rows: @providers) do |table| %>
-      <% table.with_column(label: "Name", attribute: :name) %>
-      <% table.with_column(
-        label: "Display Name",
-        formatter: ->(provider) {
-          provider_config = CaptainHook.configuration.provider(provider.name)
-          provider_config&.display_name || provider.name.titleize
-        }
-      ) %>
-      <% table.with_column(
-        label: "Status",
-        formatter: ->(provider) {
+    <%= render FlatPack::Table::Component.new(data: @providers) do |table| %>
+      <% table.column(title: "Name", html: ->(provider) { provider.name }) %>
+      <% table.column(title: "Name", html: ->(provider) { CaptainHook.configuration.provider(provider.name)&.display_name || provider.name.titleize }) %>
+      
+      <% table.column(title: "Status", html: ->(provider) {
+        db_provider = @db_providers[provider.name]
+        if db_provider&.active?
+          '<span class="text-green-600 font-medium">Active</span>'.html_safe
+        else
+          '<span class="text-gray-500">Inactive</span>'.html_safe
+        end
+      }) %>
+      
+      <% table.column(title: "Security", html: ->(provider) {
+        provider_config = CaptainHook.configuration.provider(provider.name)
+        if provider_config&.verifier_class.present?
+          '<span class="text-green-600 font-medium">Enabled</span>'.html_safe
+        else
+          '<span class="text-gray-500">None</span>'.html_safe
+        end
+      }) %>
+      
+      <% table.column(title: "Actions", html: ->(provider) {
+        db_provider = @db_providers[provider.name]
+        if db_provider
+          link_to(db_provider.actions.count, admin_provider_actions_path(db_provider))
+        else
+          '0'
+        end
+      }) %>
+      
+      <% table.with_action(
+        text: "View",
+        url: ->(provider) { 
           db_provider = @db_providers[provider.name]
-          if db_provider&.active?
-            '<span class="text-green-600 font-medium">Active</span>'.html_safe
-          else
-            '<span class="text-gray-500">Inactive</span>'.html_safe
-          end
-        }
-      ) %>
-      <% table.with_column(
-        label: "Security",
-        formatter: ->(provider) {
-          provider_config = CaptainHook.configuration.provider(provider.name)
-          if provider_config&.verifier_class.present?
-            '<span class="text-green-600 font-medium">Enabled</span>'.html_safe
-          else
-            '<span class="text-gray-500">None</span>'.html_safe
-          end
-        }
-      ) %>
-      <% table.with_column(
-        label: "Actions",
-        formatter: ->(provider) {
-          db_provider = @db_providers[provider.name]
-          if db_provider
-            link_to(db_provider.actions.count, admin_provider_actions_path(db_provider))
-          else
-            "0"
-          end
-        }
-      ) %>
-      <% table.with_column(
-        label: "Operations",
-        formatter: ->(provider) {
-          db_provider = @db_providers[provider.name]
-          if db_provider
-            render(FlatPack::Button::Component.new(
-              text: "View",
-              url: url_for([:admin, db_provider]),
-              style: :secondary,
-              size: :sm
-            ))
-          else
-            content_tag(:span, "Not in DB", class: "text-muted")
-          end
-        }
-      ) %>
-            content_tag(:span, "Not in DB", class: "text-muted")
-          end
+          db_provider ? url_for([:admin, db_provider]) : nil
         }
       ) %>
     <% end %>
