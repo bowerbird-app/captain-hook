@@ -5,80 +5,90 @@
   </div>
 
   <% if @providers.empty? %>
-    <div class="alert alert-info text-center">
-      <p class="mb-3">No active providers configured.</p>
-      <%= link_to "Create a Provider", new_admin_provider_path, class: "btn btn-primary" %>
+    <div class="bg-white shadow rounded-lg p-6 text-center">
+      <p class="text-gray-600 mb-4">No active providers configured.</p>
+      <%= render FlatPack::Button::Component.new(
+        text: "Create a Provider",
+        url: new_admin_provider_path,
+        style: :primary
+      ) %>
     </div>
   <% else %>
-    <div class="card shadow-sm">
-      <div class="card-body">
+    <div class="bg-white shadow rounded-lg">
+      <div class="px-6 py-6">
         <form id="sandbox-form">
           <!-- Provider Selection -->
-          <div class="mb-3">
-            <label for="provider-select" class="form-label">Provider</label>
-            <select id="provider-select" class="form-select">
-              <option value="">Select a provider...</option>
-              <% @providers.each do |provider| %>
-                <% provider_config = CaptainHook.configuration.provider(provider.name) %>
-                <option value="<%= provider.id %>"><%= provider_config&.display_name || provider.name %></option>
-              <% end %>
-            </select>
+          <div class="mb-6">
+            <%= render FlatPack::Select::Component.new(
+              name: "provider_id",
+              label: "Provider",
+              options: @providers.map { |p|
+                provider_config = CaptainHook.configuration.provider(p.name)
+                [provider_config&.display_name || p.name, p.id.to_s]
+              },
+              placeholder: "Select a provider...",
+              id: "provider-select"
+            ) %>
           </div>
 
           <!-- Payload Editor -->
-          <div class="mb-3">
-            <label for="payload-input" class="form-label">
-              JSON Payload
-              <small class="text-muted ms-2">💡 Change "type" to match your action event types</small>
-            </label>
-            <textarea 
-              id="payload-input" 
-              class="form-control font-monospace" 
-              rows="12" 
-              style="font-size: 0.875rem;"
-              placeholder='{"type": "test", "data": {...}}'
-            >{"type": "test","id": "test-<%= SecureRandom.hex(8) %>","timestamp": <%= Time.now.to_i %>,"data": {"message": "Hello from sandbox!","user_id": 12345}}</textarea>
+          <div class="mb-6">
+            <%= render FlatPack::TextArea::Component.new(
+              name: "payload",
+              label: "JSON Payload",
+              placeholder: '{"type": "test", "data": {...}}',
+              rows: 12,
+              value: "{\"type\": \"test\",\"id\": \"test-#{SecureRandom.hex(8)}\",\"timestamp\": #{Time.now.to_i},\"data\": {\"message\": \"Hello from sandbox!\",\"user_id\": 12345}}",
+              id: "payload-input",
+              class: "font-mono text-sm"
+            ) %>
+            <p class="text-xs text-gray-500 mt-2">💡 Change "type" to match your action event types</p>
           </div>
 
           <!-- Test Button -->
-          <div class="d-grid">
-            <button type="button" id="test-webhook-btn" class="btn btn-primary btn-lg">
-              <span id="btn-text">Test Payload (Dry Run)</span>
-              <span id="btn-spinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status">
-                <span class="visually-hidden">Loading...</span>
-              </span>
-            </button>
+          <div>
+            <%= render FlatPack::Button::Component.new(
+              text: "Test Payload (Dry Run)",
+              style: :primary,
+              size: :lg,
+              type: "button",
+              id: "test-webhook-btn",
+              class: "w-full"
+            ) %>
           </div>
         </form>
 
         <!-- Results Section -->
-        <div id="result-container" class="mt-4 d-none">
-          <hr>
-          <h5>Result</h5>
-          <pre id="result-content" class="bg-dark text-light p-3 rounded" style="font-size: 0.75rem; max-height: 400px; overflow: auto;"></pre>
+        <div id="result-container" class="mt-6 hidden">
+          <div class="border-t border-gray-200 pt-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Result</h3>
+            <pre id="result-content" class="bg-gray-900 text-gray-100 p-4 rounded text-xs overflow-auto" style="max-height: 400px;"></pre>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Info Alert -->
-    <div class="alert alert-info mt-4">
-      <h6 class="alert-heading">About Dry Run Mode</h6>
-      <div class="row">
-        <div class="col-md-6">
-          <strong>This will:</strong>
-          <ul class="mb-0 mt-2">
-            <li>Validate JSON format</li>
-            <li>Show matching actions</li>
-            <li>Extract event metadata</li>
-          </ul>
-        </div>
-        <div class="col-md-6">
-          <strong>This will NOT:</strong>
-          <ul class="mb-0 mt-2">
-            <li>Create database records</li>
-            <li>Execute action logic</li>
-            <li>Enqueue background jobs</li>
-          </ul>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg mt-6">
+      <div class="px-6 py-4">
+        <h3 class="text-md font-semibold text-blue-900 mb-4">About Dry Run Mode</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div class="font-semibold text-blue-900 mb-2">This will:</div>
+            <ul class="list-disc list-inside space-y-1 text-blue-800 text-sm">
+              <li>Validate JSON format</li>
+              <li>Show matching actions</li>
+              <li>Extract event metadata</li>
+            </ul>
+          </div>
+          <div>
+            <div class="font-semibold text-blue-900 mb-2">This will NOT:</div>
+            <ul class="list-disc list-inside space-y-1 text-blue-800 text-sm">
+              <li>Create database records</li>
+              <li>Execute action logic</li>
+              <li>Enqueue background jobs</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -90,8 +100,6 @@
   const providerSelect = document.getElementById('provider-select');
   const payloadInput = document.getElementById('payload-input');
   const testBtn = document.getElementById('test-webhook-btn');
-  const btnText = document.getElementById('btn-text');
-  const btnSpinner = document.getElementById('btn-spinner');
   const resultContainer = document.getElementById('result-container');
   const resultContent = document.getElementById('result-content');
 
@@ -104,10 +112,10 @@
       return;
     }
 
+    const originalText = testBtn.textContent;
     testBtn.disabled = true;
-    btnText.textContent = 'Testing...';
-    btnSpinner.classList.remove('d-none');
-    resultContainer.classList.add('d-none');
+    testBtn.textContent = 'Testing...';
+    resultContainer.classList.add('hidden');
 
     try {
       const response = await fetch('/captain_hook/admin/sandbox/test', {
@@ -123,15 +131,14 @@
       });
 
       const data = await response.json();
-      resultContainer.classList.remove('d-none');
+      resultContainer.classList.remove('hidden');
       resultContent.textContent = JSON.stringify(data, null, 2);
     } catch (error) {
-      resultContainer.classList.remove('d-none');
+      resultContainer.classList.remove('hidden');
       resultContent.textContent = `Error: ${error.message}`;
     } finally {
       testBtn.disabled = false;
-      btnText.textContent = 'Test Payload (Dry Run)';
-      btnSpinner.classList.add('d-none');
+      testBtn.textContent = originalText;
     }
   });
 })();
