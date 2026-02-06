@@ -1,25 +1,9 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <nav aria-label="breadcrumb" class="mb-6">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li>
-        <%= link_to "Providers", admin_providers_path, class: "text-gray-600 hover:text-gray-900 hover:underline" %>
-      </li>
-      <li class="text-gray-400">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-        </svg>
-      </li>
-      <li>
-        <%= link_to @registry_config&.display_name || @provider.name.titleize, [:admin, @provider], class: "text-gray-600 hover:text-gray-900 hover:underline" %>
-      </li>
-      <li class="text-gray-400">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-        </svg>
-      </li>
-      <li class="font-medium text-gray-900">Edit</li>
-    </ol>
-  </nav>
+  <%= render FlatPack::Breadcrumb::Component.new(class: "mb-6") do |breadcrumb| %>
+    <% breadcrumb.item(text: "Providers", href: admin_providers_path) %>
+    <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize, href: admin_provider_path(@provider)) %>
+    <% breadcrumb.item(text: "Edit") %>
+  <% end %>
 
   <h1 class="text-3xl font-bold text-gray-900 mb-6">Edit Provider</h1>
 
