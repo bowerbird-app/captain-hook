@@ -42,16 +42,20 @@
     </div>
     <div class="px-6 py-4">
       <p class="text-gray-600 mb-3">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
-      <div class="flex gap-2" data-controller="webhook-copy">
-        <input type="text" class="flex-1 px-3 py-2 border border-gray-300 rounded-md font-mono text-sm bg-gray-50" data-webhook-copy-target="input" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
+      <div class="flex gap-2 items-start" data-controller="webhook-copy">
+        <div class="flex-1">
+          <input 
+            type="text"
+            value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>"
+            readonly
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-700 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            data-webhook-copy-target="input"
+          />
+        </div>
         <%= render FlatPack::Button::Component.new(
           text: "📋 Copy",
           style: :primary,
-          size: :md,
-          html_options: {
-            type: "button",
-            data: { action: "click->webhook-copy#copy" }
-          }
+          data: { action: "click->webhook-copy#copy" }
         ) %>
       </div>
       <p class="text-sm text-gray-500 mt-3">
