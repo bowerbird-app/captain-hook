@@ -17,83 +17,113 @@
     <h1 class="text-3xl font-bold text-gray-900">Incoming Event Details</h1>
   </div>
 
-  <div class="row">
-    <div class="col-lg-8">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
       <!-- Event Details -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Event Information</h5>
+      <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Event Information</h2>
         </div>
-        <div class="card-body">
-          <dl class="row">
-            <dt class="col-sm-3">Provider</dt>
-            <dd class="col-sm-9"><span class="badge bg-info"><%= @event.provider %></span></dd>
+        <div class="px-6 py-4">
+          <dl class="grid grid-cols-1 gap-4">
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">Provider</dt>
+              <dd class="col-span-2 text-sm text-gray-900">
+                <%= render FlatPack::Badge::Component.new(text: @event.provider, style: :info, size: :sm) %>
+              </dd>
+            </div>
 
-            <dt class="col-sm-3">Event Type</dt>
-            <dd class="col-sm-9"><code><%= @event.event_type %></code></dd>
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">Event Type</dt>
+              <dd class="col-span-2 text-sm text-gray-900"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= @event.event_type %></code></dd>
+            </div>
 
-            <dt class="col-sm-3">External ID</dt>
-            <dd class="col-sm-9"><%= @event.external_id %></dd>
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">External ID</dt>
+              <dd class="col-span-2 text-sm text-gray-900"><%= @event.external_id %></dd>
+            </div>
 
-            <dt class="col-sm-3">Status</dt>
-            <dd class="col-sm-9">
-              <span class="badge bg-<%= status_color(@event.status) %>">
-                <%= @event.status&.titleize || 'N/A' %>
-              </span>
-            </dd>
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">Status</dt>
+              <dd class="col-span-2 text-sm text-gray-900">
+                <%
+                  status_variant = case @event.status&.to_s
+                  when "pending" then :warning
+                  when "processing" then :info
+                  when "completed", "sent" then :success
+                  when "failed" then :warning
+                  else :default
+                  end
+                %>
+                <%= render FlatPack::Badge::Component.new(text: @event.status&.titleize || 'N/A', style: status_variant, size: :sm) %>
+              </dd>
+            </div>
 
-            <dt class="col-sm-3">Received At</dt>
-            <dd class="col-sm-9"><%= @event.created_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">Received At</dt>
+              <dd class="col-span-2 text-sm text-gray-900"><%= @event.created_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+            </div>
 
-            <dt class="col-sm-3">Last Updated</dt>
-            <dd class="col-sm-9"><%= @event.updated_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+            <div class="grid grid-cols-3 gap-4">
+              <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+              <dd class="col-span-2 text-sm text-gray-900"><%= @event.updated_at.strftime("%Y-%m-%d %H:%M:%S %Z") %></dd>
+            </div>
           </dl>
         </div>
       </div>
 
       <!-- Payload -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">Payload</h5>
+      <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Payload</h2>
         </div>
-        <div class="card-body">
-          <pre class="bg-light p-3 rounded"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
+        <div class="px-6 py-4">
+          <pre class="bg-gray-50 p-4 rounded overflow-x-auto text-xs"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
         </div>
       </div>
     </div>
 
-    <div class="col-lg-4">
+    <div class="lg:col-span-1">
       <!-- Actions -->
-      <div class="card">
-        <div class="card-header">
-          <h5 class="mb-0">Event Actions</h5>
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Event Actions</h2>
         </div>
-        <div class="card-body">
+        <div class="px-6 py-4">
           <% if @event.incoming_event_actions.any? %>
-            <% @event.incoming_event_actions.order(priority: :asc, created_at: :asc).each do |action| %>
-              <div class="border-bottom pb-3 mb-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <strong><%= action.action_class %></strong>
-                  <span class="badge bg-<%= status_color(action.status) %>">
-                    <%= action.status&.titleize || 'N/A' %>
-                  </span>
+            <div class="space-y-4">
+              <% @event.incoming_event_actions.order(priority: :asc, created_at: :asc).each do |action| %>
+                <div class="border-b border-gray-200 pb-4 last:border-0 last:pb-0">
+                  <div class="flex justify-between items-start mb-2">
+                    <strong class="text-sm font-medium text-gray-900"><%= action.action_class %></strong>
+                    <%
+                      action_status_variant = case action.status&.to_s
+                      when "pending" then :warning
+                      when "processing" then :info
+                      when "completed", "sent" then :success
+                      when "failed" then :warning
+                      else :default
+                      end
+                    %>
+                    <%= render FlatPack::Badge::Component.new(text: action.status&.titleize || 'N/A', style: action_status_variant, size: :sm) %>
+                  </div>
+                  <div class="text-xs text-gray-500 mb-2">Priority: <%= action.priority %></div>
+                  <% if action.error_message.present? %>
+                    <div class="bg-red-50 border border-red-200 rounded p-2 mt-2">
+                      <div class="text-xs font-semibold text-red-800">Error:</div>
+                      <div class="text-xs text-red-700 mt-1"><%= action.error_message %></div>
+                    </div>
+                  <% end %>
+                  <% if action.status_processed? || action.status_failed? %>
+                    <div class="text-xs text-gray-500 mt-2">
+                      <%= action.status.capitalize %> <%= time_ago_in_words(action.updated_at) %> ago
+                    </div>
+                  <% end %>
                 </div>
-                <small class="text-muted">Priority: <%= action.priority %></small>
-                <% if action.error_message.present? %>
-                  <div class="alert alert-danger mt-2 p-2 small">
-                    <strong>Error:</strong><br>
-                    <%= action.error_message %>
-                  </div>
-                <% end %>
-                <% if action.status_processed? || action.status_failed? %>
-                  <div class="text-muted small mt-1">
-                    <%= action.status.capitalize %> <%= time_ago_in_words(action.updated_at) %> ago
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
+              <% end %>
+            </div>
           <% else %>
-            <p class="text-muted">No actions registered for this event.</p>
+            <p class="text-gray-500 text-sm">No actions registered for this event.</p>
           <% end %>
         </div>
       </div>
