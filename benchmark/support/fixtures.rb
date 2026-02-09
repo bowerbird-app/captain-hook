@@ -59,11 +59,13 @@ module BenchmarkFixtures
   end
 
   # Create a test provider
-  def self.create_test_provider(name: "benchmark_stripe", verifier: "CaptainHook::Verifiers::Stripe")
+  # Note: With flatpack system, verifier config comes from YAML files
+  # For signature verification benchmarks, use "stripe" which has a flatpack
+  def self.create_test_provider(name: "benchmark_stripe")
     CaptainHook::Provider.find_or_create_by!(name: name) do |p|
-      p.verifier_class = verifier
-      p.signing_secret = "whsec_test_secret_123"
       p.active = true
+      p.rate_limit_requests = 100
+      p.rate_limit_period = 60
     end
   end
 

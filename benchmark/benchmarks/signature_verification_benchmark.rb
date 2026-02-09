@@ -19,38 +19,47 @@ payload_large = BenchmarkFixtures.stripe_payload(size: :large).to_json
 secret = "whsec_test_secret_for_benchmarking_12345678"
 timestamp = Time.now.to_i
 
-# Create provider with proper config
-stripe_provider = BenchmarkFixtures.create_test_provider(
-  name: "benchmark_stripe",
-  verifier: "CaptainHook::Verifiers::Stripe"
+# Use the existing stripe flatpack provider
+stripe_provider = BenchmarkFixtures.create_test_provider(name: "stripe")
+
+# Get provider config (includes verifier class from YAML)
+provider_config = CaptainHook.configuration.provider("stripe")
+
+# Create test config with known secret for benchmarking
+test_config = CaptainHook::ProviderConfig.new(
+  name: "stripe",
+  signing_secret: secret,
+  timestamp_tolerance_seconds: 300,
+  verifier_class: provider_config&.verifier_class || "StripeVerifier"
 )
-stripe_provider.update!(signing_secret: secret)
+
+# Instantiate the verifier
+stripe_verifier = test_config.verifier_class.constantize.new
 
 # Stripe verifier benchmark
 puts "\n📊 Stripe Verifier - Different Payload Sizes"
-stripe_verifier = stripe_provider.verifier
 stripe_sig = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', secret, "#{timestamp}.#{payload_medium}")}"
 
 BenchmarkHelper.compare_benchmarks("Stripe Signature Verification", {
                                      "Small payload (#{payload_small.bytesize} bytes)" => lambda {
                                        stripe_verifier.verify_signature(
                                          payload: payload_small,
-                                         headers: { "Stripe-Signature" => stripe_sig }
+                                         headers: { "Stripe-Signature" => stripe_sig },
+                                         provider_config: test_config
                                        )
                                      },
                                      "Medium payload (#{payload_medium.bytesize} bytes)" => lambda {
                                        stripe_verifier.verify_signature(
                                          payload: payload_medium,
-                                         headers: { "Stripe-Signature" => stripe_sig }
+                                         headers: { "Stripe-Signature" => stripe_sig },
+                                         provider_config: test_config
                                        )
                                      },
                                      "Large payload (#{payload_large.bytesize} bytes)" => lambda {
                                        stripe_verifier.verify_signature(
                                          payload: payload_large,
-                                         headers: { "Stripe-Signature" => stripe_sig }
+                                         headers: { "Stripe-Signature" => stripe_sig },
+                                         provider_config: test_config
                                        )
                                      }
                                    })
-
-# Cleanup
-stripe_provider.destroy
