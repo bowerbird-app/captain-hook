@@ -109,7 +109,11 @@
         </div>
 
         <div class="flex justify-between items-center pt-6 border-t border-gray-200">
-          <%= f.submit "Update Action", class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors cursor-pointer" %>
+          <%= render FlatPack::Button::Component.new(
+            text: "Update Action",
+            style: :primary,
+            type: "submit"
+          ) %>
           <%= render FlatPack::Button::Component.new(
             text: "Cancel",
             url: admin_provider_actions_path(@provider),
