@@ -3,12 +3,17 @@
 require "benchmark/ips"
 require "memory_profiler"
 
-# Clean database before running benchmarks (to avoid encryption key mismatch)
-ENV["RAILS_ENV"] = "test"
+# Clean database before running benchmarks
+# Note: Rake tasks load environment first, so RAILS_ENV setting here has no effect
+# Benchmarks should run in test environment via: RAILS_ENV=test bundle exec rake benchmark:all
+ENV["RAILS_ENV"] ||= "test"
 require File.expand_path("../../test/dummy/config/environment", __dir__)
-ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_providers")
-ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_events")
-ActiveRecord::Base.connection.execute("DELETE FROM captain_hook_incoming_event_actions")
+
+# Clean up database tables using truncate to avoid foreign key issues
+ActiveRecord::Base.connection.execute("TRUNCATE TABLE captain_hook_incoming_event_actions CASCADE")
+ActiveRecord::Base.connection.execute("TRUNCATE TABLE captain_hook_incoming_events CASCADE")
+ActiveRecord::Base.connection.execute("TRUNCATE TABLE captain_hook_actions CASCADE")
+ActiveRecord::Base.connection.execute("TRUNCATE TABLE captain_hook_providers RESTART IDENTITY CASCADE")
 
 module BenchmarkHelper
   # Run a performance benchmark and report iterations per second

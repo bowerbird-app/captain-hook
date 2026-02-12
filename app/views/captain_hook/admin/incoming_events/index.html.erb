@@ -1,94 +1,127 @@
-<div class="container py-4">
-  <h1 class="mb-4">Incoming Webhook Events</h1>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <h1 class="text-3xl font-bold text-gray-900 mb-6">Incoming Webhook Events</h1>
 
   <!-- Filters -->
-  <div class="card mb-4">
-    <div class="card-body">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.body do %>
       <%= form_with url: captain_hook.admin_incoming_events_path, method: :get, local: true do |f| %>
-        <div class="row g-3">
-          <div class="col-md-3">
-            <%= f.label :provider, class: "form-label" %>
-            <%= f.text_field :provider, value: params[:provider], class: "form-control", placeholder: "Provider" %>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <%= render FlatPack::TextInput::Component.new(
+              name: "provider",
+              label: "Provider",
+              placeholder: "Provider",
+              value: params[:provider]
+            ) %>
           </div>
-          <div class="col-md-3">
-            <%= f.label :event_type, class: "form-label" %>
-            <%= f.text_field :event_type, value: params[:event_type], class: "form-control", placeholder: "Event Type" %>
+          <div>
+            <%= render FlatPack::TextInput::Component.new(
+              name: "event_type",
+              label: "Event Type",
+              placeholder: "Event Type",
+              value: params[:event_type]
+            ) %>
           </div>
-          <div class="col-md-3">
-            <%= f.label :status, class: "form-label" %>
-            <%= f.select :status, options_for_select([
-              ['All', ''],
-              ['Pending', 'pending'],
-              ['Processing', 'processing'],
-              ['Completed', 'completed'],
-              ['Failed', 'failed']
-            ], params[:status]), {}, class: "form-control" %>
+          <div>
+            <%= render FlatPack::Select::Component.new(
+              name: "status",
+              label: "Status",
+              options: [
+                ['All', ''],
+                ['Received', 'received'],
+                ['Processing', 'processing'],
+                ['Processed', 'processed'],
+                ['Partially Processed', 'partially_processed'],
+                ['Failed', 'failed']
+              ],
+              value: params[:status]
+            ) %>
           </div>
-          <div class="col-md-3 d-flex align-items-end">
-            <%= f.submit "Filter", class: "btn btn-primary me-2" %>
-            <%= link_to "Clear", captain_hook.admin_incoming_events_path, class: "btn btn-secondary" %>
+          <div class="flex items-end gap-2">
+            <%= f.submit "Filter", class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors cursor-pointer" %>
+            <%= render FlatPack::Button::Component.new(
+              text: "Clear",
+              url: captain_hook.admin_incoming_events_path,
+              style: :secondary
+            ) %>
           </div>
         </div>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Events Table -->
-  <div class="card">
-    <div class="card-body">
+  <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+    <% card.body do %>
       <% if @events.any? %>
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Provider</th>
-                <th>Event Type</th>
-                <th>External ID</th>
-                <th>Status</th>
-                <th>Actions</th>
-                <th>Received At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @events.each do |event| %>
-                <tr>
-                  <td><span class="badge bg-info"><%= event.provider %></span></td>
-                  <td><code><%= event.event_type %></code></td>
-                  <td><small><%= event.external_id %></small></td>
-                  <td>
-                    <span class="badge bg-<%= status_color(event.status) %>">
-                      <%= event.status&.titleize || 'N/A' %>
-                    </span>
-                  </td>
-                  <td><%= event.incoming_event_actions.count %></td>
-                  <td><%= time_ago_in_words(event.created_at) %> ago</td>
-                  <td>
-                    <%= link_to "View", captain_hook.admin_incoming_event_path(event), class: "btn btn-sm btn-outline-primary" %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+        <%= render FlatPack::Table::Component.new(data: @events) do |table| %>
+          <% table.column(
+            title: "Provider",
+            html: ->(event) {
+              render(FlatPack::Badge::Component.new(
+                text: event.provider,
+                style: :info
+              ))
+            }
+          ) %>
+          <% table.column(
+            title: "Event Type",
+            html: ->(event) { "<code class='text-xs bg-gray-100 px-2 py-1 rounded'>#{event.event_type}</code>".html_safe }
+          ) %>
+          <% table.column(
+            title: "External ID",
+            html: ->(event) { "<span class='text-sm text-gray-600'>#{event.external_id}</span>".html_safe }
+          ) %>
+          <% table.column(
+            title: "Status",
+            html: ->(event) {
+              status_style = case event.status&.to_s
+              when "received"
+                :default
+              when "processing"
+                :info
+              when "processed"
+                :success
+              when "partially_processed"
+                :warning
+              when "failed"
+                :warning
+              else
+                :default
+              end
+              render(FlatPack::Badge::Component.new(
+                text: event.status&.titleize&.gsub('_', ' ') || 'N/A',
+                style: status_style
+              ))
+            }
+          ) %>
+          <% table.column(
+            title: "Actions",
+            html: ->(event) { event.incoming_event_actions.count.to_s }
+          ) %>
+          <% table.column(
+            title: "Received At",
+            html: ->(event) { "#{time_ago_in_words(event.created_at)} ago" }
+          ) %>
+          <% table.with_action(
+            text: "View",
+            url: ->(event) { captain_hook.admin_incoming_event_path(event) },
+            style: :secondary,
+            size: :sm
+          ) %>
+        <% end %>
 
         <!-- Pagination -->
-        <div class="mt-3">
+        <div class="mt-6">
           <%= paginate @events %>
         </div>
       <% else %>
-        <div class="alert alert-info">
-          No incoming events found. Events will appear here once webhooks are received.
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-6 py-4">
+          <p class="text-blue-800">
+            No incoming events found. Events will appear here once webhooks are received.
+          </p>
         </div>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 </div>
-
-<% content_for :head do %>
-  <style>
-    .table code {
-      font-size: 0.9em;
-    }
-  </style>
-<% end %>

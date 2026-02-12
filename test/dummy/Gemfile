@@ -1,5 +1,8 @@
 source "https://rubygems.org"
 
+# FlatPack UI components (required by captain_hook)
+gem "flat_pack", github: "bowerbird-app/flatpack"
+
 # Use the captain_hook engine
 gem "captain_hook", path: "../.."
 
@@ -22,9 +25,6 @@ gem "jbuilder"
 
 # Use Tailwind CSS [https://github.com/rails/tailwindcss-rails]
 gem "tailwindcss-rails"
-
-# MakeupArtist UI component library
-# gem "makeup_artist", git: "https://#{ENV['PERSONAL_ACCESS_TOKEN']}@github.com/bowerbird-app/makeup-artist.git"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
@@ -73,5 +73,3 @@ group :development do
 end
 
 gem "pry"
-
-gem "marikit_country_list", git: "https://github.com/bowerbird-app/marikit-country-list.git"

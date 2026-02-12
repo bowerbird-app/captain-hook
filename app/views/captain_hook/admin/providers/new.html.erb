@@ -1,12 +1,10 @@
-<div class="container py-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item active" aria-current="page">New Provider</li>
-    </ol>
-  </nav>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <%= render FlatPack::Breadcrumb::Component.new(class: "mb-6") do |breadcrumb| %>
+    <% breadcrumb.item(text: "Providers", href: admin_providers_path) %>
+    <% breadcrumb.item(text: "New Provider") %>
+  <% end %>
 
-  <h1 class="mb-4">Add New Provider</h1>
+  <h1 class="text-3xl font-bold text-gray-900 mb-6">Add New Provider</h1>
 
   <%= form_with model: [:admin, @provider], local: true, class: "needs-validation" do |f| %>
     <% if @provider.errors.any? %>

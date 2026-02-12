@@ -4,6 +4,20 @@ module CaptainHook
   class Engine < ::Rails::Engine
     isolate_namespace CaptainHook
 
+    # Add engine's JavaScript to asset paths
+    initializer "captain_hook.assets" do |app|
+      app.config.assets.paths << root.join("app/javascript")
+    end
+
+    # Configure importmap for engine JavaScript
+    initializer "captain_hook.importmap", before: :load_config_initializers do |app|
+      # Register the engine's JavaScript path with importmap
+      if app.config.respond_to?(:importmap)
+        app.config.importmap.paths << root.join("config/importmap.rb")
+        app.config.importmap.cache_sweepers << root.join("app/javascript")
+      end
+    end
+
     # Run before_initialize hooks
     initializer "captain_hook.before_initialize", before: "captain_hook.load_config" do |_app|
       CaptainHook::Hooks.run(:before_initialize, self)

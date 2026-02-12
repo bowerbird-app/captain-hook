@@ -1,49 +1,40 @@
-<div class="container py-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item"><%= link_to @registry_config&.display_name || @provider.name.titleize, [:admin, @provider] %></li>
-      <li class="breadcrumb-item active" aria-current="page">Actions</li>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <%= render FlatPack::Breadcrumb::Component.new(class: "mb-6") do |breadcrumb| %>
+    <% breadcrumb.item(text: "Providers", href: admin_providers_path) %>
+    <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize, href: admin_provider_path(@provider)) %>
+    <% breadcrumb.item(text: "Actions") %>
+  <% end %>
     </ol>
   </nav>
 
   <% if @db_actions.any? %>
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Actions</h5>
-      </div>
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Event</th>
-                <th>Incoming Events</th>
-                <th>Edit</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @db_actions.each do |action| %>
-                <% event_count = CaptainHook::IncomingEvent.where(provider: @provider.name, event_type: action.event_type).count %>
-                <tr>
-                  <td><code><%= action.action_class %></code></td>
-                  <td><code><%= action.event_type %></code></td>
-                  <td>
-                    <%= link_to admin_incoming_events_path(provider: @provider.name, event_type: action.event_type) do %>
-                      <%= event_count %>
-                    <% end %>
-                  </td>
-                  <td>
-                    <%= link_to "Edit", edit_admin_provider_action_path(@provider, action), class: "btn btn-sm btn-outline-primary" %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+      <% card.header do %>
+        <h2 class="text-lg font-semibold text-gray-900">Actions</h2>
+      <% end %>
+      <% card.body do %>
+        <%= render FlatPack::Table::Component.new(data: @db_actions) do |table| %>
+          <% table.column(title: "Action", html: ->(action) {
+            "<code class=\"px-2 py-1 bg-gray-100 rounded text-xs\">#{action.action_class}</code>".html_safe
+          }) %>
+          
+          <% table.column(title: "Event", html: ->(action) {
+            "<code class=\"px-2 py-1 bg-gray-100 rounded text-xs\">#{action.event_type}</code>".html_safe
+          }) %>
+          
+          <% table.column(title: "Incoming Events", html: ->(action) {
+            event_count = CaptainHook::IncomingEvent.where(provider: @provider.name, event_type: action.event_type).count
+            link_to(event_count.to_s, admin_incoming_events_path(provider: @provider.name, event_type: action.event_type))
+          }) %>
+          
+          <% table.with_action(
+            text: "Edit",
+            url: ->(action) { edit_admin_provider_action_path(@provider, action) },
+            style: :secondary
+          ) %>
+        <% end %>
+      <% end %>
+    <% end %>
   <% end %>
 
   <% 
@@ -62,72 +53,69 @@
   %>
   
   <% if unsynced_actions.any? %>
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Registered Actions (In-Memory Registry)</h5>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">
+    <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+      <% card.header do %>
+        <h2 class="text-lg font-semibold text-gray-900">Registered Actions (In-Memory Registry)</h2>
+      <% end %>
+      <% card.body do %>
+        <p class="text-gray-600 mb-4">
           These actions are registered in your application code but not yet synced to the database.
           They will be automatically synced on the next application restart.
         </p>
         
         <% unsynced_actions.each do |event_type, action_configs| %>
-          <div class="mb-4">
-            <h6 class="border-bottom pb-2">
-              Event Type: <code><%= event_type %></code>
-            </h6>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Priority</th>
-                    <th>Action Class</th>
-                    <th>Execution</th>
-                    <th>Max Attempts</th>
-                    <th>Retry Delays</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% action_configs.each do |config| %>
-                    <tr>
-                      <td><span class="badge bg-secondary"><%= config.priority %></span></td>
-                      <td><code><%= config.action_class %></code></td>
-                      <td>
-                        <% if config.async %>
-                          <span class="badge bg-info">Async</span>
-                        <% else %>
-                          <span class="badge bg-warning">Sync</span>
-                        <% end %>
-                      </td>
-                      <td><%= config.max_attempts %></td>
-                      <td><small><%= config.retry_delays.join(", ") %>s</small></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
+          <div class="mb-6">
+            <h3 class="text-md font-semibold border-b border-gray-200 pb-2 mb-3">
+              Event Type: <code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= event_type %></code>
+            </h3>
+            <%= render FlatPack::Table::Component.new(data: action_configs) do |table| %>
+              <% table.column(title: "Priority", html: ->(config) {
+                render(FlatPack::Badge::Component.new(text: config.priority.to_s, style: :default, size: :sm))
+              }) %>
+              
+              <% table.column(title: "Action Class", html: ->(config) {
+                "<code class=\"px-2 py-1 bg-gray-100 rounded text-xs\">#{config.action_class}</code>".html_safe
+              }) %>
+              
+              <% table.column(title: "Execution", html: ->(config) {
+                if config.async
+                  render(FlatPack::Badge::Component.new(text: "Async", style: :info, size: :sm))
+                else
+                  render(FlatPack::Badge::Component.new(text: "Sync", style: :warning, size: :sm))
+                end
+              }) %>
+              
+              <% table.column(title: "Max Attempts", html: ->(config) { config.max_attempts.to_s }) %>
+              
+              <% table.column(title: "Retry Delays", html: ->(config) {
+                "<span class=\"text-xs text-gray-600\">#{config.retry_delays.join(', ')}s</span>".html_safe
+              }) %>
+            <% end %>
           </div>
         <% end %>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
   <% end %>
 
   <% if @db_actions.empty? && @registry_actions.empty? %>
-    <div class="alert alert-info">
-      <h5>No actions registered</h5>
-      <p class="mb-2">
-        You haven't registered any actions for this provider yet.
-        Actions are registered in your application code, typically in an initializer.
-      </p>
-      <p class="mb-0">
-        <strong>To register an action:</strong>
-      </p>
-      <ol class="mt-2">
-        <li>Create an action class (e.g., <code>app/actions/my_action.rb</code>)</li>
-        <li>Register it in <code>config/initializers/captain_hook.rb</code></li>
-        <li>Restart your application to trigger auto-discovery</li>
-      </ol>
-    </div>
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.header do %>
+        <h2 class="text-lg font-semibold text-gray-900">No actions registered</h2>
+      <% end %>
+      <% card.body do %>
+        <p class="text-gray-600 mb-2">
+          You haven't registered any actions for this provider yet.
+          Actions are registered in your application code, typically in an initializer.
+        </p>
+        <p class="text-gray-900 font-medium mb-2">
+          To register an action:
+        </p>
+        <ol class="list-decimal list-inside space-y-1 text-gray-600">
+          <li>Create an action class (e.g., <code class="px-2 py-1 bg-gray-100 rounded text-xs">app/actions/my_action.rb</code>)</li>
+          <li>Register it in <code class="px-2 py-1 bg-gray-100 rounded text-xs">config/initializers/captain_hook.rb</code></li>
+          <li>Restart your application to trigger auto-discovery</li>
+        </ol>
+      <% end %>
+    <% end %>
   <% end %>
 </div>

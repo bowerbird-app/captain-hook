@@ -1,104 +1,128 @@
-<div class="container py-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item active" aria-current="page"><%= @registry_config&.display_name || @provider.name.titleize %></li>
-    </ol>
-  </nav>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <%= render FlatPack::Breadcrumb::Component.new(class: "mb-6") do |breadcrumb| %>
+    <% breadcrumb.item(text: "Providers", href: admin_providers_path) %>
+    <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize) %>
+  <% end %>
 
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><%= @registry_config&.display_name || @provider.name.titleize %></h1>
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-3xl font-bold"><%= @registry_config&.display_name || @provider.name.titleize %></h1>
     <div>
-      <%= link_to "View Actions", admin_provider_actions_path(@provider), class: "btn btn-info" %>
+      <%= render FlatPack::Button::Component.new(
+        text: "View Actions",
+        url: admin_provider_actions_path(@provider),
+        style: :secondary
+      ) %>
     </div>
   </div>
 
   <!-- Status Badge -->
-  <% if @provider.active? %>
-    <span class="badge bg-success mb-3">Active</span>
-  <% else %>
-    <span class="badge bg-secondary mb-3">Inactive</span>
-  <% end %>
+  <div class="mb-6">
+    <% if @provider.active? %>
+      <%= render FlatPack::Badge::Component.new(text: "Active", style: :success, size: :md) %>
+    <% else %>
+      <%= render FlatPack::Badge::Component.new(text: "Inactive", style: :default, size: :md) %>
+    <% end %>
+  </div>
 
   <!-- Webhook URL Card -->
-  <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-      <h5 class="mb-0">Webhook Endpoint</h5>
-    </div>
-    <div class="card-body">
-      <p class="text-muted mb-2">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
-      <div class="input-group">
-        <input type="text" class="form-control font-monospace" id="webhookUrl" value="<%= @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}") %>" readonly>
-        <button class="btn btn-outline-secondary" type="button" onclick="copyWebhookUrl()">
-          📋 Copy
-        </button>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
+      <h2 class="text-lg font-semibold text-gray-900">Webhook Endpoint</h2>
+    <% end %>
+    <% card.body do %>
+      <p class="text-gray-600 mb-3">Share this URL with <%= @registry_config&.display_name || @provider.name.titleize %> to receive webhooks:</p>
+      <div class="flex gap-2 items-start" data-controller="webhook-copy">
+        <div class="flex-1">
+          <%= render FlatPack::TextInput::Component.new(
+            name: "webhook_url",
+            value: @provider.webhook_url(base_url: "#{request.protocol}#{request.host_with_port}"),
+            readonly: true,
+            class: "font-mono",
+            data: { webhook_copy_target: "input" }
+          ) %>
+        </div>
+        <%= render FlatPack::Button::Component.new(
+          text: "📋 Copy",
+          style: :primary,
+          data: { action: "click->webhook-copy#copy" }
+        ) %>
       </div>
-      <small class="text-muted d-block mt-2">
+      <p class="text-sm text-gray-500 mt-3">
         This URL is unique to this provider and includes a secure token for authentication.
-      </small>
-    </div>
-  </div>
+      </p>
+    <% end %>
+  <% end %>
 
   <!-- Provider Details -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Provider Details</h5>
-    </div>
-    <div class="card-body">
-      <dl class="row">
-        <dt class="col-sm-3">Name</dt>
-        <dd class="col-sm-9"><code><%= @provider.name %></code></dd>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
+      <h2 class="text-lg font-semibold text-gray-900">Provider Details</h2>
+    <% end %>
+    <% card.body do %>
+      <dl class="grid grid-cols-1 gap-4">
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Name</dt>
+          <dd class="col-span-2 text-sm text-gray-900"><code class="px-2 py-1 bg-gray-100 rounded"><%= @provider.name %></code></dd>
+        </div>
 
-        <dt class="col-sm-3">Display Name</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.display_name.present? %>
-            <%= @registry_config.display_name %>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Display Name</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.display_name.present? %>
+              <%= @registry_config.display_name %>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Description</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.description.present? %>
-            <%= @registry_config.description %>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Description</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.description.present? %>
+              <%= @registry_config.description %>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Verifier File</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.verifier_file.present? %>
-            <code><%= @registry_config.verifier_file %></code>
-          <% else %>
-            —
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Verifier File</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.verifier_file.present? %>
+              <code class="px-2 py-1 bg-gray-100 rounded"><%= @registry_config.verifier_file %></code>
+            <% else %>
+              —
+            <% end %>
+          </dd>
+        </div>
 
-        <dt class="col-sm-3">Signing Secret</dt>
-        <dd class="col-sm-9">
-          <% if @registry_config&.signing_secret.present? %>
-            <span class="badge bg-success">Configured</span>
-          <% else %>
-            <span class="badge bg-secondary">Not Set</span>
-            <div class="text-muted small mt-1">
-              ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
-            </div>
-          <% end %>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">Signing Secret</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <% if @registry_config&.signing_secret.present? %>
+              <%= render FlatPack::Badge::Component.new(text: "Configured", style: :success, size: :sm) %>
+            <% else %>
+              <%= render FlatPack::Badge::Component.new(text: "Not Set", style: :default, size: :sm) %>
+              <div class="text-sm text-gray-500 mt-1">
+                ⚠️ Some providers don't require a signing secret, but if this provider supports webhook signature verification, you should configure one for security.
+              </div>
+            <% end %>
+          </dd>
+        </div>
       </dl>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Security Settings -->
   <!-- Configuration hierarchy: captain_hook.yml providers → provider.yml → captain_hook.yml defaults → hardcoded -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">Security Settings</h5>
-    </div>
-    <div class="card-body">
-      <dl class="row">
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+    <% card.header do %>
+      <h2 class="text-lg font-semibold text-gray-900">Security Settings</h2>
+    <% end %>
+    <% card.body do %>
+      <dl class="grid grid-cols-1 gap-4">
         <% 
           # Get values from different sources
           provider_name = @provider.name
@@ -134,128 +158,120 @@
           final_rate_period = db_rate_period || provider_yaml_rate_period || hardcoded_rate_period
         %>
         
-        <dt class="col-sm-4">timestamp_tolerance_seconds</dt>
-        <dd class="col-sm-8">
-          <%= final_timestamp %>
-          <% if global_override_timestamp %>
-            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
-          <% elsif provider_yaml_timestamp %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
-          <% elsif global_default_timestamp %>
-            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
-          <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
-          <% end %>
-          <small class="text-muted">(±<%= final_timestamp %>s tolerance)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">timestamp_tolerance_seconds</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_timestamp %>
+            <% if global_override_timestamp %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", style: :success, size: :sm, class: "ml-2") %>
+            <% elsif provider_yaml_timestamp %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
+            <% elsif global_default_timestamp %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", style: :default, size: :sm, class: "ml-2") %>
+            <% else %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(±<%= final_timestamp %>s tolerance)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">max_payload_size_bytes</dt>
-        <dd class="col-sm-8">
-          <%= number_with_delimiter(final_size) %>
-          <% if global_override_size %>
-            <span class="badge bg-primary ms-2">captain_hook.yml providers</span>
-          <% elsif provider_yaml_size %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
-          <% elsif global_default_size %>
-            <span class="badge bg-secondary ms-2">captain_hook.yml defaults</span>
-          <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
-          <% end %>
-          <small class="text-muted">(<%= number_to_human_size(final_size) %>)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">max_payload_size_bytes</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= number_with_delimiter(final_size) %>
+            <% if global_override_size %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml providers", style: :success, size: :sm, class: "ml-2") %>
+            <% elsif provider_yaml_size %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
+            <% elsif global_default_size %>
+              <%= render FlatPack::Badge::Component.new(text: "captain_hook.yml defaults", style: :default, size: :sm, class: "ml-2") %>
+            <% else %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(<%= number_to_human_size(final_size) %>)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">rate_limit_requests</dt>
-        <dd class="col-sm-8">
-          <%= final_rate_requests %>
-          <% if db_rate_requests %>
-            <span class="badge bg-warning ms-2">database</span>
-          <% elsif provider_yaml_rate_requests %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
-          <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
-          <% end %>
-          <small class="text-muted">(requests)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">rate_limit_requests</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_rate_requests %>
+            <% if db_rate_requests %>
+              <%= render FlatPack::Badge::Component.new(text: "database", style: :warning, size: :sm, class: "ml-2") %>
+            <% elsif provider_yaml_rate_requests %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
+            <% else %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(requests)</span>
+          </dd>
+        </div>
 
-        <dt class="col-sm-4">rate_limit_period</dt>
-        <dd class="col-sm-8">
-          <%= final_rate_period %>
-          <% if db_rate_period %>
-            <span class="badge bg-warning ms-2">database</span>
-          <% elsif provider_yaml_rate_period %>
-            <span class="badge bg-info ms-2"><%= provider_name %>.yml</span>
-          <% else %>
-            <span class="badge bg-secondary ms-2">hardcoded</span>
-          <% end %>
-          <small class="text-muted">(seconds)</small>
-        </dd>
+        <div class="grid grid-cols-3 gap-4">
+          <dt class="text-sm font-medium text-gray-500">rate_limit_period</dt>
+          <dd class="col-span-2 text-sm text-gray-900">
+            <%= final_rate_period %>
+            <% if db_rate_period %>
+              <%= render FlatPack::Badge::Component.new(text: "database", style: :warning, size: :sm, class: "ml-2") %>
+            <% elsif provider_yaml_rate_period %>
+              <%= render FlatPack::Badge::Component.new(text: "#{provider_name}.yml", style: :info, size: :sm, class: "ml-2") %>
+            <% else %>
+              <%= render FlatPack::Badge::Component.new(text: "hardcoded", style: :default, size: :sm, class: "ml-2") %>
+            <% end %>
+            <span class="text-gray-500">(seconds)</span>
+          </dd>
+        </div>
       </dl>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 
   <!-- Recent Events -->
-  <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Recent Events</h5>
-      <%= link_to "View All", admin_incoming_events_path(provider: @provider.name), class: "btn btn-sm btn-outline-primary" %>
-    </div>
-    <div class="card-body">
+  <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+    <% card.header do %>
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
+        <%= render FlatPack::Button::Component.new(
+          text: "View All",
+          url: admin_incoming_events_path(provider: @provider.name),
+          style: :secondary,
+          size: :sm
+        ) %>
+      </div>
+    <% end %>
+    <% card.body do %>
       <% if @recent_events.any? %>
-        <div class="table-responsive">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                <th>Event Type</th>
-                <th>Status</th>
-                <th>Actions</th>
-                <th>Received</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @recent_events.each do |event| %>
-                <tr>
-                  <td><code><%= event.event_type %></code></td>
-                  <td>
-                    <span class="badge bg-<%= status_color(event.status) %>">
-                      <%= event.status&.titleize || 'N/A' %>
-                    </span>
-                  </td>
-                  <td><%= event.incoming_event_actions.count %></td>
-                  <td><%= time_ago_in_words(event.created_at) %> ago</td>
-                  <td>
-                    <%= link_to "View", [:admin, event], class: "btn btn-sm btn-outline-primary" %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
+        <%= render FlatPack::Table::Component.new(data: @recent_events) do |table| %>
+          <% table.column(title: "Event Type", html: ->(event) {
+            "<code class=\"px-2 py-1 bg-gray-100 rounded text-xs\">#{event.event_type}</code>".html_safe
+          }) %>
+          
+          <% table.column(title: "Status", html: ->(event) {
+            status_variant = case event.status&.to_s
+            when "pending" then :warning
+            when "processing" then :info
+            when "completed", "sent" then :success
+            when "failed" then :warning
+            else :default
+            end
+            render(FlatPack::Badge::Component.new(text: event.status&.titleize || 'N/A', style: status_variant, size: :sm))
+          }) %>
+          
+          <% table.column(title: "Actions", html: ->(event) { event.incoming_event_actions.count.to_s }) %>
+          
+          <% table.column(title: "Received", html: ->(event) {
+            "#{time_ago_in_words(event.created_at)} ago"
+          }) %>
+          
+          <% table.with_action(
+            text: "View",
+            url: ->(event) { url_for([:admin, event]) },
+            style: :secondary,
+            size: :sm
+          ) %>
+        <% end %>
       <% else %>
-        <p class="text-muted mb-0">No events received yet.</p>
+        <p class="text-gray-500">No events received yet.</p>
       <% end %>
-    </div>
-  </div>
+    <% end %>
+  <% end %>
 </div>
-
-<script>
-function copyWebhookUrl() {
-  const input = document.getElementById('webhookUrl');
-  input.select();
-  input.setSelectionRange(0, 99999); // For mobile devices
-  navigator.clipboard.writeText(input.value);
-  
-  // Show feedback
-  const button = event.target;
-  const originalText = button.innerHTML;
-  button.innerHTML = '✓ Copied!';
-  button.classList.remove('btn-outline-secondary');
-  button.classList.add('btn-success');
-  
-  setTimeout(() => {
-    button.innerHTML = originalText;
-    button.classList.remove('btn-success');
-    button.classList.add('btn-outline-secondary');
-  }, 2000);
-}
-</script>

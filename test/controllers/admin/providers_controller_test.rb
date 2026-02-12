@@ -28,11 +28,6 @@ module CaptainHook
         assert_response :success
       end
 
-      test "should get edit" do
-        get "/captain_hook/admin/providers/#{@provider.id}/edit"
-        assert_response :success
-      end
-
       test "should create provider" do
         assert_difference("CaptainHook::Provider.count") do
           post "/captain_hook/admin/providers",
@@ -55,28 +50,6 @@ module CaptainHook
                  }
                }
         end
-        assert_response :unprocessable_entity
-      end
-
-      test "should update provider" do
-        patch "/captain_hook/admin/providers/#{@provider.id}",
-              params: {
-                provider: {
-                  active: false
-                }
-              }
-        assert_redirected_to admin_provider_path(@provider)
-        @provider.reload
-        assert_equal false, @provider.active
-      end
-
-      test "should not update provider with invalid params" do
-        patch "/captain_hook/admin/providers/#{@provider.id}",
-              params: {
-                provider: {
-                  name: ""
-                }
-              }
         assert_response :unprocessable_entity
       end
 

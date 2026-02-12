@@ -1,19 +1,17 @@
-<div class="container py-4">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><%= link_to "Providers", admin_providers_path %></li>
-      <li class="breadcrumb-item"><%= link_to @registry_config&.display_name || @provider.name.titleize, [:admin, @provider] %></li>
-      <li class="breadcrumb-item active" aria-current="page">Edit</li>
-    </ol>
-  </nav>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <%= render FlatPack::Breadcrumb::Component.new(class: "mb-6") do |breadcrumb| %>
+    <% breadcrumb.item(text: "Providers", href: admin_providers_path) %>
+    <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize, href: admin_provider_path(@provider)) %>
+    <% breadcrumb.item(text: "Edit") %>
+  <% end %>
 
-  <h1 class="mb-4">Edit Provider</h1>
+  <h1 class="text-3xl font-bold text-gray-900 mb-6">Edit Provider</h1>
 
-  <%= form_with model: [:admin, @provider], local: true, class: "needs-validation" do |f| %>
+  <%= form_with model: [:admin, @provider], local: true do |f| %>
     <% if @provider.errors.any? %>
-      <div class="alert alert-danger">
-        <h5><%= pluralize(@provider.errors.count, "error") %> prohibited this provider from being saved:</h5>
-        <ul class="mb-0">
+      <div class="bg-red-50 border border-red-200 rounded-lg px-6 py-4 mb-6">
+        <h5 class="font-semibold text-red-900 mb-2"><%= pluralize(@provider.errors.count, "error") %> prohibited this provider from being saved:</h5>
+        <ul class="list-disc list-inside text-red-800 space-y-1">
           <% @provider.errors.full_messages.each do |message| %>
             <li><%= message %></li>
           <% end %>
@@ -21,103 +19,136 @@
       </div>
     <% end %>
 
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Basic Information</h5>
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h5 class="font-semibold text-gray-900">Basic Information</h5>
       </div>
-      <div class="card-body">
-        <div class="mb-3">
-          <%= f.label :name, class: "form-label" %>
-          <%= f.text_field :name, class: "form-control", disabled: true %>
-          <small class="form-text text-muted">Provider name cannot be changed after creation</small>
+      <div class="px-6 py-6 space-y-6">
+        <div>
+          <%= render FlatPack::TextInput::Component.new(
+            name: "provider[name]",
+            label: "Name",
+            value: @provider.name,
+            disabled: true
+          ) %>
+          <p class="text-xs text-gray-500 mt-2">Provider name cannot be changed after creation</p>
         </div>
 
         <% if @registry_config&.display_name.present? %>
-          <div class="mb-3">
-            <label class="form-label">Display Name</label>
-            <input type="text" class="form-control" value="<%= @registry_config.display_name %>" disabled>
-            <small class="form-text text-muted">Display name is configured in the provider's YAML file</small>
+          <div>
+            <%= render FlatPack::TextInput::Component.new(
+              name: "display_name",
+              label: "Display Name",
+              value: @registry_config.display_name,
+              disabled: true
+            ) %>
+            <p class="text-xs text-gray-500 mt-2">Display name is configured in the provider's YAML file</p>
           </div>
         <% end %>
 
         <% if @registry_config&.description.present? %>
-          <div class="mb-3">
-            <label class="form-label">Description</label>
-            <textarea class="form-control" rows="3" disabled><%= @registry_config.description %></textarea>
-            <small class="form-text text-muted">Description is configured in the provider's YAML file</small>
+          <div>
+            <%= render FlatPack::TextArea::Component.new(
+              name: "description",
+              label: "Description",
+              value: @registry_config.description,
+              rows: 3,
+              disabled: true
+            ) %>
+            <p class="text-xs text-gray-500 mt-2">Description is configured in the provider's YAML file</p>
           </div>
         <% end %>
 
-        <div class="mb-3">
-          <%= f.label :active, class: "form-label" %>
-          <div class="form-check">
-            <%= f.check_box :active, class: "form-check-input" %>
-            <%= f.label :active, "Provider is active", class: "form-check-label" %>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Active Status</label>
+          <div class="flex items-center">
+            <%= f.check_box :active, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
+            <label class="ml-2 text-sm text-gray-700">Provider is active</label>
           </div>
-          <small class="form-text text-muted">Inactive providers won't accept webhooks</small>
+          <p class="text-xs text-gray-500 mt-2">Inactive providers won't accept webhooks</p>
         </div>
       </div>
     </div>
 
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Authentication</h5>
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h5 class="font-semibold text-gray-900">Authentication</h5>
       </div>
-      <div class="card-body">
-        <div class="alert alert-info">
-          <strong>ℹ️ Note:</strong> The signing secret is configured in the provider's YAML file.
-          <% if @registry_config&.raw_signing_secret.present? %>
-            Current value: <code><%= @registry_config.raw_signing_secret.start_with?('ENV[') ? @registry_config.raw_signing_secret : @registry_config.raw_signing_secret.truncate(20) %></code>
-          <% end %>
+      <div class="px-6 py-6 space-y-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <p class="text-sm text-blue-900">
+            <strong>ℹ️ Note:</strong> The signing secret is configured in the provider's YAML file.
+            <% if @registry_config&.raw_signing_secret.present? %>
+              <br>Current value: <code class="bg-blue-100 px-2 py-1 rounded"><%= @registry_config.raw_signing_secret.start_with?('ENV[') ? @registry_config.raw_signing_secret : @registry_config.raw_signing_secret.truncate(20) %></code>
+            <% end %>
+          </p>
         </div>
 
-        <div class="alert alert-warning">
-          <strong>⚠️ Security Note:</strong> The webhook token (<code><%= @provider.token.truncate(20) %></code>) cannot be changed.
-          If you need a new token, you must create a new provider.
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5 class="mb-0">Security Settings</h5>
-      </div>
-      <div class="card-body">
-        <div class="mb-3">
-          <%= f.label :timestamp_tolerance_seconds, class: "form-label" %>
-          <%= f.number_field :timestamp_tolerance_seconds, class: "form-control" %>
-          <small class="form-text text-muted">Timestamp tolerance in seconds</small>
-        </div>
-
-        <div class="mb-3">
-          <%= f.label :max_payload_size_bytes, class: "form-label" %>
-          <%= f.number_field :max_payload_size_bytes, class: "form-control" %>
-          <small class="form-text text-muted">Maximum payload size in bytes</small>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <%= f.label :rate_limit_requests, "Rate Limit (requests)", class: "form-label" %>
-            <%= f.number_field :rate_limit_requests, class: "form-control" %>
-          </div>
-          <div class="col-md-6 mb-3">
-            <%= f.label :rate_limit_period, "Rate Limit (period in seconds)", class: "form-label" %>
-            <%= f.number_field :rate_limit_period, class: "form-control" %>
-          </div>
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+          <p class="text-sm text-yellow-900">
+            <strong>⚠️ Security Note:</strong> The webhook token (<code class="bg-yellow-100 px-2 py-1 rounded"><%= @provider.token.truncate(20) %></code>) cannot be changed.
+            If you need a new token, you must create a new provider.
+          </p>
         </div>
       </div>
     </div>
 
-    <div class="d-flex gap-2">
-      <%= f.submit "Update Provider", class: "btn btn-primary" %>
-      <%= link_to "Cancel", [:admin, @provider], class: "btn btn-secondary" %>
+    <div class="bg-white shadow rounded-lg mb-6">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h5 class="font-semibold text-gray-900">Security Settings</h5>
+      </div>
+      <div class="px-6 py-6 space-y-6">
+        <div>
+          <%= render FlatPack::NumberInput::Component.new(
+            name: "provider[timestamp_tolerance_seconds]",
+            label: "Timestamp Tolerance Seconds",
+            value: @provider.timestamp_tolerance_seconds
+          ) %>
+          <p class="text-xs text-gray-500 mt-2">Timestamp tolerance in seconds</p>
+        </div>
+
+        <div>
+          <%= render FlatPack::NumberInput::Component.new(
+            name: "provider[max_payload_size_bytes]",
+            label: "Max Payload Size Bytes",
+            value: @provider.max_payload_size_bytes
+          ) %>
+          <p class="text-xs text-gray-500 mt-2">Maximum payload size in bytes</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <%= render FlatPack::NumberInput::Component.new(
+              name: "provider[rate_limit_requests]",
+              label: "Rate Limit (requests)",
+              value: @provider.rate_limit_requests
+            ) %>
+          </div>
+          <div>
+            <%= render FlatPack::NumberInput::Component.new(
+              name: "provider[rate_limit_period]",
+              label: "Rate Limit (period in seconds)",
+              value: @provider.rate_limit_period
+            ) %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <%= f.submit "Update Provider", class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors cursor-pointer" %>
+      <%= render FlatPack::Button::Component.new(
+        text: "Cancel",
+        url: [:admin, @provider],
+        style: :secondary
+      ) %>
     </div>
   <% end %>
 
-  <div class="mt-4 pt-4 border-top">
+  <div class="mt-6 pt-6 border-t border-gray-200">
     <%= button_to "Delete Provider", [:admin, @provider], 
         method: :delete, 
-        class: "btn btn-danger",
+        class: "px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors cursor-pointer",
         form: { data: { turbo_confirm: "Are you sure? This will permanently delete this provider and cannot be undone." } } %>
   </div>
 </div>

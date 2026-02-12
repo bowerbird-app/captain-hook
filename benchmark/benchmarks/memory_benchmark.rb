@@ -25,26 +25,35 @@ BenchmarkHelper.memory_benchmark("Complete webhook processing") do
 end
 
 puts "\n📊 Signature Verification Memory Usage"
-stripe_provider = BenchmarkFixtures.create_test_provider(
-  name: "memory_test_stripe",
-  verifier: "CaptainHook::Verifiers::Stripe"
+stripe_provider = BenchmarkFixtures.create_test_provider(name: "stripe")
+
+# Get provider config (includes verifier class from YAML)
+provider_config = CaptainHook.configuration.provider("stripe")
+
+secret = "whsec_test_secret_for_benchmarking_12345678"
+test_config = CaptainHook::ProviderConfig.new(
+  name: "stripe",
+  signing_secret: secret,
+  timestamp_tolerance_seconds: 300,
+  verifier_class: provider_config&.verifier_class || "StripeVerifier"
 )
-stripe_verifier = stripe_provider.verifier
+
+# Instantiate the verifier
+stripe_verifier = test_config.verifier_class.constantize.new
+
 payload = BenchmarkFixtures.stripe_payload(size: :large).to_json
 timestamp = Time.now.to_i
-signature = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', stripe_provider.signing_secret,
-                                                         "#{timestamp}.#{payload}")}"
+signature = "t=#{timestamp},v1=#{OpenSSL::HMAC.hexdigest('SHA256', secret, "#{timestamp}.#{payload}")}"
 
 BenchmarkHelper.memory_benchmark("Signature verification (1000x)") do
   1000.times do
     stripe_verifier.verify_signature(
       payload: payload,
-      headers: { "Stripe-Signature" => signature }
+      headers: { "Stripe-Signature" => signature },
+      provider_config: test_config
     )
   end
 end
-
-stripe_provider.destroy
 
 puts "\n📊 Action Registry Memory Usage"
 BenchmarkHelper.memory_benchmark("Action registration (100x)") do

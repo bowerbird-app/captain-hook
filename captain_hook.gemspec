@@ -40,7 +40,12 @@ Gem::Specification.new do |spec|
   spec.post_install_message = <<~MSG
     ⚓ CaptainHook installed successfully!
 
-    🚀 Quick setup:
+    � REQUIRED: Add flat_pack to your Gemfile:
+      gem "flat_pack", github: "bowerbird-app/flatpack"
+      
+    Then run: bundle install
+
+    �🚀 Quick setup:
       rails captain_hook:setup
 
     📖 Documentation:

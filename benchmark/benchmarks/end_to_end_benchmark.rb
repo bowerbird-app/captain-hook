@@ -14,16 +14,24 @@ puts "Testing complete webhook processing pipeline"
 # Setup
 provider = BenchmarkFixtures.create_test_provider
 
+# Get provider config (includes verifier class from YAML)
+provider_config = CaptainHook.configuration.provider(provider.name)
+
+# Use a fallback verifier if config not found
+verifier_class_name = provider_config&.verifier_class || "StripeVerifier"
+verifier = verifier_class_name.constantize.new
+
 puts "\n📊 Full Webhook Processing Pipeline"
 payload = BenchmarkFixtures.stripe_payload(size: :medium).to_json
 headers = BenchmarkFixtures.stripe_headers
 
 BenchmarkHelper.run_benchmark("Complete webhook reception flow") do
   # Simulate the full flow
-  verifier = provider.verifier
 
-  # 1. Signature verification
-  verifier.verify_signature(payload: payload, headers: headers)
+  # 1. Signature verification (skip if no verifier available)
+  if verifier && provider_config
+    verifier.verify_signature(payload: payload, headers: headers, provider_config: provider_config)
+  end
 
   # 2. Parse payload
   parsed = JSON.parse(payload)

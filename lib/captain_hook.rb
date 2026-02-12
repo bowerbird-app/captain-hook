@@ -1,6 +1,21 @@
 # frozen_string_literal: true
 
 require "kaminari"
+
+# Require flat_pack with helpful error message
+begin
+  require "flat_pack"
+rescue LoadError
+  raise LoadError, <<~ERROR
+    CaptainHook requires the flat_pack gem for UI components.
+
+    Add this to your Gemfile:
+      gem "flat_pack", github: "bowerbird-app/flatpack"
+
+    Then run: bundle install
+  ERROR
+end
+
 require "captain_hook/version"
 require "captain_hook/engine"
 require "captain_hook/configuration"

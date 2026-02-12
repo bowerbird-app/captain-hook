@@ -3,7 +3,7 @@
 CaptainHook::Engine.routes.draw do
   # Admin interface (must come BEFORE wildcard routes)
   namespace :admin do
-    resources :providers do
+    resources :providers, except: %i[edit update] do
       resources :actions, only: %i[index show edit update destroy]
     end
     resources :incoming_events, only: %i[index show]

@@ -1,0 +1,9 @@
+/* CaptainHook CSS Variables for FlatPack Badge components */
+/* These must be loaded after Tailwind to ensure they're available at runtime */
+:root {
+  --color-muted: oklch(0.95 0.01 250);
+  --color-success: oklch(0.55 0.15 160);
+  --color-success-text: oklch(1.0 0 0);
+  --color-warning: oklch(0.75 0.15 80);
+  --color-warning-text: oklch(0.20 0.01 80);
+}

@@ -2,8 +2,8 @@ Rails.application.routes.draw do
   # Mount the CaptainHook engine
   mount CaptainHook::Engine, at: "/captain_hook"
 
-  # Mount MakeupArtist style guide (temporarily disabled)
-  # mount MakeupArtist::Engine, at: "/makeup_artist"
+  # FlatPack components demo
+  get "/flatpack", to: "flatpack_demo#index", as: :flatpack_demo
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
