@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# This script updates the FlatPack gem path in Tailwind CSS source files
+# Run this after bundle install to ensure the correct gem path is used
+
+require 'pathname'
+
+def update_flatpack_path
+  # Get the actual flatpack gem path
+  flatpack_path = `bundle show flat_pack 2>/dev/null`.strip
+  
+  unless $?.success? && !flatpack_path.empty?
+    puts "Warning: flat_pack gem not found. Skipping path update."
+    return
+  end
+
+  puts "Found flat_pack at: #{flatpack_path}"
+
+  # Determine workspace root (where the script is located)
+  workspace_root = File.expand_path('../..', __FILE__)
+  
+  # Files to update (relative to workspace root)
+  files = [
+    'test/dummy/app/assets/stylesheets/application.css',
+    'test/dummy/app/assets/tailwind/application.css'
+  ]
+
+  files.each do |file_path|
+    full_path = File.join(workspace_root, file_path)
+    next unless File.exist?(full_path)
+    
+    content = File.read(full_path)
+    original_content = content.dup
+    
+    # Replace any flatpack-* path with the current one
+    content.gsub!(%r{/bundler/gems/flatpack-[a-f0-9]+/}, "/bundler/gems/#{File.basename(flatpack_path)}/")
+    
+    if content != original_content
+      File.write(full_path, content)
+      puts "✓ Updated #{file_path}"
+    else
+      puts "- No changes needed in #{file_path}"
+    end
+  end
+
+  puts "\nFlatPack path update complete!"
+end
+
+update_flatpack_path

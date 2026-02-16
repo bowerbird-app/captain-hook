@@ -32,9 +32,9 @@ The `postCreateCommand` in `.devcontainer/devcontainer.json` executes:
 
 ```bash
 git lfs install && \
-bundle config set --local path '/usr/local/bundle' && \
-bundle install && \
 cd test/dummy && \
+bundle install && \
+ruby ../../bin/update-flatpack-path && \
 bundle exec rails db:prepare && \
 bundle exec rails tailwindcss:build
 ```
@@ -42,8 +42,14 @@ bundle exec rails tailwindcss:build
 This:
 - Installs Git LFS (if needed)
 - Installs gem dependencies
+- **Updates FlatPack gem paths** - Automatically updates Tailwind CSS `@source` directives with the correct gem path (since bundle installs gems with unique hashes)
 - Prepares the PostgreSQL database (creates, migrates, seeds)
 - Builds TailwindCSS assets
+
+> **Note:** The `bin/update-flatpack-path` script runs automatically after each `bundle install` to ensure Tailwind CSS can find the FlatPack components. You can also run it manually if needed:
+> ```bash
+> cd test/dummy && ruby ../../bin/update-flatpack-path && bundle exec rails tailwindcss:build
+> ```
 
 ---
 
