@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/bowerbird-app/flatpack.git
-  revision: 2fdaf18c740d80ec929a279ef473588ccb0262aa
+  revision: 0fcab72f450db0e7c8d590f9dde40cdbd2b619a5
   specs:
     flat_pack (0.1.2)
       rails (~> 8.0)

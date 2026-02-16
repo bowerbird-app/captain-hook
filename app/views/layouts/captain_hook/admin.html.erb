@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="h-full">
   <head>
     <title>CaptainHook Admin</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -16,49 +16,63 @@
     <%= yield :head %>
   </head>
 
-  <body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-gray-900 text-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center space-x-8">
-            <a href="<%= captain_hook.admin_root_path %>" class="text-xl font-semibold">
+  <body class="h-full bg-gray-50">
+    <%= render FlatPack::Navbar::Component.new(class: "h-screen bg-gray-900") do |navbar| %>
+      <% navbar.top_nav do |nav| %>
+        <% nav.left_section do %>
+          <div class="flex items-center gap-6">
+            <%= link_to captain_hook.admin_root_path, class: "text-xl font-semibold" do %>
               ⚓ CaptainHook
-            </a>
-            <div class="flex space-x-4">
-              <%= link_to "Providers", captain_hook.admin_providers_path, 
-                  class: "px-3 py-2 rounded-md text-sm font-medium #{controller_name == 'providers' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}" %>
-              <%= link_to "Incoming Events", captain_hook.admin_incoming_events_path, 
-                  class: "px-3 py-2 rounded-md text-sm font-medium #{controller_name == 'incoming_events' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}" %>
-              <%= link_to "Sandbox", captain_hook.admin_sandbox_path, 
-                  class: "px-3 py-2 rounded-md text-sm font-medium #{controller_name == 'sandbox' ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}" %>
+            <% end %>
+            <div class="flex gap-2">
+              <%= render FlatPack::Button::Component.new(
+                text: "Providers",
+                url: captain_hook.admin_providers_path,
+                style: controller_name == 'providers' ? :primary : :ghost,
+                size: :sm
+              ) %>
+              <%= render FlatPack::Button::Component.new(
+                text: "Incoming Events",
+                url: captain_hook.admin_incoming_events_path,
+                style: controller_name == 'incoming_events' ? :primary : :ghost,
+                size: :sm
+              ) %>
+              <%= render FlatPack::Button::Component.new(
+                text: "Sandbox",
+                url: captain_hook.admin_sandbox_path,
+                style: controller_name == 'sandbox' ? :primary : :ghost,
+                size: :sm
+              ) %>
             </div>
           </div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Flash Messages -->
-    <% if flash.any? %>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <% flash.each do |type, message| %>
-          <% 
-            alert_classes = case type.to_s
-            when 'notice' then 'bg-blue-50 border-blue-500 text-blue-900'
-            when 'alert' then 'bg-red-50 border-red-500 text-red-900'
-            when 'warning' then 'bg-yellow-50 border-yellow-500 text-yellow-900'
-            when 'success' then 'bg-green-50 border-green-500 text-green-900'
-            else 'bg-blue-50 border-blue-500 text-blue-900'
-            end
-          %>
-          <div class="border-l-4 p-4 mb-4 <%= alert_classes %> rounded" role="alert">
-            <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
-          </div>
         <% end %>
-      </div>
-    <% end %>
+      <% end %>
 
-    <!-- Main Content -->
-    <%= yield %>
+      <!-- Flash Messages -->
+      <% if flash.any? %>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+          <% flash.each do |type, message| %>
+            <% 
+              alert_style = case type.to_s
+              when 'notice' then :primary
+              when 'alert', 'error' then :danger
+              when 'warning' then :warning
+              when 'success' then :success
+              else :primary
+              end
+            %>
+            <%= render FlatPack::Alert::Component.new(
+              style: alert_style,
+              class: "mb-4"
+            ) do %>
+              <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Main Content -->
+      <%= yield %>
+    <% end %>
   </body>
 </html>
