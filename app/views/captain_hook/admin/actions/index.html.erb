@@ -27,10 +27,16 @@
             link_to(event_count.to_s, admin_incoming_events_path(provider: @provider.name, event_type: action.event_type))
           }) %>
           
-          <% table.with_action(
-            text: "Edit",
-            url: ->(action) { edit_admin_provider_action_path(@provider, action) },
-            style: :secondary
+          <% table.column(
+            title: "Operations",
+            html: ->(action) {
+              render(FlatPack::Button::Component.new(
+                text: "Edit",
+                url: edit_admin_provider_action_path(@provider, action),
+                style: :secondary,
+                size: :sm
+              ))
+            }
           ) %>
         <% end %>
       <% end %>

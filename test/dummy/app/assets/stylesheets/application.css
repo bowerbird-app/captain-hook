@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
+@import "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/assets/stylesheets/flat_pack/variables.css";
+
 /* Tailwind CSS - Scan FlatPack components for classes */
-@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-0fcab72f450d/app/components/**/*.rb";
+@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/components/**/*.rb";
 
 /* Include the engine's views in the Tailwind build (from test/dummy/app/assets/stylesheets to /workspace/app/views) */
 @source "../../../../../app/views/**/*.erb";

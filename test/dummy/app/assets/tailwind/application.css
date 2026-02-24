@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
+@import "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/assets/stylesheets/flat_pack/variables.css";
+
 
 /* Tailwind CSS - Scan FlatPack components for classes */
-@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-0fcab72f450d/app/components";
+@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/components";
 
 /* Extend Tailwind theme with FlatPack design tokens */
 @theme {

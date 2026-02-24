@@ -5,6 +5,7 @@ gem "flat_pack", github: "bowerbird-app/flatpack"
 
 # Use the captain_hook engine
 gem "captain_hook", path: "../.."
+gem "kaminari", "~> 1.2"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.1"

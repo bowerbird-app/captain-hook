@@ -25,7 +25,7 @@
   </div>
 
   <!-- Webhook URL Card -->
-  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
     <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Webhook Endpoint</h2>
     <% end %>
@@ -54,7 +54,7 @@
   <% end %>
 
   <!-- Provider Details -->
-  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
     <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Provider Details</h2>
     <% end %>
@@ -117,7 +117,7 @@
 
   <!-- Security Settings -->
   <!-- Configuration hierarchy: captain_hook.yml providers → provider.yml → captain_hook.yml defaults → hardcoded -->
-  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
     <% card.header do %>
       <h2 class="text-lg font-semibold text-gray-900">Security Settings</h2>
     <% end %>
@@ -226,7 +226,7 @@
   <% end %>
 
   <!-- Recent Events -->
-  <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "!h-auto") do |card| %>
     <% card.header do %>
       <div class="flex justify-between items-center">
         <h2 class="text-lg font-semibold text-gray-900">Recent Events</h2>
@@ -262,11 +262,16 @@
             "#{time_ago_in_words(event.created_at)} ago"
           }) %>
           
-          <% table.with_action(
-            text: "View",
-            url: ->(event) { url_for([:admin, event]) },
-            style: :secondary,
-            size: :sm
+          <% table.column(
+            title: "Operations",
+            html: ->(event) {
+              render(FlatPack::Button::Component.new(
+                text: "View",
+                url: url_for([:admin, event]),
+                style: :secondary,
+                size: :sm
+              ))
+            }
           ) %>
         <% end %>
       <% else %>

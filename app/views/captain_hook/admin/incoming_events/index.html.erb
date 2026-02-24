@@ -103,11 +103,16 @@
             title: "Received At",
             html: ->(event) { "#{time_ago_in_words(event.created_at)} ago" }
           ) %>
-          <% table.with_action(
-            text: "View",
-            url: ->(event) { captain_hook.admin_incoming_event_path(event) },
-            style: :secondary,
-            size: :sm
+          <% table.column(
+            title: "Operations",
+            html: ->(event) {
+              render(FlatPack::Button::Component.new(
+                text: "View",
+                url: captain_hook.admin_incoming_event_path(event),
+                style: :secondary,
+                size: :sm
+              ))
+            }
           ) %>
         <% end %>
 

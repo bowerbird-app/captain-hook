@@ -8,10 +8,8 @@
     <h1 class="text-3xl font-bold text-gray-900">Incoming Event Details</h1>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <div class="lg:col-span-2">
-      <!-- Event Details -->
-      <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+  <!-- Event Details -->
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
         <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Event Information</h2>
         <% end %>
@@ -26,12 +24,16 @@
 
             <div class="grid grid-cols-3 gap-4">
               <dt class="text-sm font-medium text-gray-500">Event Type</dt>
-              <dd class="col-span-2 text-sm text-gray-900"><code class="px-2 py-1 bg-gray-100 rounded text-xs"><%= @event.event_type %></code></dd>
+              <dd class="col-span-2 min-w-0 text-sm text-gray-900">
+                <code class="inline-block max-w-full overflow-hidden text-ellipsis whitespace-nowrap px-2 py-1 bg-gray-100 rounded text-xs" title="<%= @event.event_type %>"><%= @event.event_type %></code>
+              </dd>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
               <dt class="text-sm font-medium text-gray-500">External ID</dt>
-              <dd class="col-span-2 text-sm text-gray-900"><%= @event.external_id %></dd>
+              <dd class="col-span-2 min-w-0 text-sm text-gray-900">
+                <span class="block overflow-hidden text-ellipsis whitespace-nowrap" title="<%= @event.external_id %>"><%= @event.external_id %></span>
+              </dd>
             </div>
 
             <div class="grid grid-cols-3 gap-4">
@@ -62,22 +64,20 @@
             </div>
           </dl>
         <% end %>
-      <% end %>
+  <% end %>
 
-      <!-- Payload -->
-      <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
+  <!-- Payload -->
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
         <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Payload</h2>
         <% end %>
         <% card.body do %>
-          <pre class="bg-gray-50 p-4 rounded overflow-x-auto text-xs"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
+          <pre class="bg-gray-50 p-4 rounded text-xs max-h-[32rem] overflow-auto"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
         <% end %>
-      <% end %>
-    </div>
+  <% end %>
 
-    <div class="lg:col-span-1">
-      <!-- Actions -->
-      <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+  <!-- Actions -->
+  <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
         <% card.header do %>
           <h2 class="text-lg font-semibold text-gray-900">Event Actions</h2>
         <% end %>
@@ -118,7 +118,5 @@
             <p class="text-gray-500 text-sm">No actions registered for this event.</p>
           <% end %>
         <% end %>
-      <% end %>
-    </div>
-  </div>
+  <% end %>
 </div>
