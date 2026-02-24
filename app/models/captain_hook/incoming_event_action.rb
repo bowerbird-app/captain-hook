@@ -44,7 +44,7 @@ module CaptainHook
     end
 
     # Release lock
-    def release_lock!
+    def release_lock!(_worker_id = nil)
       update!(locked_at: nil, locked_by: nil)
     end
 
