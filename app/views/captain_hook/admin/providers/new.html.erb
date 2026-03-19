@@ -4,7 +4,7 @@
     <% breadcrumb.item(text: "New Provider") %>
   <% end %>
 
-  <h1 class="text-3xl font-bold text-gray-900 mb-6">Add New Provider</h1>
+  <%= render FlatPack::PageHeader::Component.new(title: "Add New Provider") %>
 
   <%= form_with model: [:admin, @provider], local: true do |f| %>
     <% if @provider.errors.any? %>

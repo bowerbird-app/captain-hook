@@ -1,7 +1,5 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-4">
-  <div class="mb-6">
-    <h1 class="text-xl font-bold text-gray-900">Webhook Providers</h1>
-  </div>
+  <%= render FlatPack::PageHeader::Component.new(title: "Webhook Providers") %>
 
   <% if @providers.any? %>
     <%= render FlatPack::Table::Component.new(data: @providers) do |table| %>

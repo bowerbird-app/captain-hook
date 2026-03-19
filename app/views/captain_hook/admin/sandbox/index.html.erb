@@ -1,8 +1,8 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-6">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">🧪 Webhook Sandbox</h1>
-    <p class="text-gray-600">Test webhook payloads in dry-run mode — no database changes, no action execution.</p>
-  </div>
+  <%= render FlatPack::PageHeader::Component.new(
+    title: "🧪 Webhook Sandbox",
+    subtitle: "Test webhook payloads in dry-run mode — no database changes, no action execution."
+  ) %>
 
   <% if @providers.empty? %>
     <%= render FlatPack::Card::Component.new(style: :elevated, padding: :lg, class: "text-center") do |card| %>

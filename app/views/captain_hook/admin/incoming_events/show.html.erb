@@ -4,9 +4,7 @@
     <% breadcrumb.item(text: "Event Details") %>
   <% end %>
 
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-gray-900">Incoming Event Details</h1>
-  </div>
+  <%= render FlatPack::PageHeader::Component.new(title: "Incoming Event Details") %>
 
   <!-- Event Details -->
   <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>

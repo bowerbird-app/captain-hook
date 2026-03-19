@@ -6,7 +6,7 @@
     <% breadcrumb.item(text: "Edit") %>
   <% end %>
 
-  <h1 class="text-3xl font-bold text-gray-900 mb-6">Edit Action</h1>
+  <%= render FlatPack::PageHeader::Component.new(title: "Edit Action") %>
 
   <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
     <% card.body do %>
