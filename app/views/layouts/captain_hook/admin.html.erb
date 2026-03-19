@@ -16,63 +16,86 @@
     <%= yield :head %>
   </head>
 
-  <body class="h-full bg-gray-50">
-    <%= render FlatPack::Navbar::Component.new(class: "h-screen bg-gray-900") do |navbar| %>
-      <% navbar.top_nav do |nav| %>
-        <% nav.left_section do %>
-          <div class="flex items-center gap-6">
-            <%= link_to captain_hook.admin_root_path, class: "text-xl font-semibold" do %>
-              ⚓ CaptainHook
-            <% end %>
-            <div class="flex gap-2">
-              <%= render FlatPack::Button::Component.new(
-                text: "Providers",
-                url: captain_hook.admin_providers_path,
-                style: controller_name == 'providers' ? :primary : :ghost,
-                size: :sm
-              ) %>
-              <%= render FlatPack::Button::Component.new(
-                text: "Incoming Events",
-                url: captain_hook.admin_incoming_events_path,
-                style: controller_name == 'incoming_events' ? :primary : :ghost,
-                size: :sm
-              ) %>
-              <%= render FlatPack::Button::Component.new(
-                text: "Sandbox",
-                url: captain_hook.admin_sandbox_path,
-                style: controller_name == 'sandbox' ? :primary : :ghost,
-                size: :sm
-              ) %>
-            </div>
-          </div>
+  <body class="h-full">
+    <!-- SVG sprite sheet: required by flatpack v0.1.2 icon component (use xlink:href approach) -->
+    <svg style="display: none;" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
+      </symbol>
+      <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15.75 19.5 8.25 12l7.5-7.5"/>
+      </symbol>
+      <symbol id="icon-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"/>
+      </symbol>
+      <symbol id="icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.25 13.5h3.86a2.25 2.25 0 0 1 2.012 1.244l.256.512a2.25 2.25 0 0 0 2.013 1.244h3.218a2.25 2.25 0 0 0 2.013-1.244l.256-.512a2.25 2.25 0 0 1 2.013-1.244h3.859m-19.5.338V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 0 0-2.15-1.588H6.911a2.25 2.25 0 0 0-2.15 1.588L2.35 13.177a2.253 2.253 0 0 0-.1.661Z"/>
+      </symbol>
+      <symbol id="icon-beaker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L4.2 15.3m15.6 0-1.2 3.6a2.25 2.25 0 0 1-2.16 1.6H7.56a2.25 2.25 0 0 1-2.16-1.6L4.2 15.3"/>
+      </symbol>
+    </svg>
+    <%= render FlatPack::SidebarLayout::Component.new(storage_key: "captain_hook_sidebar") do |layout| %>
+      <% layout.sidebar do %>
+        <%= render FlatPack::Sidebar::Component.new do |sidebar| %>
+          <% sidebar.header do %>
+            <%= render FlatPack::Sidebar::Header::Component.new(
+              brand_abbr: "⚓",
+              title: "CaptainHook"
+            ) %>
+          <% end %>
+
+          <% sidebar.items do %>
+            <%= render FlatPack::Sidebar::Item::Component.new(
+              label: "Providers",
+              href: captain_hook.admin_providers_path,
+              icon: :server,
+              active: controller_name == 'providers'
+            ) %>
+            <%= render FlatPack::Sidebar::Item::Component.new(
+              label: "Incoming Events",
+              href: captain_hook.admin_incoming_events_path,
+              icon: :inbox,
+              active: controller_name == 'incoming_events'
+            ) %>
+            <%= render FlatPack::Sidebar::Item::Component.new(
+              label: "Sandbox",
+              href: captain_hook.admin_sandbox_path,
+              icon: :beaker,
+              active: controller_name == 'sandbox'
+            ) %>
+          <% end %>
         <% end %>
       <% end %>
 
-      <!-- Flash Messages -->
-      <% if flash.any? %>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <% flash.each do |type, message| %>
-            <% 
-              alert_style = case type.to_s
-              when 'notice' then :primary
-              when 'alert', 'error' then :danger
-              when 'warning' then :warning
-              when 'success' then :success
-              else :primary
-              end
-            %>
-            <%= render FlatPack::Alert::Component.new(
-              style: alert_style,
-              class: "mb-4"
-            ) do %>
-              <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
+      <% layout.main do %>
+        <!-- Flash Messages -->
+        <% if flash.any? %>
+          <div class="px-4 sm:px-6 lg:px-8 pt-4">
+            <% flash.each do |type, message| %>
+              <%
+                alert_style = case type.to_s
+                when 'notice' then :success
+                when 'alert', 'error' then :danger
+                when 'warning' then :warning
+                when 'success' then :success
+                else :info
+                end
+              %>
+              <%= render FlatPack::Alert::Component.new(
+                style: alert_style,
+                dismissible: true,
+                class: "mb-4"
+              ) do %>
+                <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
+              <% end %>
             <% end %>
-          <% end %>
-        </div>
-      <% end %>
+          </div>
+        <% end %>
 
-      <!-- Main Content -->
-      <%= yield %>
+        <!-- Main Content -->
+        <%= yield %>
+      <% end %>
     <% end %>
   </body>
 </html>

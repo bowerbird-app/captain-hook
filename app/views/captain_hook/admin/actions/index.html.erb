@@ -4,8 +4,6 @@
     <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize, href: admin_provider_path(@provider)) %>
     <% breadcrumb.item(text: "Actions") %>
   <% end %>
-    </ol>
-  </nav>
 
   <% if @db_actions.any? %>
     <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
