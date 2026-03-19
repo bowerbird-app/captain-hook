@@ -9,18 +9,18 @@
       <% table.column(title: "Status", html: ->(provider) {
         db_provider = @db_providers[provider.name]
         if db_provider&.active?
-          '<span class="text-green-600 font-medium">Active</span>'.html_safe
+          render(FlatPack::Badge::Component.new(text: "Active", style: :success))
         else
-          '<span class="text-gray-500">Inactive</span>'.html_safe
+          render(FlatPack::Badge::Component.new(text: "Inactive", style: :default))
         end
       }) %>
       
       <% table.column(title: "Security", html: ->(provider) {
         provider_config = CaptainHook.configuration.provider(provider.name)
         if provider_config&.verifier_class.present?
-          '<span class="text-green-600 font-medium">Enabled</span>'.html_safe
+          render(FlatPack::Badge::Component.new(text: "Enabled", style: :success))
         else
-          '<span class="text-gray-500">None</span>'.html_safe
+          render(FlatPack::Badge::Component.new(text: "None", style: :default))
         end
       }) %>
       

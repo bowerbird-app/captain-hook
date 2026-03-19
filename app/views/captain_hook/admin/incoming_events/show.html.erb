@@ -70,7 +70,10 @@
           <h2 class="text-lg font-semibold text-gray-900">Payload</h2>
         <% end %>
         <% card.body do %>
-          <pre class="bg-gray-50 p-4 rounded text-xs max-h-[32rem] overflow-auto"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
+          <%= render FlatPack::CodeBlock::Component.new(
+            code: JSON.pretty_generate(@event.payload),
+            language: "json"
+          ) %>
         <% end %>
   <% end %>
 

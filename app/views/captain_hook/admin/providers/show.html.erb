@@ -274,7 +274,11 @@
           ) %>
         <% end %>
       <% else %>
-        <p class="text-gray-500">No events received yet.</p>
+        <%= render FlatPack::EmptyState::Component.new(
+          title: "No events received yet",
+          description: "Events will appear here once webhooks are received.",
+          icon: :inbox
+        ) %>
       <% end %>
     <% end %>
   <% end %>
