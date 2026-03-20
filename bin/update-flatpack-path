@@ -33,8 +33,10 @@ def update_flatpack_path
     content = File.read(full_path)
     original_content = content.dup
     
-    # Replace any flatpack-* path with the current one
-    content.gsub!(%r{/bundler/gems/flatpack-[a-f0-9]+/}, "/bundler/gems/#{File.basename(flatpack_path)}/")
+    # Replace any path (relative or absolute) up to and including flatpack-<hash>
+    # This handles both local devcontainer paths (e.g. ../../../../../../usr/local/bundle/.../flatpack-abc123)
+    # and CI paths (e.g. /home/runner/work/.../bundler/gems/flatpack-abc123)
+    content.gsub!(%r{[^\s"']*flatpack-[a-f0-9]+}, flatpack_path)
     
     if content != original_content
       File.write(full_path, content)
