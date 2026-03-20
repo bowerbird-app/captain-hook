@@ -3,7 +3,7 @@
 source "https://rubygems.org"
 
 # Override flat_pack to use GitHub version
-gem "flat_pack", github: "bowerbird-app/flatpack", tag: "v0.1.6"
+gem "flat_pack", github: "bowerbird-app/flatpack", tag: "v0.1.7"
 
 # Specify your gem's dependencies in captain_hook.gemspec
 gemspec
