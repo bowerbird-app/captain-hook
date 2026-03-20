@@ -34,6 +34,7 @@ module CaptainHook
 
       private
 
+      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def sync_provider(definition)
         name = definition["name"]
 
@@ -90,8 +91,10 @@ module CaptainHook
         @results[:errors] << { name: name, error: e.message }
         Rails.logger.error("❌ Error syncing provider #{name}: #{e.message}")
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       # Check for duplicate provider definitions from different sources
+      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
       def check_for_duplicate_provider(definition)
         name = definition["name"]
         source = definition["source"]
@@ -114,7 +117,12 @@ module CaptainHook
         # Check if there are actions registered for this provider
         existing_provider = CaptainHook::Provider.find_by(name: name)
         action_count = existing_provider&.actions&.count || 0
-        action_info = action_count.positive? ? " Note: #{action_count} action(s) are already registered to the '#{name}' provider." : ""
+        action_info = if action_count.positive?
+                        " Note: #{action_count} action(s) are already " \
+                          "registered to the '#{name}' provider."
+                      else
+                        ""
+                      end
 
         warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
                           "If using the same webhook URL, just register actions for the existing provider. " \
@@ -133,6 +141,7 @@ module CaptainHook
         Rails.logger.warn("   → Rename one provider (e.g., '#{name}_primary' and '#{name}_secondary')")
         Rails.logger.warn("   → Each provider gets its own webhook endpoint and secret")
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       # Validate provider definition has required fields
       def valid_provider_definition?(definition)

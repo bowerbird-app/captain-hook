@@ -28,7 +28,7 @@ module CaptainHook
       def self.provider_setting(provider_name, key)
         instance = new
         config = instance.call
-        
+
         # Check provider-specific override first
         provider_override = config.dig("providers", provider_name.to_s, key.to_s)
         return provider_override if provider_override.present?
@@ -63,7 +63,7 @@ module CaptainHook
         {
           "defaults" => {
             "max_payload_size_bytes" => 1_048_576, # 1MB
-            "timestamp_tolerance_seconds" => 300    # 5 minutes
+            "timestamp_tolerance_seconds" => 300 # 5 minutes
           },
           "providers" => {}
         }

@@ -1,12 +1,16 @@
+# frozen_string_literal: true
+
 # Example metrics initializer for Captain Hook
 # Copy this to config/initializers/captain_hook_metrics.rb and customize
 
-Rails.application.config.after_initialize do
-  # Choose your metrics backend
-  USE_STATSD = ENV["STATSD_HOST"].present?
-  USE_PROMETHEUS = defined?(Prometheus)
-  USE_LOGGING = !USE_STATSD && !USE_PROMETHEUS
+# Choose your metrics backend
+# rubocop:disable Style/GlobalVars
+USE_STATSD = ENV["STATSD_HOST"].present?
+USE_PROMETHEUS = defined?(Prometheus)
+USE_LOGGING = !USE_STATSD && !USE_PROMETHEUS
 
+# rubocop:disable Metrics/BlockLength
+Rails.application.config.after_initialize do
   # Initialize StatsD (if available)
   if USE_STATSD
     require "datadog/statsd"
@@ -176,3 +180,5 @@ Rails.application.config.after_initialize do
                                                                      USE_PROMETHEUS ? 'Prometheus' : 'Logging'
                                                                    end})"
 end
+# rubocop:enable Metrics/BlockLength
+# rubocop:enable Style/GlobalVars

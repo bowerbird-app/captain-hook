@@ -2,6 +2,7 @@
 
 module BenchmarkFixtures
   # Sample webhook payloads for testing
+  # rubocop:disable Metrics/MethodLength
   def self.stripe_payload(size: :small)
     case size
     when :small
@@ -51,6 +52,7 @@ module BenchmarkFixtures
       }
     end
   end
+  # rubocop:enable Metrics/MethodLength
 
   def self.stripe_headers
     {

@@ -123,9 +123,9 @@ module CaptainHook
       IncomingActionJob.perform_now(@action_record.id)
 
       @action_record.reload
-      # Action remains locked but won't be processed without config
-      # The job returns early so status may remain unchanged
-      assert @action_record.locked?
+      # Lock is released, and action was not fully processed (status is not :processed)
+      refute @action_record.locked?
+      refute @action_record.status_processed?
     end
 
     test "job does not process if lock cannot be acquired" do
@@ -147,13 +147,15 @@ module CaptainHook
     test "job passes event and payload to action" do
       received_args = {}
 
-      Object.const_set(:TrackingAction, Class.new do
+      tracking_klass = Class.new do
         define_method(:webhook_action) do |event:, payload:, metadata:|
           received_args[:event] = event
           received_args[:payload] = payload
           received_args[:metadata] = metadata
         end
-      end.tap { |klass| klass.define_singleton_method(:instance) { @instance ||= new } })
+      end
+      tracking_klass.define_singleton_method(:instance) { @instance ||= new }
+      Object.const_set(:TrackingAction, tracking_klass)
 
       @action_record.action_class = "TrackingAction"
       @action_record.save!

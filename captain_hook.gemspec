@@ -2,6 +2,7 @@
 
 require_relative "lib/captain_hook/version"
 
+# rubocop:disable Metrics/BlockLength
 Gem::Specification.new do |spec|
   spec.name        = "captain_hook"
   spec.version     = CaptainHook::VERSION
@@ -19,20 +20,6 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "https://github.com/bowerbird-app/captain_hook/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.post_install_message = <<~MSG
-    ⚓ CaptainHook installed successfully!
-
-    🚀 Quick setup:  rails captain_hook:setup
-    📖 Full guide:   https://github.com/bowerbird-app/captain-hook#installation
-
-    The setup command will:
-      • Mount the engine in your routes
-      • Create configuration files
-      • Install migrations
-      • Set up encryption keys
-      • Create example provider (development)
-  MSG
-
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     Dir["{app,captain_hook,config,db,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
@@ -42,7 +29,7 @@ Gem::Specification.new do |spec|
 
     � REQUIRED: Add flat_pack to your Gemfile:
       gem "flat_pack", github: "bowerbird-app/flatpack"
-      
+    #{'  '}
     Then run: bundle install
 
     �🚀 Quick setup:
@@ -59,3 +46,4 @@ Gem::Specification.new do |spec|
   # See: GHSA-g9jg-w8vm-g96v
   spec.add_dependency "action_text-trix", ">= 2.1.16"
 end
+# rubocop:enable Metrics/BlockLength

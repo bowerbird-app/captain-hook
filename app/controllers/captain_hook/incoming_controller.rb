@@ -85,7 +85,7 @@ module CaptainHook
 
       begin
         parsed_payload = JSON.parse(raw_payload)
-      rescue JSON::ParserError => e
+      rescue JSON::ParserError
         # Sanitize error message to prevent sensitive data leakage
         Rails.logger.error "🔍 JSON parse failed for provider=#{provider_name}"
         render json: { error: "Invalid JSON" }, status: :bad_request

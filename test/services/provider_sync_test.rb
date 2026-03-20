@@ -45,7 +45,7 @@ module CaptainHook
         assert_equal 60, provider.rate_limit_period
         # Token is auto-generated
         assert_not_nil provider.token
-        
+
         # These fields are NOT in database anymore
         assert_nil provider.attributes["display_name"]
         assert_nil provider.attributes["description"]
@@ -79,10 +79,10 @@ module CaptainHook
 
       test "does not sync registry-only fields to database" do
         sync = ProviderSync.new(@provider_definitions)
-        results = sync.call
+        sync.call
 
         provider = CaptainHook::Provider.find_by(name: "test_provider")
-        
+
         # Verify these columns don't exist in database
         refute provider.respond_to?(:display_name)
         refute provider.respond_to?(:description)
@@ -130,7 +130,7 @@ module CaptainHook
         assert_equal 2, results[:created].size
         assert CaptainHook::Provider.exists?(name: "provider_one")
         assert CaptainHook::Provider.exists?(name: "provider_two")
-        
+
         provider_two = CaptainHook::Provider.find_by(name: "provider_two")
         assert_equal 200, provider_two.rate_limit_requests
         assert_equal 120, provider_two.rate_limit_period
@@ -186,7 +186,7 @@ module CaptainHook
         assert provider.active?
         assert_equal 500, provider.rate_limit_requests
         assert_equal 300, provider.rate_limit_period
-        
+
         # These columns don't exist in database anymore
         refute provider.respond_to?(:display_name)
         refute provider.respond_to?(:description)

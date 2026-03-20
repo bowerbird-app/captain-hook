@@ -39,7 +39,8 @@ module CaptainHook
                      .by_priority
 
         if db_actions.any?
-          Rails.logger.info "🔍 [ActionLookup] Found #{db_actions.count} active action(s) in DB for #{provider}:#{event_type}"
+          Rails.logger.info "🔍 [ActionLookup] Found #{db_actions.count} active action(s) " \
+                            "in DB for #{provider}:#{event_type}"
           return db_actions.map { |h| action_to_config(h, source: :database) }
         end
 
@@ -51,7 +52,8 @@ module CaptainHook
                           .for_event_type(event_type)
 
         if deleted_actions.any?
-          Rails.logger.info "🗑️  [ActionLookup] Found #{deleted_actions.count} deleted action(s) in DB for #{provider}:#{event_type}, not falling back to registry"
+          Rails.logger.info "🗑️  [ActionLookup] Found #{deleted_actions.count} deleted action(s) " \
+                            "in DB for #{provider}:#{event_type}, not falling back to registry"
           return []
         end
 
@@ -91,7 +93,8 @@ module CaptainHook
                          .find_by(action_class: action_class.to_s)
 
         if deleted_action
-          Rails.logger.info "🗑️  [ActionLookup] Action #{action_class} is soft-deleted in DB, not falling back to registry"
+          Rails.logger.info "🗑️  [ActionLookup] Action #{action_class} is soft-deleted in DB, " \
+                            "not falling back to registry"
           return nil
         end
 

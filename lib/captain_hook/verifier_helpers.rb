@@ -17,6 +17,7 @@ module CaptainHook
   module VerifierHelpers
     # Constant-time string comparison to prevent timing attacks
     # Uses Rack::Utils.secure_compare if available, falls back to manual implementation
+    # rubocop:disable Naming/PredicateMethod
     def secure_compare(a, b)
       return false if a.blank? || b.blank?
       return false if a.bytesize != b.bytesize
@@ -28,6 +29,7 @@ module CaptainHook
       l.zip(r) { |x, y| result |= x ^ y }
       result.zero?
     end
+    # rubocop:enable Naming/PredicateMethod
 
     # Check if signature verification should be skipped
     # Returns true if signing_secret is blank or contains ENV placeholder
