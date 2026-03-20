@@ -191,7 +191,7 @@ module CaptainHook
 
     test "should reject webhook with oversized payload" do
       # Create a provider with small payload limit
-      small_provider = CaptainHook::Provider.create!(
+      CaptainHook::Provider.create!(
         name: "small",
         active: true,
         token: "small_test_token"

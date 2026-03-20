@@ -52,8 +52,8 @@ BenchmarkHelper.compare_benchmarks("Event Queries", {
                                      },
                                      "Find by provider + event_type" => lambda {
                                        CaptainHook::IncomingEvent.by_provider(provider.name)
-                                                                  .by_event_type("test.event")
-                                                                  .limit(10).to_a
+                                       .by_event_type("test.event")
+                                       .limit(10).to_a
                                      },
                                      "Recent events" => lambda {
                                        CaptainHook::IncomingEvent.recent.limit(10).to_a

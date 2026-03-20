@@ -4,15 +4,14 @@
     <% breadcrumb.item(text: @registry_config&.display_name || @provider.name.titleize) %>
   <% end %>
 
-  <div class="flex justify-between items-center mb-4">
-    <h1 class="text-3xl font-bold"><%= @registry_config&.display_name || @provider.name.titleize %></h1>
-    <div>
-      <%= render FlatPack::Button::Component.new(
-        text: "View Actions",
-        url: admin_provider_actions_path(@provider),
-        style: :secondary
-      ) %>
-    </div>
+  <%= render FlatPack::PageHeader::Component.new(title: @registry_config&.display_name || @provider.name.titleize) %>
+
+  <div class="flex justify-end -mt-2 mb-4">
+    <%= render FlatPack::Button::Component.new(
+      text: "View Actions",
+      url: admin_provider_actions_path(@provider),
+      style: :secondary
+    ) %>
   </div>
 
   <!-- Status Badge -->
@@ -275,7 +274,11 @@
           ) %>
         <% end %>
       <% else %>
-        <p class="text-gray-500">No events received yet.</p>
+        <%= render FlatPack::EmptyState::Component.new(
+          title: "No events received yet",
+          description: "Events will appear here once webhooks are received.",
+          icon: :inbox
+        ) %>
       <% end %>
     <% end %>
   <% end %>

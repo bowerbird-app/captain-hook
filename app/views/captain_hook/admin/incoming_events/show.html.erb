@@ -4,9 +4,7 @@
     <% breadcrumb.item(text: "Event Details") %>
   <% end %>
 
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-3xl font-bold text-gray-900">Incoming Event Details</h1>
-  </div>
+  <%= render FlatPack::PageHeader::Component.new(title: "Incoming Event Details") %>
 
   <!-- Event Details -->
   <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
@@ -72,7 +70,10 @@
           <h2 class="text-lg font-semibold text-gray-900">Payload</h2>
         <% end %>
         <% card.body do %>
-          <pre class="bg-gray-50 p-4 rounded text-xs max-h-[32rem] overflow-auto"><code><%= JSON.pretty_generate(@event.payload) %></code></pre>
+          <%= render FlatPack::CodeBlock::Component.new(
+            code: JSON.pretty_generate(@event.payload),
+            language: "json"
+          ) %>
         <% end %>
   <% end %>
 
@@ -101,10 +102,12 @@
                   </div>
                   <div class="text-xs text-gray-500 mb-2">Priority: <%= action.priority %></div>
                   <% if action.error_message.present? %>
-                    <div class="bg-red-50 border border-red-200 rounded p-2 mt-2">
-                      <div class="text-xs font-semibold text-red-800">Error:</div>
-                      <div class="text-xs text-red-700 mt-1"><%= action.error_message %></div>
-                    </div>
+                    <%= render FlatPack::Alert::Component.new(
+                      style: :danger,
+                      title: "Error:",
+                      description: action.error_message,
+                      class: "mt-2"
+                    ) %>
                   <% end %>
                   <% if action.status_processed? || action.status_failed? %>
                     <div class="text-xs text-gray-500 mt-2">

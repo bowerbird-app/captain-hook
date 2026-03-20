@@ -109,6 +109,7 @@ module CaptainHook
     end
 
     # Extract verifier class name from registry definition
+    # rubocop:disable Metrics/AbcSize
     def extract_verifier_class(definition)
       return definition["verifier_class"] if definition["verifier_class"].present?
 
@@ -147,6 +148,7 @@ module CaptainHook
         "CaptainHook::Verifiers::Base"
       end
     end
+    # rubocop:enable Metrics/AbcSize
 
     public
 

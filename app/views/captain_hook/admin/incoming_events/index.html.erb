@@ -1,5 +1,5 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <h1 class="text-3xl font-bold text-gray-900 mb-6">Incoming Webhook Events</h1>
+  <%= render FlatPack::PageHeader::Component.new(title: "Incoming Webhook Events") %>
 
   <!-- Filters -->
   <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6") do |card| %>
@@ -38,7 +38,11 @@
             ) %>
           </div>
           <div class="flex items-end gap-2">
-            <%= f.submit "Filter", class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors cursor-pointer" %>
+            <%= render FlatPack::Button::Component.new(
+              text: "Filter",
+              style: :primary,
+              type: "submit"
+            ) %>
             <%= render FlatPack::Button::Component.new(
               text: "Clear",
               url: captain_hook.admin_incoming_events_path,
@@ -121,11 +125,10 @@
           <%= paginate @events %>
         </div>
       <% else %>
-        <div class="bg-blue-50 border border-blue-200 rounded-lg px-6 py-4">
-          <p class="text-blue-800">
-            No incoming events found. Events will appear here once webhooks are received.
-          </p>
-        </div>
+        <%= render FlatPack::Alert::Component.new(
+          style: :info,
+          description: "No incoming events found. Events will appear here once webhooks are received."
+        ) %>
       <% end %>
     <% end %>
   <% end %>

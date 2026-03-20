@@ -29,6 +29,7 @@ module CaptainHook
 
       private
 
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity
       def sync_action(definition)
         provider = definition["provider"]
         event_type = definition["event"]
@@ -62,7 +63,8 @@ module CaptainHook
         # Skip updating existing actions if update_existing is false
         if !is_new && !@update_existing
           @results[:skipped] << action
-          Rails.logger.info("⏭️  Skipped existing action: #{action_class} for #{provider}:#{event_type} (update_existing=false)")
+          Rails.logger.info("⏭️  Skipped existing action: #{action_class} for #{provider}:#{event_type} " \
+                            "(update_existing=false)")
           return
         end
 
@@ -97,6 +99,7 @@ module CaptainHook
         @results[:errors] << { action: action_class, error: e.message }
         Rails.logger.error("❌ Error syncing action #{action_class}: #{e.message}")
       end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/PerceivedComplexity
 
       # Validate action definition has required fields
       def valid_action_definition?(definition)

@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
-@import "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/assets/stylesheets/flat_pack/variables.css";
+@import "/usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-e872fc7f639a/app/assets/stylesheets/flat_pack/variables.css";
 
 
 /* Tailwind CSS - Scan FlatPack components for classes */
-@source "../../../../../../usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-3c431dcc4104/app/components";
+@source "/usr/local/bundle/ruby/3.3.0/bundler/gems/flatpack-e872fc7f639a/app/components";
 
 /* Extend Tailwind theme with FlatPack design tokens */
 @theme {
@@ -70,9 +70,6 @@
   --color-ghost-text: var(--color-fp-ghost-text);
   --color-border: var(--color-fp-border);
   --shadow-sm: var(--shadow-fp-sm);
-  --radius-md: var(--radius-md);
-  --transition-base: var(--transition-base);
-  --color-ring: var(--color-ring);
 }
 
 /* Include the engine's views in the Tailwind build */

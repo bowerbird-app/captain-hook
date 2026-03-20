@@ -14,7 +14,7 @@ module CaptainHook
       end
 
       def test_verifier_includes_verifier_helpers
-        assert @verifier.class.included_modules.include?(CaptainHook::VerifierHelpers),
+        assert @verifier.class.include?(CaptainHook::VerifierHelpers),
                "Base verifier should include VerifierHelpers"
       end
 
@@ -22,7 +22,7 @@ module CaptainHook
         result = @verifier.verify_signature(
           payload: "test payload",
           headers: {},
-          provider_config: OpenStruct.new(signing_secret: "secret")
+          provider_config: Struct.new(:signing_secret).new("secret")
         )
         assert result, "Base verifier should accept all signatures"
       end

@@ -21,6 +21,7 @@ module CaptainHook
     :source_file,
     keyword_init: true
   ) do
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def initialize(config_hash = nil, **kwargs)
       # Support both hash and keyword arguments
       kwargs = config_hash.symbolize_keys.merge(kwargs) if config_hash.is_a?(Hash)
@@ -89,6 +90,7 @@ module CaptainHook
       self.rate_limit_requests ||= 100 # 100 requests
       self.rate_limit_period ||= 60 # per 60 seconds
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     # Check if provider is active
     def active?
@@ -143,10 +145,12 @@ module CaptainHook
     end
 
     # Get the verifier instance
+    # rubocop:disable Lint/NoReturnInBeginEndBlocks
     def verifier
       # Try to constantize the verifier class first (it might be a built-in verifier)
       begin
-        return @verifier ||= verifier_class.constantize.new
+        @verifier ||= verifier_class.constantize.new
+        return @verifier
       rescue NameError
         # Class doesn't exist yet, try to load from file
       end
@@ -158,10 +162,12 @@ module CaptainHook
     rescue NameError => e
       Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
       raise CaptainHook::VerifierNotFoundError,
-            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use the built-in Stripe verifier (CaptainHook::Verifiers::Stripe)."
+            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider " \
+            "directory or use the built-in Stripe verifier (CaptainHook::Verifiers::Stripe)."
     end
 
-    # Load the verifier file from the filesystem
+    # rubocop:enable Lint/NoReturnInBeginEndBlocks
+    # rubocop:disable Metrics/AbcSize
     def load_verifier_file
       return if verifier_file.blank?
 
@@ -197,5 +203,6 @@ module CaptainHook
     rescue StandardError => e
       Rails.logger.error("Failed to load verifier file: #{e.message}")
     end
+    # rubocop:enable Metrics/AbcSize
   end
 end

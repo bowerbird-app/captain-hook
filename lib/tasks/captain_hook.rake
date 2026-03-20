@@ -3,6 +3,7 @@
 # NOTE: The setup and doctor tasks are in lib/tasks/setup.rake
 # This file contains status and monitoring tasks for CaptainHook
 
+# rubocop:disable Metrics/BlockLength
 namespace :captain_hook do
   desc "Show CaptainHook status and statistics"
   task status: :environment do
@@ -44,7 +45,7 @@ namespace :captain_hook do
     puts "  Last 24h: #{recent_events}"
 
     # Recent activity
-    if total_events > 0
+    if total_events.positive?
       latest = CaptainHook::IncomingEvent.order(created_at: :desc).limit(5)
       puts "\n📊 Latest Events:"
       latest.each do |event|
@@ -55,3 +56,4 @@ namespace :captain_hook do
     puts "\n#{'=' * 80}\n"
   end
 end
+# rubocop:enable Metrics/BlockLength

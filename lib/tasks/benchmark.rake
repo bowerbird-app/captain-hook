@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
 namespace :benchmark do
   desc "Run all benchmarks"
   task all: :environment do
@@ -116,3 +117,4 @@ namespace :benchmark do
     puts "Baseline saving not yet implemented"
   end
 end
+# rubocop:enable Metrics/BlockLength

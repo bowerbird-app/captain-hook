@@ -20,7 +20,7 @@ secret = "whsec_test_secret_for_benchmarking_12345678"
 timestamp = Time.now.to_i
 
 # Use the existing stripe flatpack provider
-stripe_provider = BenchmarkFixtures.create_test_provider(name: "stripe")
+BenchmarkFixtures.create_test_provider(name: "stripe")
 
 # Get provider config (includes verifier class from YAML)
 provider_config = CaptainHook.configuration.provider("stripe")

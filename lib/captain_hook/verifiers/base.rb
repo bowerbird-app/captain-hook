@@ -15,6 +15,7 @@ module CaptainHook
       # @param headers [Hash] Request headers
       # @param provider_config [CaptainHook::Provider, CaptainHook::ProviderConfig] Provider configuration
       # @return [Boolean] True if signature is valid, false otherwise
+      # rubocop:disable Naming/PredicateMethod
       def verify_signature(payload:, headers:, provider_config:)
         # Base verifier accepts all webhooks without verification
         # Override this method in subclasses to implement actual verification
@@ -23,6 +24,7 @@ module CaptainHook
         _ = provider_config
         true
       end
+      # rubocop:enable Naming/PredicateMethod
 
       # Extract timestamp from webhook headers or payload
       # Override in subclasses if provider includes timestamp

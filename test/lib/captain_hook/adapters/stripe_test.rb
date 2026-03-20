@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "ostruct"
 
 module CaptainHook
   module Verifiers
@@ -26,7 +25,7 @@ module CaptainHook
       end
 
       def test_verifier_includes_verifier_helpers
-        assert @verifier.class.included_modules.include?(CaptainHook::VerifierHelpers),
+        assert @verifier.class.include?(CaptainHook::VerifierHelpers),
                "Stripe verifier should include VerifierHelpers"
       end
 
@@ -428,11 +427,12 @@ module CaptainHook
         timestamp_validation_enabled: false,
         timestamp_tolerance_seconds: 300
       )
-        OpenStruct.new(
-          signing_secret: signing_secret,
-          timestamp_validation_enabled?: timestamp_validation_enabled,
-          timestamp_tolerance_seconds: timestamp_tolerance_seconds
-        )
+        ts_enabled = timestamp_validation_enabled
+        ts_seconds = timestamp_tolerance_seconds
+        secret = signing_secret
+        config = Struct.new(:signing_secret, :timestamp_tolerance_seconds).new(secret, ts_seconds)
+        config.define_singleton_method(:timestamp_validation_enabled?) { ts_enabled }
+        config
       end
     end
   end

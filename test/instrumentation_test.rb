@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "ostruct"
 
 module CaptainHook
+  FakeEvent = Struct.new(:id, :external_id, :provider, :event_type, :incoming_event_actions, keyword_init: true)
+  FakeAction = Struct.new(:id, :action_class, :attempt_count, keyword_init: true)
+
   class InstrumentationTest < ActiveSupport::TestCase
     setup do
       @events = []
@@ -17,7 +19,7 @@ module CaptainHook
     end
 
     test "incoming_received instruments with correct data" do
-      event = OpenStruct.new(id: 123, external_id: "evt_123")
+      event = FakeEvent.new(id: 123, external_id: "evt_123")
 
       Instrumentation.incoming_received(event, provider: "stripe", event_type: "payment.success")
 
@@ -32,7 +34,7 @@ module CaptainHook
     end
 
     test "incoming_processing instruments with correct data" do
-      event = OpenStruct.new(id: 456, provider: "stripe", event_type: "order.created")
+      event = FakeEvent.new(id: 456, provider: "stripe", event_type: "order.created")
 
       Instrumentation.incoming_processing(event)
 
@@ -44,8 +46,8 @@ module CaptainHook
     end
 
     test "incoming_processed instruments with correct data" do
-      actions_list = [OpenStruct.new, OpenStruct.new]
-      event = OpenStruct.new(
+      actions_list = [FakeAction.new, FakeAction.new]
+      event = FakeEvent.new(
         id: 789,
         provider: "stripe",
         event_type: "payment.completed",
@@ -64,7 +66,7 @@ module CaptainHook
     end
 
     test "incoming_failed instruments with error information" do
-      event = OpenStruct.new(id: 101, provider: "stripe", event_type: "charge.failed")
+      event = FakeEvent.new(id: 101, provider: "stripe", event_type: "charge.failed")
       error = StandardError.new("Something went wrong")
 
       Instrumentation.incoming_failed(event, error: error)
@@ -77,8 +79,8 @@ module CaptainHook
     end
 
     test "action_started instruments with correct data" do
-      event = OpenStruct.new(id: 202, provider: "stripe")
-      action_item = OpenStruct.new(
+      event = FakeEvent.new(id: 202, provider: "stripe")
+      action_item = FakeAction.new(
         id: 303,
         action_class: ".*Action",
         attempt_count: 2
@@ -96,7 +98,7 @@ module CaptainHook
     end
 
     test "action_completed instruments with duration" do
-      action_item = OpenStruct.new(
+      action_item = FakeAction.new(
         id: 404,
         action_class: ".*Action"
       )
@@ -111,7 +113,7 @@ module CaptainHook
     end
 
     test "action_failed instruments with error information" do
-      action_item = OpenStruct.new(
+      action_item = FakeAction.new(
         id: 505,
         action_class: ".*Action",
         attempt_count: 1
@@ -177,8 +179,8 @@ module CaptainHook
     end
 
     test "multiple events can be tracked in sequence" do
-      event1 = OpenStruct.new(id: 1, external_id: "evt_1")
-      event2 = OpenStruct.new(id: 2, external_id: "evt_2")
+      event1 = FakeEvent.new(id: 1, external_id: "evt_1")
+      event2 = FakeEvent.new(id: 2, external_id: "evt_2")
 
       Instrumentation.incoming_received(event1, provider: "stripe", event_type: "test.one")
       Instrumentation.incoming_received(event2, provider: "stripe", event_type: "test.two")
