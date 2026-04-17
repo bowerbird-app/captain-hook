@@ -19,62 +19,99 @@
   </head>
 
   <body class="h-full bg-gray-50">
-    <%= render FlatPack::Navbar::Component.new(class: "h-screen bg-gray-900") do |navbar| %>
-      <% navbar.top_nav do |nav| %>
-        <% nav.left_section do %>
-          <div class="flex items-center gap-6">
-            <%= link_to captain_hook.admin_root_path, class: "text-xl font-semibold" do %>
-              ⚓ CaptainHook
-            <% end %>
-            <div class="flex gap-2">
-              <%= render FlatPack::Button::Component.new(
-                text: "Providers",
-                url: captain_hook.admin_providers_path,
-                style: controller_name == 'providers' ? :primary : :ghost,
-                size: :sm
+    <% current_section = case controller_name
+      when "providers" then "Providers"
+      when "incoming_events" then "Incoming Events"
+      when "sandbox" then "Sandbox"
+      when "actions" then "Actions"
+      else "Admin"
+    end %>
+
+    <%= render FlatPack::SidebarLayout::Component.new(side: :left, storage_key: "captain-hook-admin-sidebar") do |layout| %>
+      <% layout.sidebar do %>
+        <%= render FlatPack::Sidebar::Component.new do |sidebar| %>
+          <% sidebar.header do %>
+            <%= render FlatPack::Sidebar::Header::Component.new(
+              brand_abbr: "CH",
+              title: "CaptainHook",
+              subtitle: "Admin"
+            ) %>
+          <% end %>
+
+          <% sidebar.items do %>
+            <nav class="py-4 space-y-1" aria-label="CaptainHook admin navigation">
+              <%= render FlatPack::Sidebar::Item::Component.new(
+                label: "Providers",
+                href: captain_hook.admin_providers_path,
+                icon: :folder,
+                active: controller_name == "providers"
               ) %>
-              <%= render FlatPack::Button::Component.new(
-                text: "Incoming Events",
-                url: captain_hook.admin_incoming_events_path,
-                style: controller_name == 'incoming_events' ? :primary : :ghost,
-                size: :sm
+              <%= render FlatPack::Sidebar::Item::Component.new(
+                label: "Incoming Events",
+                href: captain_hook.admin_incoming_events_path,
+                icon: :inbox,
+                active: controller_name == "incoming_events"
               ) %>
-              <%= render FlatPack::Button::Component.new(
-                text: "Sandbox",
-                url: captain_hook.admin_sandbox_path,
-                style: controller_name == 'sandbox' ? :primary : :ghost,
-                size: :sm
+              <%= render FlatPack::Sidebar::Item::Component.new(
+                label: "Sandbox",
+                href: captain_hook.admin_sandbox_path,
+                icon: :beaker,
+                active: controller_name == "sandbox"
               ) %>
-            </div>
-          </div>
+            </nav>
+          <% end %>
         <% end %>
       <% end %>
 
-      <!-- Flash Messages -->
-      <% if flash.any? %>
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <% flash.each do |type, message| %>
-            <% 
-              alert_style = case type.to_s
-              when 'notice' then :primary
-              when 'alert', 'error' then :danger
-              when 'warning' then :warning
-              when 'success' then :success
-              else :primary
-              end
-            %>
-            <%= render FlatPack::Alert::Component.new(
-              style: alert_style,
-              class: "mb-4"
-            ) do %>
-              <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
-            <% end %>
+      <% layout.top_nav do %>
+        <%= render FlatPack::TopNav::Component.new do |nav| %>
+          <% nav.left do %>
+            <%= render FlatPack::Button::Component.new(
+              icon: "menu",
+              icon_only: true,
+              style: :ghost,
+              size: :md,
+              aria: {label: "Toggle sidebar"},
+              data: {
+                "flat-pack--sidebar-layout-target": "mobileToggle",
+                action: "click->flat-pack--sidebar-layout#toggleMobile"
+              },
+              class: "md:hidden"
+            ) %>
+
+            <div class="flex flex-col">
+              <span class="text-sm font-semibold text-(--surface-content-color)">CaptainHook Admin</span>
+              <span class="text-xs text-(--surface-muted-content-color)"><%= current_section %></span>
+            </div>
           <% end %>
-        </div>
+        <% end %>
       <% end %>
 
-      <!-- Main Content -->
-      <%= yield %>
+      <% layout.main do %>
+        <% if flash.any? %>
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+            <% flash.each do |type, message| %>
+              <% 
+                alert_style = case type.to_s
+                when 'notice' then :primary
+                when 'alert', 'error' then :danger
+                when 'warning' then :warning
+                when 'success' then :success
+                else :primary
+                end
+              %>
+              <%= render FlatPack::Alert::Component.new(
+                style: alert_style,
+                class: "mb-4"
+              ) do %>
+                <%= simple_format(message, {}, wrapper_tag: "div", sanitize: false) %>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <%= yield %>
+      <% end %>
     <% end %>
   </body>
 </html>
