@@ -10,6 +10,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
 jobs:
   brakeman:
     name: Brakeman Security Scanner

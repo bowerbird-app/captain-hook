@@ -12,6 +12,9 @@ on:
     branches: [main]
   workflow_dispatch:  # Allow manual triggers
 
+env:
+  BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest

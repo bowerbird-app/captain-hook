@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+env:
+  BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
+
 jobs:
   flatpack-check:
     runs-on: ubuntu-latest
@@ -20,8 +23,6 @@ jobs:
         with:
           ruby-version: 3.3.0
           bundler-cache: true
-        env:
-          BUNDLE_GITHUB__COM: x-access-token:${{ secrets.BOWERBIRD_ORG_CI_TOKEN }}
 
       - name: Run Flatpack check
         run: bundle exec flatpack-checker
