@@ -71,29 +71,29 @@
     <% end %>
 
     <!-- Info Alert -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg mt-6">
-      <div class="px-6 py-4">
-        <h3 class="text-md font-semibold text-blue-900 mb-4">About Dry Run Mode</h3>
+    <%= render FlatPack::Alert::Component.new(style: :info, class: "mt-6") do %>
+      <div class="w-full">
+        <h3 class="text-md font-semibold mb-4">About Dry Run Mode</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <div class="font-semibold text-blue-900 mb-2">This will:</div>
-            <ul class="list-disc list-inside space-y-1 text-blue-800 text-sm">
+            <div class="font-semibold mb-2">This will:</div>
+            <%= render FlatPack::List::Component.new(spacing: :dense, class: "text-sm") do %>
               <li>Validate JSON format</li>
               <li>Show matching actions</li>
               <li>Extract event metadata</li>
-            </ul>
+            <% end %>
           </div>
           <div>
-            <div class="font-semibold text-blue-900 mb-2">This will NOT:</div>
-            <ul class="list-disc list-inside space-y-1 text-blue-800 text-sm">
+            <div class="font-semibold mb-2">This will NOT:</div>
+            <%= render FlatPack::List::Component.new(spacing: :dense, class: "text-sm") do %>
               <li>Create database records</li>
               <li>Execute action logic</li>
               <li>Enqueue background jobs</li>
-            </ul>
+            <% end %>
           </div>
         </div>
       </div>
-    </div>
+    <% end %>
   <% end %>
 </div>
 

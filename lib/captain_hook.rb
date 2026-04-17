@@ -10,7 +10,7 @@ rescue LoadError
     CaptainHook requires the flat_pack gem for UI components.
 
     Add this to your Gemfile:
-      gem "flat_pack", github: "bowerbird-app/flatpack"
+      gem "flat_pack", github: "bowerbird-app/flatpack", ref: "12ef99c5a29e8b5506cc3c9427d686c2477f774c"
 
     Then run: bundle install
   ERROR

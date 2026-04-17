@@ -19,12 +19,12 @@
       </div>
     <% end %>
 
-    <div class="bg-white shadow rounded-lg mb-6">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
+      <% card.header do %>
         <h5 class="font-semibold text-gray-900">Basic Information</h5>
-      </div>
-      <div class="px-6 py-6 space-y-6">
-        <div>
+      <% end %>
+      <% card.body do %>
+        <section>
           <%= render FlatPack::TextInput::Component.new(
             name: "provider[name]",
             label: "Name",
@@ -32,10 +32,10 @@
             disabled: true
           ) %>
           <p class="text-xs text-gray-500 mt-2">Provider name cannot be changed after creation</p>
-        </div>
+        </section>
 
         <% if @registry_config&.display_name.present? %>
-          <div>
+          <section>
             <%= render FlatPack::TextInput::Component.new(
               name: "display_name",
               label: "Display Name",
@@ -43,11 +43,11 @@
               disabled: true
             ) %>
             <p class="text-xs text-gray-500 mt-2">Display name is configured in the provider's YAML file</p>
-          </div>
+          </section>
         <% end %>
 
         <% if @registry_config&.description.present? %>
-          <div>
+          <section>
             <%= render FlatPack::TextArea::Component.new(
               name: "description",
               label: "Description",
@@ -56,99 +56,104 @@
               disabled: true
             ) %>
             <p class="text-xs text-gray-500 mt-2">Description is configured in the provider's YAML file</p>
-          </div>
+          </section>
         <% end %>
 
-        <div>
+        <section>
           <label class="block text-sm font-medium text-gray-700 mb-2">Active Status</label>
-          <div class="flex items-center">
+          <section class="flex items-center">
             <%= f.check_box :active, class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" %>
             <label class="ml-2 text-sm text-gray-700">Provider is active</label>
-          </div>
+          </section>
           <p class="text-xs text-gray-500 mt-2">Inactive providers won't accept webhooks</p>
-        </div>
-      </div>
-    </div>
+        </section>
+      <% end %>
+    <% end %>
 
-    <div class="bg-white shadow rounded-lg mb-6">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
+      <% card.header do %>
         <h5 class="font-semibold text-gray-900">Authentication</h5>
-      </div>
-      <div class="px-6 py-6 space-y-4">
-        <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-          <p class="text-sm text-blue-900">
-            <strong>ℹ️ Note:</strong> The signing secret is configured in the provider's YAML file.
-            <% if @registry_config&.raw_signing_secret.present? %>
-              <br>Current value: <code class="bg-blue-100 px-2 py-1 rounded"><%= @registry_config.raw_signing_secret.start_with?('ENV[') ? @registry_config.raw_signing_secret : @registry_config.raw_signing_secret.truncate(20) %></code>
-            <% end %>
-          </p>
-        </div>
+      <% end %>
+      <% card.body do %>
+        <section class="space-y-4">
+          <%= render FlatPack::Alert::Component.new(style: :info) do %>
+            <section class="text-sm">
+              <strong>Note:</strong> The signing secret is configured in the provider's YAML file.
+              <% if @registry_config&.raw_signing_secret.present? %>
+                <section class="mt-2">
+                  Current value:
+                  <code class="bg-blue-100 px-2 py-1 rounded"><%= @registry_config.raw_signing_secret.start_with?('ENV[') ? @registry_config.raw_signing_secret : @registry_config.raw_signing_secret.truncate(20) %></code>
+                </section>
+              <% end %>
+            </section>
+          <% end %>
 
-        <div class="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
-          <p class="text-sm text-yellow-900">
-            <strong>⚠️ Security Note:</strong> The webhook token (<code class="bg-yellow-100 px-2 py-1 rounded"><%= @provider.token.truncate(20) %></code>) cannot be changed.
-            If you need a new token, you must create a new provider.
-          </p>
-        </div>
-      </div>
-    </div>
+          <%= render FlatPack::Alert::Component.new(style: :warning) do %>
+            <section class="text-sm">
+              <strong>Security Note:</strong> The webhook token (<code class="bg-yellow-100 px-2 py-1 rounded"><%= @provider.token.truncate(20) %></code>) cannot be changed.
+              If you need a new token, you must create a new provider.
+            </section>
+          <% end %>
+        </section>
+      <% end %>
+    <% end %>
 
-    <div class="bg-white shadow rounded-lg mb-6">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <%= render FlatPack::Card::Component.new(style: :elevated, class: "mb-6 !h-auto") do |card| %>
+      <% card.header do %>
         <h5 class="font-semibold text-gray-900">Security Settings</h5>
-      </div>
-      <div class="px-6 py-6 space-y-6">
-        <div>
+      <% end %>
+      <% card.body do %>
+        <section>
           <%= render FlatPack::NumberInput::Component.new(
             name: "provider[timestamp_tolerance_seconds]",
             label: "Timestamp Tolerance Seconds",
             value: @provider.timestamp_tolerance_seconds
           ) %>
           <p class="text-xs text-gray-500 mt-2">Timestamp tolerance in seconds</p>
-        </div>
+        </section>
 
-        <div>
+        <section>
           <%= render FlatPack::NumberInput::Component.new(
             name: "provider[max_payload_size_bytes]",
             label: "Max Payload Size Bytes",
             value: @provider.max_payload_size_bytes
           ) %>
           <p class="text-xs text-gray-500 mt-2">Maximum payload size in bytes</p>
-        </div>
+        </section>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <section>
             <%= render FlatPack::NumberInput::Component.new(
               name: "provider[rate_limit_requests]",
               label: "Rate Limit (requests)",
               value: @provider.rate_limit_requests
             ) %>
-          </div>
-          <div>
+          </section>
+          <section>
             <%= render FlatPack::NumberInput::Component.new(
               name: "provider[rate_limit_period]",
               label: "Rate Limit (period in seconds)",
               value: @provider.rate_limit_period
             ) %>
-          </div>
-        </div>
-      </div>
-    </div>
+          </section>
+        </section>
+      <% end %>
+    <% end %>
 
-    <div class="flex gap-2">
+    <section class="flex gap-2">
       <%= f.submit "Update Provider", class: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors cursor-pointer" %>
       <%= render FlatPack::Button::Component.new(
         text: "Cancel",
         url: [:admin, @provider],
         style: :secondary
       ) %>
-    </div>
+    </section>
   <% end %>
 
-  <div class="mt-6 pt-6 border-t border-gray-200">
+  <section class="mt-6 pt-6 border-t border-gray-200">
     <%= button_to "Delete Provider", [:admin, @provider], 
         method: :delete, 
         class: "px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors cursor-pointer",
         form: { data: { turbo_confirm: "Are you sure? This will permanently delete this provider and cannot be undone." } } %>
-  </div>
+  </section>
 </div>

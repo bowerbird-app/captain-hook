@@ -12,8 +12,8 @@
   <!-- Grid of Cards -->
   <div class="grid gap-6 mb-6">
     <!-- What's Working Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
           ✅ What's Working
         </h2>
@@ -35,12 +35,12 @@
             Codespace environment automatically setups dummy app on build
           </li>
         </ul>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
 
     <!-- Rename Your Gem Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
           🚀 Next Steps: Rename Your Gem
         </h2>
@@ -66,12 +66,12 @@
             <span>Verify: run tests and check the dummy app starts</span>
           </li>
         </ul>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
 
     <!-- Tailwind CSS Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
           🎨 Tailwind CSS
         </h2>
@@ -89,12 +89,12 @@
             <span>In production, the parent app's Tailwind build compiles the gem's styles — run <code class="px-2 py-0.5 bg-[var(--ma-color-bg-soft)] text-[var(--ma-color-accent)] rounded-[var(--ma-radius-sm)] text-xs font-mono">rails g captain_hook:install</code> to automatically add the gem's view paths to the parent's Tailwind config</span>
           </li>
         </ul>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
 
     <!-- Installing in a Rails App Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-3">
           📦 Installing in a Rails App
         </h2>
@@ -120,12 +120,12 @@
             <span>Display post-installation instructions</span>
           </li>
         </ul>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
 
     <!-- Template Features Card -->
-    <div class="bg-[var(--ma-color-bg)] border border-gray-200 dark:border-gray-700 rounded-[var(--ma-radius-lg)] shadow-[var(--ma-shadow-card)] overflow-hidden">
-      <div class="p-6">
+    <%= render FlatPack::Card::Component.new(style: :elevated) do |card| %>
+      <% card.body do %>
         <h2 class="text-lg font-semibold text-[var(--ma-color-text)] mb-4">
           ⚡ Template Features
         </h2>
@@ -159,8 +159,8 @@
             <span><strong class="font-semibold">UUID Primary Keys</strong> — PostgreSQL UUIDs out of the box for all models</span>
           </li>
         </ul>
-      </div>
-    </div>
+      <% end %>
+    <% end %>
   </div>
 </div>
 
