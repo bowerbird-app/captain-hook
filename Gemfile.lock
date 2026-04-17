@@ -1,10 +1,11 @@
 GIT
   remote: https://github.com/bowerbird-app/flatpack.git
-  revision: 3c431dcc4104eaf3e5330d3591ff40544d986497
+  revision: 12ef99c5a29e8b5506cc3c9427d686c2477f774c
+  ref: 12ef99c5a29e8b5506cc3c9427d686c2477f774c
   specs:
-    flat_pack (0.1.2)
+    flat_pack (0.1.27)
       pagy (~> 9.0)
-      rails (~> 8.0)
+      rails (>= 7.1, < 9)
       tailwind_merge (~> 0.13)
       view_component (~> 3.0)
 
@@ -408,7 +409,7 @@ CHECKSUMS
   factory_bot (6.5.6) sha256=12beb373214dccc086a7a63763d6718c49769d5606f0501e0a4442676917e077
   factory_bot_rails (6.5.1) sha256=d3cc4851eae4dea8a665ec4a4516895045e710554d2b5ac9e68b94d351bc6d68
   faker (3.6.0) sha256=4ce80bf91c8d09bbfff4c5596690bf862d60eac420f86737ca8ce12a54dc464a
-  flat_pack (0.1.2)
+  flat_pack (0.1.27)
   globalid (1.3.0) sha256=05c639ad6eb4594522a0b07983022f04aa7254626ab69445a0e493aa3786ff11
   hashdiff (1.2.1) sha256=9c079dbc513dfc8833ab59c0c2d8f230fa28499cc5efb4b8dd276cf931457cd1
   i18n (1.14.8) sha256=285778639134865c5e0f6269e0b818256017e8cde89993fdfcbfb64d088824a5

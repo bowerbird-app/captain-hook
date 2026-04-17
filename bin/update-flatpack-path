@@ -33,8 +33,8 @@ def update_flatpack_path
     content = File.read(full_path)
     original_content = content.dup
     
-    # Replace any flatpack-* path with the current one
-    content.gsub!(%r{/bundler/gems/flatpack-[a-f0-9]+/}, "/bundler/gems/#{File.basename(flatpack_path)}/")
+    # Replace any existing FlatPack bundler path with the current one.
+    content.gsub!(%r{/bundler/gems/(?:flatpack|flat_pack)-[^/]+/}, "/bundler/gems/#{File.basename(flatpack_path)}/")
     
     if content != original_content
       File.write(full_path, content)
