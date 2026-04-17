@@ -55,7 +55,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "kaminari", "~> 1.2"
   spec.add_dependency "rails", ">= 7.0.0"
 
-  # Security: Require patched version of action_text-trix to avoid XSS vulnerability
-  # See: GHSA-g9jg-w8vm-g96v
-  spec.add_dependency "action_text-trix", ">= 2.1.16"
+  # Security: Require patched action_text-trix to avoid known XSS vulnerabilities.
+  spec.add_dependency "action_text-trix", ">= 2.1.18"
 end

@@ -123,9 +123,9 @@ module CaptainHook
       IncomingActionJob.perform_now(@action_record.id)
 
       @action_record.reload
-      # Action remains locked but won't be processed without config
-      # The job returns early so status may remain unchanged
-      assert @action_record.locked?
+      # The job returns early when config lookup fails, but the ensure block still releases the lock.
+      refute @action_record.locked?
+      assert @action_record.status_processing?
     end
 
     test "job does not process if lock cannot be acquired" do
