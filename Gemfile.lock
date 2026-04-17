@@ -1,4 +1,14 @@
 GIT
+  remote: https://github.com/bowerbird-app/flatpack-checker.git
+  revision: 427d9c3e4a388b5536fb6e93501995ea8668f97c
+  specs:
+    flatpack-checker (0.1.1)
+      nokogiri (>= 1.16)
+      railties (>= 6.1)
+      rainbow (>= 3.1)
+      rake (>= 13.0)
+
+GIT
   remote: https://github.com/bowerbird-app/flatpack.git
   revision: 12ef99c5a29e8b5506cc3c9427d686c2477f774c
   ref: 12ef99c5a29e8b5506cc3c9427d686c2477f774c
@@ -364,6 +374,7 @@ DEPENDENCIES
   factory_bot_rails (~> 6.4)
   faker (~> 3.2)
   flat_pack!
+  flatpack-checker (~> 0.1.1)!
   memory_profiler (~> 1.0)
   pg (~> 1.6)
   puma
@@ -410,6 +421,7 @@ CHECKSUMS
   factory_bot_rails (6.5.1) sha256=d3cc4851eae4dea8a665ec4a4516895045e710554d2b5ac9e68b94d351bc6d68
   faker (3.6.0) sha256=4ce80bf91c8d09bbfff4c5596690bf862d60eac420f86737ca8ce12a54dc464a
   flat_pack (0.1.27)
+  flatpack-checker (0.1.1)
   globalid (1.3.0) sha256=05c639ad6eb4594522a0b07983022f04aa7254626ab69445a0e493aa3786ff11
   hashdiff (1.2.1) sha256=9c079dbc513dfc8833ab59c0c2d8f230fa28499cc5efb4b8dd276cf931457cd1
   i18n (1.14.8) sha256=285778639134865c5e0f6269e0b818256017e8cde89993fdfcbfb64d088824a5

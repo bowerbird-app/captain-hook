@@ -23,8 +23,8 @@
         <% end %>
 
         <!-- Read-only fields -->
-        <div class="space-y-6">
-          <div>
+        <section class="space-y-6">
+          <section>
             <%= render FlatPack::TextInput::Component.new(
               name: "provider_name",
               label: "Provider",
@@ -32,9 +32,9 @@
               disabled: true
             ) %>
             <p class="text-xs text-gray-500 mt-2">Provider cannot be changed</p>
-          </div>
+          </section>
 
-          <div>
+          <section>
             <%= render FlatPack::TextInput::Component.new(
               name: "action_class",
               label: "Action Class",
@@ -42,20 +42,20 @@
               disabled: true
             ) %>
             <p class="text-xs text-gray-500 mt-2">Action class cannot be changed</p>
-          </div>
+          </section>
 
           <!-- Event Type -->
-          <div>
+          <section>
             <%= render FlatPack::TextInput::Component.new(
               name: "captain_hook_action[event_type]",
               label: "Event Type",
               value: @action.event_type
             ) %>
             <p class="text-xs text-gray-500 mt-2">The webhook event type this action processes (e.g., "payment.succeeded")</p>
-          </div>
+          </section>
 
           <!-- Async/Sync Toggle -->
-          <div>
+          <section>
             <%= render FlatPack::RadioGroup::Component.new(
               name: "captain_hook_action[async]",
               label: "Execution Mode",
@@ -69,20 +69,20 @@
               <strong>Async:</strong> Action runs in a background job (recommended for most cases)<br>
               <strong>Sync:</strong> Action runs immediately in the webhook request (only for fast actions)
             </p>
-          </div>
+          </section>
 
           <!-- Priority -->
-          <div>
+          <section>
             <%= render FlatPack::NumberInput::Component.new(
               name: "captain_hook_action[priority]",
               label: "Priority",
               value: @action.priority
             ) %>
             <p class="text-xs text-gray-500 mt-2">Lower numbers execute first (e.g., 10 runs before 100)</p>
-          </div>
+          </section>
 
           <!-- Max Attempts -->
-          <div>
+          <section>
             <%= render FlatPack::NumberInput::Component.new(
               name: "captain_hook_action[max_attempts]",
               label: "Maximum Retry Attempts",
@@ -90,10 +90,10 @@
               min: 1
             ) %>
             <p class="text-xs text-gray-500 mt-2">Number of times to retry on failure (minimum 1)</p>
-          </div>
+          </section>
 
           <!-- Retry Delays -->
-          <div>
+          <section>
             <%= render FlatPack::TextInput::Component.new(
               name: "captain_hook_action[retry_delays]",
               label: "Retry Delays (seconds)",
@@ -105,10 +105,10 @@
               Comma-separated list of delay times in seconds between retries.<br>
               Example: <code class="bg-gray-100 px-1 py-0.5 rounded">30, 60, 300, 900, 3600</code> means wait 30s, then 60s, then 5min, then 15min, then 1hr between retries.
             </p>
-          </div>
-        </div>
+          </section>
+        </section>
 
-        <div class="flex justify-between items-center pt-6 border-t border-gray-200">
+        <section class="flex justify-between items-center pt-6 border-t border-gray-200">
           <%= render FlatPack::Button::Component.new(
             text: "Update Action",
             style: :primary,
@@ -119,17 +119,17 @@
             url: admin_provider_actions_path(@provider),
             style: :secondary
           ) %>
-        </div>
+        </section>
       <% end %>
     <% end %>
   <% end %>
 
   <!-- Danger Zone -->
-  <%= render FlatPack::Card::Component.new(style: :outlined, class: "mt-6 border-2 border-red-200") do |card| %>
-    <% card.header(divider: true) do %>
-      <div class="bg-red-50 -mx-6 -my-4 px-6 py-4">
+  <%= render FlatPack::Card::Component.new(style: :outlined, class: "mt-6 border-2 border-red-200 overflow-hidden") do |card| %>
+    <% card.header(divider: true, class: "bg-red-50") do %>
+      <section>
         <h5 class="font-semibold text-red-900">Danger Zone</h5>
-      </div>
+      </section>
     <% end %>
     <% card.body do %>
       <h6 class="font-medium text-gray-900 mb-2">Delete Action</h6>
