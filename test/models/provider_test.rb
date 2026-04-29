@@ -10,22 +10,22 @@ module CaptainHook
         name: "test_provider",
         active: true
       )
-      
+
       # Create a test provider YAML file for registry integration
       create_test_provider_yaml("test_provider")
     end
-    
+
     teardown do
       # Clean up test YAML file
       cleanup_test_provider_yaml("test_provider")
     end
-    
+
     private
-    
+
     def create_test_provider_yaml(name)
       provider_dir = Rails.root.join("captain_hook", name)
       FileUtils.mkdir_p(provider_dir)
-      
+
       File.write(provider_dir.join("#{name}.yml"), <<~YAML)
         name: #{name}
         display_name: Test Provider
@@ -34,7 +34,7 @@ module CaptainHook
         signing_secret: ENV[TEST_PROVIDER_WEBHOOK_SECRET]
         active: true
       YAML
-      
+
       # Create minimal verifier file
       File.write(provider_dir.join("#{name}.rb"), <<~RUBY)
         class TestProviderVerifier
@@ -43,7 +43,7 @@ module CaptainHook
         end
       RUBY
     end
-    
+
     def cleanup_test_provider_yaml(name)
       provider_dir = Rails.root.join("captain_hook", name)
       FileUtils.rm_rf(provider_dir) if provider_dir.exist?

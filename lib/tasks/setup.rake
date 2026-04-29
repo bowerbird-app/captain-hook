@@ -3,7 +3,7 @@
 namespace :captain_hook do
   desc "Complete CaptainHook setup (install, migrations, encryption)"
   task setup: :environment do
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "⚓ CaptainHook Setup Wizard"
     puts "=" * 80
 
@@ -100,7 +100,7 @@ namespace :captain_hook do
     # Final summary
     print_setup_summary
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "✅ CaptainHook setup complete!"
     puts "=" * 80
   end
@@ -159,7 +159,7 @@ namespace :captain_hook do
       warnings << "Consider adding captain_hook directories to autoload_paths in config/application.rb"
     end
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
 
     if errors.empty? && warnings.empty?
       puts "✅ All checks passed! CaptainHook is properly configured."
@@ -254,7 +254,7 @@ namespace :captain_hook do
   end
 
   def print_setup_summary
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "📚 Next Steps:"
     puts "=" * 80
     puts "\n1. Restart your Rails server (if running)"

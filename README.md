@@ -55,6 +55,7 @@ Add Captain Hook to your Rails application's Gemfile:
 
 ```ruby
 gem 'captain_hook'
+gem 'flat_pack', github: 'bowerbird-app/flatpack', tag: 'v0.1.33'
 ```
 
 Install the gem:

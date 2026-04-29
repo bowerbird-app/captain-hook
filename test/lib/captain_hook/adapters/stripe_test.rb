@@ -26,7 +26,7 @@ module CaptainHook
       end
 
       def test_verifier_includes_verifier_helpers
-        assert @verifier.class.included_modules.include?(CaptainHook::VerifierHelpers),
+        assert @verifier.class.include?(CaptainHook::VerifierHelpers),
                "Stripe verifier should include VerifierHelpers"
       end
 

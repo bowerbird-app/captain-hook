@@ -120,12 +120,11 @@ module CaptainHook
       return ENV["APP_URL"] if ENV["APP_URL"].present?
 
       # Detect GitHub Codespaces environment
+      port = ENV.fetch("PORT", "3000")
       if ENV["CODESPACES"] == "true" && ENV["CODESPACE_NAME"].present?
-        port = ENV.fetch("PORT", "3000")
         "https://#{ENV.fetch('CODESPACE_NAME', nil)}-#{port}.app.github.dev"
       else
         # Default to localhost with PORT or 3000
-        port = ENV.fetch("PORT", "3000")
         "http://localhost:#{port}"
       end
     end

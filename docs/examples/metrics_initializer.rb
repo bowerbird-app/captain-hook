@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Example metrics initializer for Captain Hook
 # Copy this to config/initializers/captain_hook_metrics.rb and customize
 

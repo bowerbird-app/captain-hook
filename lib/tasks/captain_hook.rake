@@ -44,7 +44,7 @@ namespace :captain_hook do
     puts "  Last 24h: #{recent_events}"
 
     # Recent activity
-    if total_events > 0
+    if total_events.positive?
       latest = CaptainHook::IncomingEvent.order(created_at: :desc).limit(5)
       puts "\n📊 Latest Events:"
       latest.each do |event|

@@ -82,7 +82,7 @@ module CaptainHook
     ensure
       # Release the lock (ignore errors to avoid masking the original exception)
       begin
-        action.release_lock!(worker_id) if action
+        action&.release_lock!(worker_id)
       rescue StandardError => e
         Rails.logger.error "Failed to release lock for action #{action_id}: #{e.message}"
       end
