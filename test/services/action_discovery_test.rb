@@ -13,7 +13,7 @@ module CaptainHook
         actions = @discovery.call
 
         # Should find actions in test/dummy/captain_hook/*/actions/
-        assert actions.size > 0, "Should discover at least one action from filesystem"
+        assert actions.size.positive?, "Should discover at least one action from filesystem"
 
         # Check that we have the expected structure
         action = actions.first
@@ -30,7 +30,7 @@ module CaptainHook
         actions = @discovery.call
         stripe_actions = actions.select { |a| a["provider"] == "stripe" }
 
-        assert stripe_actions.size > 0, "Should find Stripe actions"
+        assert stripe_actions.size.positive?, "Should find Stripe actions"
 
         # Should find the PaymentIntentCreatedAction
         payment_intent_created = stripe_actions.find do |a|
@@ -47,7 +47,7 @@ module CaptainHook
       test "for_provider filters actions by provider" do
         stripe_actions = ActionDiscovery.for_provider("stripe")
 
-        assert stripe_actions.size > 0, "Should find actions for stripe"
+        assert stripe_actions.size.positive?, "Should find actions for stripe"
         assert stripe_actions.all? { |a| a["provider"] == "stripe" }, "All actions should be for stripe"
       end
 
@@ -82,7 +82,7 @@ module CaptainHook
         # All actions should have retry_delays, even if not specified in details
         actions.each do |action|
           assert action["retry_delays"].is_a?(Array), "retry_delays should be an array"
-          assert action["retry_delays"].size > 0, "retry_delays should not be empty"
+          assert action["retry_delays"].size.positive?, "retry_delays should not be empty"
         end
       end
 

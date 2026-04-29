@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # FlatPack UI components (required by captain_hook)
-gem "flat_pack", github: "bowerbird-app/flatpack", ref: "12ef99c5a29e8b5506cc3c9427d686c2477f774c"
+gem "flat_pack", github: "bowerbird-app/flatpack", tag: "v0.1.33"
 
 # Use the captain_hook engine
 gem "captain_hook", path: "../.."
