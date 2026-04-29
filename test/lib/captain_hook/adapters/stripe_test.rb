@@ -26,7 +26,7 @@ module CaptainHook
       end
 
       def test_verifier_includes_verifier_helpers
-        assert @verifier.class.included_modules.include?(CaptainHook::VerifierHelpers),
+        assert @verifier.class.include?(CaptainHook::VerifierHelpers),
                "Stripe verifier should include VerifierHelpers"
       end
 
@@ -83,7 +83,7 @@ module CaptainHook
           headers: {},
           provider_config: config
         )
-        refute result, "Should return false without signature header"
+        assert_not result, "Should return false without signature header"
       end
 
       def test_verify_signature_returns_false_with_blank_signature_header
@@ -93,7 +93,7 @@ module CaptainHook
           headers: { "Stripe-Signature" => "" },
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       # Signature verification - malformed signature header
@@ -105,7 +105,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_returns_false_when_signature_missing
@@ -116,7 +116,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_returns_false_when_both_timestamp_and_signature_missing
@@ -127,7 +127,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       # Signature verification - valid signatures
@@ -182,7 +182,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_rejects_signature_with_wrong_secret
@@ -196,7 +196,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_rejects_tampered_payload
@@ -211,7 +211,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       # Timestamp validation tests
@@ -239,7 +239,7 @@ module CaptainHook
           timestamp_validation_enabled: true,
           timestamp_tolerance_seconds: 300
         )
-        old_timestamp = (Time.current - 400.seconds).to_i
+        old_timestamp = 400.seconds.ago.to_i
         signed_payload = "#{old_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{old_timestamp},v1=#{valid_sig}" }
@@ -249,7 +249,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_rejects_future_timestamp
@@ -258,7 +258,7 @@ module CaptainHook
           timestamp_validation_enabled: true,
           timestamp_tolerance_seconds: 300
         )
-        future_timestamp = (Time.current + 400.seconds).to_i
+        future_timestamp = 400.seconds.from_now.to_i
         signed_payload = "#{future_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{future_timestamp},v1=#{valid_sig}" }
@@ -268,7 +268,7 @@ module CaptainHook
           headers: headers,
           provider_config: config
         )
-        refute result
+        assert_not result
       end
 
       def test_verify_signature_accepts_timestamp_at_tolerance_boundary
@@ -277,7 +277,7 @@ module CaptainHook
           timestamp_validation_enabled: true,
           timestamp_tolerance_seconds: 300
         )
-        boundary_timestamp = (Time.current - 300.seconds).to_i
+        boundary_timestamp = 300.seconds.ago.to_i
         signed_payload = "#{boundary_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{boundary_timestamp},v1=#{valid_sig}" }
@@ -296,7 +296,7 @@ module CaptainHook
           timestamp_validation_enabled: true,
           timestamp_tolerance_seconds: nil
         )
-        recent_timestamp = (Time.current - 250.seconds).to_i
+        recent_timestamp = 250.seconds.ago.to_i
         signed_payload = "#{recent_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{recent_timestamp},v1=#{valid_sig}" }
@@ -314,7 +314,7 @@ module CaptainHook
           signing_secret: @secret,
           timestamp_validation_enabled: false
         )
-        old_timestamp = (Time.current - 10_000.seconds).to_i
+        old_timestamp = 10_000.seconds.ago.to_i
         signed_payload = "#{old_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{old_timestamp},v1=#{valid_sig}" }
@@ -408,7 +408,7 @@ module CaptainHook
           timestamp_validation_enabled: true,
           timestamp_tolerance_seconds: 600
         )
-        old_timestamp = (Time.current - 500.seconds).to_i
+        old_timestamp = 500.seconds.ago.to_i
         signed_payload = "#{old_timestamp}.#{@payload}"
         valid_sig = OpenSSL::HMAC.hexdigest("SHA256", @secret, signed_payload)
         headers = { "Stripe-Signature" => "t=#{old_timestamp},v1=#{valid_sig}" }

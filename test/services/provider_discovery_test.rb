@@ -15,7 +15,7 @@ module CaptainHook
         assert_operator providers.size, :>, 0, "Should discover at least one provider"
 
         # Check that we found stripe provider
-        provider_names = providers.map { |p| p["name"] }
+        provider_names = providers.pluck("name")
         assert_includes provider_names, "stripe"
       end
 
@@ -50,7 +50,7 @@ module CaptainHook
 
       test "handles malformed YAML gracefully" do
         # Create a temporary malformed YAML file
-        temp_dir = Rails.root.join("tmp", "test_providers")
+        temp_dir = Rails.root.join("tmp/test_providers")
         FileUtils.mkdir_p(temp_dir)
 
         begin
@@ -66,7 +66,7 @@ module CaptainHook
           assert_nothing_raised do
             providers = discovery.call
             # Should have empty or valid providers only
-            assert(providers.all? { |p| p.is_a?(Hash) })
+            assert(providers.all?(Hash))
           end
         ensure
           FileUtils.rm_rf(temp_dir)
@@ -74,7 +74,7 @@ module CaptainHook
       end
 
       test "load_provider_file returns nil for non-hash YAML" do
-        temp_dir = Rails.root.join("tmp", "test_providers")
+        temp_dir = Rails.root.join("tmp/test_providers")
         FileUtils.mkdir_p(temp_dir)
         file_path = temp_dir.join("array.yml")
 
@@ -97,7 +97,7 @@ module CaptainHook
       end
 
       test "scan_directory only processes yml and yaml files" do
-        temp_dir = Rails.root.join("tmp", "test_providers")
+        temp_dir = Rails.root.join("tmp/test_providers")
         FileUtils.mkdir_p(temp_dir)
 
         begin

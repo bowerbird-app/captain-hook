@@ -31,9 +31,9 @@ module CaptainHook
       def update
         if @action.update(action_params)
           redirect_to admin_provider_actions_path(@provider),
-                      notice: "Action was successfully updated."
+                      notice: I18n.t("captain_hook.admin.actions.updated")
         else
-          render :edit, status: :unprocessable_entity
+          render :edit, status: :unprocessable_content
         end
       end
 
@@ -41,7 +41,7 @@ module CaptainHook
       def destroy
         @action.soft_delete!
         redirect_to admin_provider_actions_path(@provider),
-                    notice: "Action was successfully deleted. It will be skipped during future scans."
+                    notice: I18n.t("captain_hook.admin.actions.deleted")
       end
 
       private
@@ -57,8 +57,8 @@ module CaptainHook
       end
 
       def action_params
-        permitted = params.require(:captain_hook_action).permit(
-          :event_type, :async, :max_attempts, :priority, :retry_delays
+        permitted = params.expect(
+          captain_hook_action: %i[event_type async max_attempts priority retry_delays]
         )
 
         # Parse retry_delays if it's a JSON string
@@ -67,7 +67,11 @@ module CaptainHook
             permitted[:retry_delays] = JSON.parse(permitted[:retry_delays])
           rescue JSON::ParserError
             # If not JSON, try parsing as comma-separated values
-            permitted[:retry_delays] = permitted[:retry_delays].split(",").map(&:strip).map(&:to_i).reject(&:zero?)
+            permitted[:retry_delays] =
+              permitted[:retry_delays]
+              .split(",")
+              .map { |value| value.strip.to_i }
+              .reject(&:zero?)
           end
         end
 

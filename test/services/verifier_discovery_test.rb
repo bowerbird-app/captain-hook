@@ -30,7 +30,7 @@ module CaptainHook
       def test_all_discovered_verifiers_are_strings
         verifiers = @discovery.call
 
-        assert verifiers.all? { |a| a.is_a?(String) }, "All verifiers should be strings"
+        assert verifiers.all?(String), "All verifiers should be strings"
       end
 
       def test_discovers_minimum_number_of_verifiers
@@ -56,7 +56,7 @@ module CaptainHook
 
       def test_verifier_exists_returns_false_for_invalid_class
         result = @discovery.send(:verifier_exists?, "CaptainHook::Verifiers::NonExistent")
-        refute result, "Should return false for non-existent verifier class"
+        assert_not result, "Should return false for non-existent verifier class"
       end
 
       def test_discover_gem_verifiers_adds_valid_verifiers

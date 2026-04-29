@@ -109,12 +109,16 @@ module CaptainHook
         @warned_duplicates.add(name)
 
         # Get all sources for this provider name
-        all_sources = @provider_definitions.select { |d| d["name"] == name }.map { |d| d["source"] }
+        all_sources = @provider_definitions.select { |d| d["name"] == name }.pluck("source")
 
         # Check if there are actions registered for this provider
         existing_provider = CaptainHook::Provider.find_by(name: name)
         action_count = existing_provider&.actions&.count || 0
-        action_info = action_count.positive? ? " Note: #{action_count} action(s) are already registered to the '#{name}' provider." : ""
+        action_info = if action_count.positive?
+                        " Note: #{action_count} action(s) are already registered to the '#{name}' provider."
+                      else
+                        ""
+                      end
 
         warning_message = "Duplicate provider '#{name}' found in multiple sources: #{all_sources.join(', ')}. " \
                           "If using the same webhook URL, just register actions for the existing provider. " \

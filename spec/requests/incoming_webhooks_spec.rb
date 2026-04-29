@@ -53,7 +53,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
         end.to change(CaptainHook::IncomingEvent, :count).by(1)
 
         expect(response).to have_http_status(:created)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["status"]).to eq("received")
         expect(json["id"]).to be_present
 
@@ -104,7 +104,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              headers: headers
 
         expect(response).to have_http_status(:created)
-        first_event_id = JSON.parse(response.body)["id"]
+        first_event_id = response.parsed_body["id"]
 
         # Second request - duplicate
         expect do
@@ -114,7 +114,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
         end.not_to change(CaptainHook::IncomingEvent, :count)
 
         expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["status"]).to eq("duplicate")
         expect(json["id"]).to eq(first_event_id)
 
@@ -136,7 +136,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:unauthorized)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Invalid token")
       end
 
@@ -146,7 +146,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              headers: { "Content-Type" => "application/json" }
 
         expect(response).to have_http_status(:not_found)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Unknown provider")
       end
 
@@ -163,7 +163,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:forbidden)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Provider is inactive")
       end
     end
@@ -178,7 +178,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:unauthorized)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Invalid signature")
       end
 
@@ -188,7 +188,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              headers: { "Content-Type" => "application/json" }
 
         expect(response).to have_http_status(:unauthorized)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Invalid signature")
       end
 
@@ -204,12 +204,12 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:bad_request)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Timestamp outside tolerance window")
       end
 
       it "accepts requests with valid timestamp within tolerance" do
-        timestamp = (Time.current - 4.minutes).to_i # Within 5 minute tolerance
+        timestamp = 4.minutes.ago.to_i # Within 5 minute tolerance
         signature = generate_stripe_signature(raw_payload, signing_secret, timestamp)
 
         post "/captain_hook/#{provider.name}/#{provider.token}",
@@ -254,7 +254,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              headers: headers
 
         expect(response).to have_http_status(:too_many_requests)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Rate limit exceeded")
       end
     end
@@ -284,7 +284,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:content_too_large)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Payload too large")
       end
 
@@ -318,7 +318,7 @@ RSpec.describe CaptainHook::IncomingController, type: :request do
              }
 
         expect(response).to have_http_status(:bad_request)
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         expect(json["error"]).to eq("Invalid JSON")
       end
     end

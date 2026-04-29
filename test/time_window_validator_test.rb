@@ -17,25 +17,25 @@ module CaptainHook
     end
 
     def test_validates_timestamp_within_past_tolerance
-      five_minutes_ago = (Time.now - 299).to_i
+      five_minutes_ago = (Time.zone.now - 299).to_i
 
       assert @validator.valid?(five_minutes_ago, tolerance: 300)
     end
 
     def test_validates_timestamp_within_future_tolerance
-      five_minutes_ahead = (Time.now + 299).to_i
+      five_minutes_ahead = (Time.zone.now + 299).to_i
 
       assert @validator.valid?(five_minutes_ahead, tolerance: 300)
     end
 
     def test_validates_timestamp_at_exact_past_boundary
-      exactly_five_minutes_ago = (Time.now - 300).to_i
+      exactly_five_minutes_ago = (Time.zone.now - 300).to_i
 
       assert @validator.valid?(exactly_five_minutes_ago, tolerance: 300)
     end
 
     def test_validates_timestamp_at_exact_future_boundary
-      exactly_five_minutes_ahead = (Time.now + 300).to_i
+      exactly_five_minutes_ahead = (Time.zone.now + 300).to_i
 
       assert @validator.valid?(exactly_five_minutes_ahead, tolerance: 300)
     end
@@ -43,27 +43,27 @@ module CaptainHook
     # === Invalid Timestamp Tests ===
 
     def test_rejects_timestamp_too_far_in_past
-      too_old = (Time.now - 301).to_i
+      too_old = (Time.zone.now - 301).to_i
 
-      refute @validator.valid?(too_old, tolerance: 300)
+      assert_not @validator.valid?(too_old, tolerance: 300)
     end
 
     def test_rejects_timestamp_too_far_in_future
-      too_new = (Time.now + 301).to_i
+      too_new = (Time.zone.now + 301).to_i
 
-      refute @validator.valid?(too_new, tolerance: 300)
+      assert_not @validator.valid?(too_new, tolerance: 300)
     end
 
     def test_rejects_very_old_timestamp
-      very_old = (Time.now - (3600 * 24)).to_i # 1 day old
+      very_old = (Time.zone.now - (3600 * 24)).to_i # 1 day old
 
-      refute @validator.valid?(very_old, tolerance: 300)
+      assert_not @validator.valid?(very_old, tolerance: 300)
     end
 
     def test_rejects_timestamp_from_distant_future
-      distant_future = (Time.now + (3600 * 24)).to_i # 1 day ahead
+      distant_future = (Time.zone.now + (3600 * 24)).to_i # 1 day ahead
 
-      refute @validator.valid?(distant_future, tolerance: 300)
+      assert_not @validator.valid?(distant_future, tolerance: 300)
     end
 
     # === Different Tolerance Tests ===
@@ -75,7 +75,7 @@ module CaptainHook
     end
 
     def test_validates_with_large_tolerance
-      one_hour_ago = (Time.now - 3599).to_i
+      one_hour_ago = (Time.zone.now - 3599).to_i
 
       assert @validator.valid?(one_hour_ago, tolerance: 3600)
     end
@@ -91,16 +91,16 @@ module CaptainHook
     # === Edge Cases ===
 
     def test_handles_nil_timestamp
-      refute @validator.valid?(nil, tolerance: 300)
+      assert_not @validator.valid?(nil, tolerance: 300)
     end
 
     def test_handles_negative_timestamp
-      refute @validator.valid?(-100, tolerance: 300)
+      assert_not @validator.valid?(-100, tolerance: 300)
     end
 
     def test_handles_zero_timestamp
       # Unix epoch (1970-01-01) is way in the past
-      refute @validator.valid?(0, tolerance: 300)
+      assert_not @validator.valid?(0, tolerance: 300)
     end
 
     def test_handles_string_timestamp
@@ -120,7 +120,7 @@ module CaptainHook
     # === Time Object Tests ===
 
     def test_accepts_time_object
-      current_time = Time.now
+      current_time = Time.zone.now
 
       assert @validator.valid?(current_time, tolerance: 300)
     end
@@ -144,19 +144,19 @@ module CaptainHook
     # === Validation Message Tests ===
 
     def test_provides_validation_error_message_for_old_timestamp
-      too_old = (Time.now - 600).to_i
+      too_old = (Time.zone.now - 600).to_i
 
       result = @validator.validate(too_old, tolerance: 300)
-      refute result[:valid]
+      assert_not result[:valid]
       assert result[:error]
       assert_match(/too old|past|expired/i, result[:error])
     end
 
     def test_provides_validation_error_message_for_future_timestamp
-      too_new = (Time.now + 600).to_i
+      too_new = (Time.zone.now + 600).to_i
 
       result = @validator.validate(too_new, tolerance: 300)
-      refute result[:valid]
+      assert_not result[:valid]
       assert result[:error]
       assert_match(/future|too new|not yet valid/i, result[:error])
     end
@@ -174,11 +174,11 @@ module CaptainHook
     def test_validation_is_fast
       current_time = Time.now.to_i
 
-      start_time = Time.now
+      start_time = Time.zone.now
       1000.times do
         @validator.valid?(current_time, tolerance: 300)
       end
-      elapsed = Time.now - start_time
+      elapsed = Time.zone.now - start_time
 
       # Should be able to validate 1000 timestamps in less than 0.1 seconds
       assert elapsed < 0.1, "Validation should be fast, took #{elapsed} seconds"
@@ -197,7 +197,7 @@ module CaptainHook
       old_timestamp = (Time.current - 400).to_i
       result = @validator.validate(old_timestamp)
 
-      refute result[:valid]
+      assert_not result[:valid]
       assert_includes result[:error], "too old"
     end
 
@@ -205,7 +205,7 @@ module CaptainHook
       future_timestamp = (Time.current + 400).to_i
       result = @validator.validate(future_timestamp)
 
-      refute result[:valid]
+      assert_not result[:valid]
       assert_includes result[:error], "too far in the future"
     end
 
@@ -232,7 +232,7 @@ module CaptainHook
     def test_too_old_returns_false_for_valid_timestamp
       valid_timestamp = (Time.current - 100).to_i
 
-      refute @validator.too_old?(valid_timestamp)
+      assert_not @validator.too_old?(valid_timestamp)
     end
 
     def test_too_new_returns_true_for_future_timestamp
@@ -244,7 +244,7 @@ module CaptainHook
     def test_too_new_returns_false_for_valid_timestamp
       valid_timestamp = (Time.current - 100).to_i
 
-      refute @validator.too_new?(valid_timestamp)
+      assert_not @validator.too_new?(valid_timestamp)
     end
   end
 end

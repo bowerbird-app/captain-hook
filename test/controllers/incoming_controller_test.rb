@@ -64,7 +64,7 @@ module CaptainHook
            }
 
       assert_response :created
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "received", json["status"]
       assert json["id"].present?
     end
@@ -78,7 +78,7 @@ module CaptainHook
            }
 
       assert_response :unauthorized
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Invalid signature", json["error"]
     end
 
@@ -93,7 +93,7 @@ module CaptainHook
            }
 
       assert_response :unauthorized
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Invalid token", json["error"]
     end
 
@@ -103,7 +103,7 @@ module CaptainHook
            headers: { "Content-Type" => "application/json" }
 
       assert_response :not_found
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Unknown provider", json["error"]
     end
 
@@ -115,7 +115,7 @@ module CaptainHook
            headers: { "Content-Type" => "application/json" }
 
       assert_response :forbidden
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Provider is inactive", json["error"]
     end
 
@@ -131,7 +131,7 @@ module CaptainHook
            }
 
       assert_response :bad_request
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Invalid JSON", json["error"]
     end
 
@@ -155,12 +155,12 @@ module CaptainHook
              "Stripe-Signature" => "t=#{@timestamp},v1=#{signature}"
            }
       assert_response :ok
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "duplicate", json["status"]
     end
 
     test "should reject webhook with expired timestamp" do
-      old_timestamp = (Time.now - 400).to_i.to_s # 400 seconds ago, outside tolerance
+      old_timestamp = (Time.zone.now - 400).to_i.to_s # 400 seconds ago, outside tolerance
       signature = generate_stripe_signature(@valid_payload, old_timestamp, @test_signing_secret)
 
       post "/captain_hook/stripe/test_token",
@@ -171,7 +171,7 @@ module CaptainHook
            }
 
       assert_response :unauthorized
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Invalid signature", json["error"]
     end
 
@@ -191,7 +191,7 @@ module CaptainHook
 
     test "should reject webhook with oversized payload" do
       # Create a provider with small payload limit
-      small_provider = CaptainHook::Provider.create!(
+      CaptainHook::Provider.create!(
         name: "small",
         active: true,
         token: "small_test_token"
@@ -219,7 +219,7 @@ module CaptainHook
            }
 
       assert_response :content_too_large
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Payload too large", json["error"]
     end
 
@@ -313,7 +313,7 @@ module CaptainHook
            }
 
       assert_response :unauthorized
-      json = JSON.parse(response.body)
+      json = response.parsed_body
       assert_equal "Invalid token", json["error"]
     end
 
@@ -337,7 +337,7 @@ module CaptainHook
              }
 
         assert_response :unauthorized, "Token #{wrong_token} should be rejected"
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid token", json["error"]
       end
     end
@@ -363,8 +363,8 @@ module CaptainHook
       # Verify log contains only provider name, not sensitive payload
       log_content = log_output.string
       assert_includes log_content, "provider=stripe", "Should log provider name"
-      refute_includes log_content, "supersecret", "Should NOT log sensitive data from payload"
-      refute_includes log_content, invalid_payload, "Should NOT log raw payload"
+      assert_not_includes log_content, "supersecret", "Should NOT log sensitive data from payload"
+      assert_not_includes log_content, invalid_payload, "Should NOT log raw payload"
 
       Rails.logger = original_logger
     end
@@ -381,12 +381,12 @@ module CaptainHook
            }
 
       assert_response :bad_request
-      json = JSON.parse(response.body)
+      json = response.parsed_body
 
       # Response should be generic, not expose payload details
       assert_equal "Invalid JSON", json["error"]
-      refute_includes response.body, "supersecret"
-      refute_includes response.body, "hunter2"
+      assert_not_includes response.body, "supersecret"
+      assert_not_includes response.body, "hunter2"
     end
   end
 end

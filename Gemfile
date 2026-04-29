@@ -2,8 +2,8 @@
 
 source "https://rubygems.org"
 
-# Pin FlatPack to the current 0.1.27 revision until an upstream tag is published
-gem "flat_pack", github: "bowerbird-app/flatpack", ref: "12ef99c5a29e8b5506cc3c9427d686c2477f774c"
+# Pin FlatPack to the verified release used by the admin UI
+gem "flat_pack", github: "bowerbird-app/flatpack", tag: "v0.1.33"
 
 # Specify your gem's dependencies in captain_hook.gemspec
 gemspec

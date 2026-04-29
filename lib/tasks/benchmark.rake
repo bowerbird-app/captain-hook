@@ -8,7 +8,7 @@ namespace :benchmark do
     puts("=" * 80)
     puts "Ruby: #{RUBY_VERSION}"
     puts "Rails: #{Rails.version}"
-    puts "Time: #{Time.now}"
+    puts "Time: #{Time.zone.now}"
     puts("=" * 80)
 
     benchmarks = [
@@ -62,7 +62,7 @@ namespace :benchmark do
   desc "Run benchmarks and save results for CI"
   task ci: :environment do
     gem_root = CaptainHook::Engine.root
-    timestamp = Time.now.strftime("%Y%m%d_%H%M%S")
+    timestamp = Time.zone.now.strftime("%Y%m%d_%H%M%S")
     output_file = gem_root.join("benchmark", "results", "#{timestamp}_results.txt")
 
     puts "Running benchmarks and saving to #{output_file}..."
@@ -71,7 +71,7 @@ namespace :benchmark do
     File.open(output_file, "w") do |f|
       f.puts "CaptainHook Benchmark Results"
       f.puts "=" * 80
-      f.puts "Timestamp: #{Time.now}"
+      f.puts "Timestamp: #{Time.zone.now}"
       f.puts "Ruby Version: #{RUBY_VERSION}"
       f.puts "Rails Version: #{Rails.version}"
       f.puts "Environment: #{Rails.env}"

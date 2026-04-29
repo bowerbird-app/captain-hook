@@ -42,7 +42,7 @@ module CaptainHook
       test "allowed? returns false when limit exceeded" do
         3.times { @limiter.record!(provider: @provider, limit: 3, period: 60) }
 
-        refute @limiter.allowed?(provider: @provider, limit: 3, period: 60)
+        assert_not @limiter.allowed?(provider: @provider, limit: 3, period: 60)
       end
 
       test "tracks different providers independently" do

@@ -154,7 +154,7 @@ module CaptainHook
       inactive_config = ProviderConfig.new("name" => "test", "active" => false)
 
       assert active_config.active?
-      refute inactive_config.active?
+      assert_not inactive_config.active?
     end
 
     # === Comparison Tests ===
@@ -170,7 +170,7 @@ module CaptainHook
       config1 = ProviderConfig.new("name" => "stripe")
       config2 = ProviderConfig.new("name" => "other_provider")
 
-      refute_equal config1, config2
+      assert_not_equal config1, config2
     end
 
     # === Hash Access Tests ===
@@ -347,7 +347,7 @@ module CaptainHook
         "max_payload_size_bytes" => 0
       )
 
-      refute config.payload_size_limit_enabled?
+      assert_not config.payload_size_limit_enabled?
     end
 
     def test_timestamp_validation_enabled_returns_true_when_positive
@@ -365,7 +365,7 @@ module CaptainHook
         "timestamp_tolerance_seconds" => 0
       )
 
-      refute config.timestamp_validation_enabled?
+      assert_not config.timestamp_validation_enabled?
     end
 
     def test_verifier_returns_verifier_instance
@@ -406,7 +406,7 @@ module CaptainHook
       )
 
       hash = config.to_h
-      refute hash.key?("description"), "Nil values should be compacted"
+      assert_not hash.key?("description"), "Nil values should be compacted"
       assert hash.key?("name")
     end
   end

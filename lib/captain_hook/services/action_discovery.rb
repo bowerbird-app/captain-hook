@@ -5,6 +5,10 @@ module CaptainHook
     # Service for discovering actions by scanning the filesystem
     # Scans captain_hook/<provider>/actions directories for action classes
     class ActionDiscovery < BaseService
+      # Default retry delays for actions (can be overridden in self.details)
+      DEFAULT_RETRY_DELAYS = [30, 60, 300, 900, 3600].freeze
+      private_constant :DEFAULT_RETRY_DELAYS
+
       def initialize
         @discovered_actions = []
       end
@@ -24,9 +28,6 @@ module CaptainHook
       end
 
       private
-
-      # Default retry delays for actions (can be overridden in self.details)
-      DEFAULT_RETRY_DELAYS = [30, 60, 300, 900, 3600].freeze
 
       # Scan all load paths for captain_hook/<provider>/actions/**/*.rb files
       def scan_filesystem_for_actions
@@ -49,13 +50,13 @@ module CaptainHook
 
         # Also search in Rails root if available (for host app)
         if defined?(Rails) && Rails.root
-          pattern = File.join(Rails.root, "captain_hook", "*", "actions", "**", "*.rb")
+          pattern = Rails.root.join("captain_hook/*/actions/**/*.rb").to_s
           action_files.concat(Dir.glob(pattern))
         end
 
         # Search in gem root directories (for gems with actions at root level)
         if defined?(Gem)
-          Gem.loaded_specs.each do |_, spec|
+          Gem.loaded_specs.each_value do |spec|
             pattern = File.join(spec.full_gem_path, "captain_hook", "*", "actions", "**", "*.rb")
             action_files.concat(Dir.glob(pattern))
           end
@@ -105,7 +106,7 @@ module CaptainHook
           "retry_delays" => details[:retry_delays] || DEFAULT_RETRY_DELAYS
         }
 
-        Rails.logger.debug "✅ Discovered action: #{stored_class_name} for #{provider}:#{details[:event_type]}"
+        Rails.logger.debug { "✅ Discovered action: #{stored_class_name} for #{provider}:#{details[:event_type]}" }
       rescue StandardError => e
         Rails.logger.warn "⚠️  Error processing action file #{file_path}: #{e.message}"
       end
@@ -136,7 +137,7 @@ module CaptainHook
         begin
           provider_module = Object.const_get(provider_module_name)
           provider_module.const_get(class_name)
-        rescue NameError => e
+        rescue NameError
           Rails.logger.warn "⚠️  Could not find class #{provider_module_name}::#{class_name} for file #{file_path}"
           Rails.logger.warn "    Make sure the class is namespaced correctly:"
           Rails.logger.warn "    module #{provider_module_name}; class #{class_name}; end; end"
@@ -148,14 +149,17 @@ module CaptainHook
       def extract_action_details(action_class)
         unless action_class.respond_to?(:details)
           Rails.logger.warn "⚠️  Action class #{action_class} does not have a .details class method"
-          Rails.logger.warn "    Add: def self.details; { event_type: 'your.event', priority: 100, async: true, max_attempts: 5 }; end"
+          Rails.logger.warn(
+            "    Add: def self.details; { event_type: 'your.event', priority: 100, async: true, " \
+            "max_attempts: 5 }; end"
+          )
           return nil
         end
 
         details = action_class.details
 
         # Validate required fields
-        unless details[:event_type].present?
+        if details[:event_type].blank?
           Rails.logger.warn "⚠️  Action class #{action_class} details missing :event_type"
           Rails.logger.warn "    The details hash must include: { event_type: 'your.event.type', ... }"
           return nil
@@ -222,24 +226,20 @@ module CaptainHook
         if parts.length >= 3
           # Try to match against known gems
           potential_gem_name = parts[0]
-          actual_class_name = parts[1..-1].join("::")
+          actual_class_name = parts[1..].join("::")
 
           if defined?(Gem)
             gem_spec = Gem.loaded_specs.find { |name, _| name.camelize == potential_gem_name }
 
             if gem_spec
               # This is from a gem, make sure the file is loaded
-              gem_name, spec = gem_spec
+              _, spec = gem_spec
               provider = parts[1].underscore
               action_file_pattern = File.join(spec.full_gem_path, "captain_hook", provider, "actions", "**", "*.rb")
               action_files = Dir.glob(action_file_pattern)
 
               # Load all action files from this gem to ensure the class is defined
-              action_files.each do |file|
-                require file
-              rescue StandardError
-                nil
-              end
+              load_action_files(action_files)
 
               # Return the actual class name (without gem prefix)
               return actual_class_name
@@ -250,6 +250,18 @@ module CaptainHook
         # No gem prefix or gem not found - use as-is
         stored_class_name
       end
+
+      def self.load_action_files(action_files)
+        action_files.each { |file| require_action_file(file) }
+      end
+
+      def self.require_action_file(file)
+        require file
+      rescue StandardError
+        nil
+      end
+
+      private_class_method :load_action_files, :require_action_file
     end
   end
 end

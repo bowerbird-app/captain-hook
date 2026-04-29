@@ -216,7 +216,7 @@ module CaptainHook
     end
 
     def test_actions_registered_returns_false_when_no_actions_exist
-      refute @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
+      assert_not @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
     end
 
     def test_actions_for_returns_empty_array_when_no_actions
@@ -252,7 +252,7 @@ module CaptainHook
         action_class: "Payment Action"
       )
 
-      refute_nil config
+      assert_not_nil config
       assert_equal "Payment Action", config.action_class
     end
 
@@ -275,8 +275,8 @@ module CaptainHook
       @registry.clear!
 
       assert_equal [], @registry.providers
-      refute @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
-      refute @registry.actions_registered?(provider: "custom_provider", event_type: "payment.succeeded")
+      assert_not @registry.actions_registered?(provider: "stripe", event_type: "payment.succeeded")
+      assert_not @registry.actions_registered?(provider: "custom_provider", event_type: "payment.succeeded")
     end
 
     # ===  ActionConfig Tests ===

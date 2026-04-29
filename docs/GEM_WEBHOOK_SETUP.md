@@ -870,6 +870,7 @@ Stripe integration toolkit with automatic webhook handling.
 Add to your Gemfile:
 
 ```ruby
+gem 'flat_pack', github: 'bowerbird-app/flatpack', tag: 'v0.1.33'
 gem 'captain_hook'  # Required for webhook handling
 gem 'stripe_toolkit'
 ```

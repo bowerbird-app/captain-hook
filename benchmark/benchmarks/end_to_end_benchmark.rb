@@ -55,11 +55,11 @@ end
 puts "\n📊 Throughput Analysis"
 puts "Simulating sustained load..."
 
-start_time = Time.now
+start_time = Time.zone.now
 processed_count = 0
 duration = 10 # seconds
 
-while Time.now - start_time < duration
+while Time.zone.now - start_time < duration
   BenchmarkFixtures.create_test_event(
     provider: provider.name,
     external_id: SecureRandom.uuid
@@ -67,7 +67,7 @@ while Time.now - start_time < duration
   processed_count += 1
 end
 
-elapsed = Time.now - start_time
+elapsed = Time.zone.now - start_time
 throughput = processed_count / elapsed
 
 puts "\nResults:"

@@ -13,7 +13,7 @@ module CaptainHook
     end
 
     test "engine initializers are registered" do
-      initializer_names = Engine.initializers.map(&:name).map(&:to_s)
+      initializer_names = Engine.initializers.map { |initializer| initializer.name.to_s }
 
       assert_includes initializer_names, "captain_hook.before_initialize"
       assert_includes initializer_names, "captain_hook.load_config"

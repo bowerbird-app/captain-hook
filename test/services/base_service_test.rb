@@ -38,7 +38,7 @@ module CaptainHook
         result = TestService.call(should_succeed: true, value: { data: 123 })
 
         assert result.success?
-        refute result.failure?
+        assert_not result.failure?
         assert_equal({ data: 123 }, result.value)
         assert_nil result.error
       end
@@ -46,7 +46,7 @@ module CaptainHook
       def test_failure_result
         result = TestService.call(should_succeed: false, error: "Something went wrong")
 
-        refute result.success?
+        assert_not result.success?
         assert result.failure?
         assert_nil result.value
         assert_equal "Something went wrong", result.error
@@ -89,7 +89,7 @@ module CaptainHook
           result.on_success { called = true }
         end
 
-        refute called, "on_success should not be called on failure"
+        assert_not called, "on_success should not be called on failure"
       end
 
       def test_on_failure_not_called_on_success
@@ -99,7 +99,7 @@ module CaptainHook
           result.on_failure { called = true }
         end
 
-        refute called, "on_failure should not be called on success"
+        assert_not called, "on_failure should not be called on success"
       end
 
       def test_value_bang_returns_value_on_success
@@ -122,7 +122,7 @@ module CaptainHook
           .on_failure { failure_called = true }
 
         assert success_called
-        refute failure_called
+        assert_not failure_called
       end
 
       def test_perform_not_implemented_raises

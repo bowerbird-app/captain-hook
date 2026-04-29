@@ -3,7 +3,7 @@
 namespace :captain_hook do
   desc "Complete CaptainHook setup (install, migrations, encryption)"
   task setup: :environment do
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "⚓ CaptainHook Setup Wizard"
     puts "=" * 80
 
@@ -17,8 +17,8 @@ namespace :captain_hook do
 
     # Step 1: Check if already installed
     puts "\n📋 Step 1: Checking existing installation..."
-    initializer_exists = File.exist?(Rails.root.join("config/initializers/captain_hook.rb"))
-    routes_mounted = File.read(Rails.root.join("config/routes.rb")).include?("CaptainHook::Engine")
+    initializer_exists = Rails.root.join("config/initializers/captain_hook.rb").exist?
+    routes_mounted = Rails.root.join("config/routes.rb").read.include?("CaptainHook::Engine")
 
     if initializer_exists && routes_mounted
       puts "✓ CaptainHook already installed (initializer and routes found)"
@@ -100,7 +100,7 @@ namespace :captain_hook do
     # Final summary
     print_setup_summary
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "✅ CaptainHook setup complete!"
     puts "=" * 80
   end
@@ -114,14 +114,14 @@ namespace :captain_hook do
     warnings = []
 
     # Check initializer
-    if File.exist?(Rails.root.join("config/initializers/captain_hook.rb"))
+    if Rails.root.join("config/initializers/captain_hook.rb").exist?
       puts "✓ Initializer exists"
     else
       errors << "Initializer missing: config/initializers/captain_hook.rb"
     end
 
     # Check routes
-    routes_content = File.read(Rails.root.join("config/routes.rb"))
+    routes_content = Rails.root.join("config/routes.rb").read
     if routes_content.include?("CaptainHook::Engine")
       puts "✓ Engine mounted in routes"
     else
@@ -159,7 +159,7 @@ namespace :captain_hook do
       warnings << "Consider adding captain_hook directories to autoload_paths in config/application.rb"
     end
 
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
 
     if errors.empty? && warnings.empty?
       puts "✅ All checks passed! CaptainHook is properly configured."
@@ -240,10 +240,10 @@ namespace :captain_hook do
     errors = []
 
     # Check initializer
-    errors << "Initializer missing" unless File.exist?(Rails.root.join("config/initializers/captain_hook.rb"))
+    errors << "Initializer missing" unless Rails.root.join("config/initializers/captain_hook.rb").exist?
 
     # Check routes
-    unless File.read(Rails.root.join("config/routes.rb")).include?("CaptainHook::Engine")
+    unless Rails.root.join("config/routes.rb").read.include?("CaptainHook::Engine")
       errors << "Engine not mounted in routes"
     end
 
@@ -254,7 +254,7 @@ namespace :captain_hook do
   end
 
   def print_setup_summary
-    puts "\n" + ("=" * 80)
+    puts "\n#{'=' * 80}"
     puts "📚 Next Steps:"
     puts "=" * 80
     puts "\n1. Restart your Rails server (if running)"

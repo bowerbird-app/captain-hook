@@ -3,16 +3,21 @@
 # Configure Rails Environment
 ENV["RAILS_ENV"] = "test"
 
-require_relative "../test/dummy/config/environment"
+require_relative "../test/boot_warnings"
+BootWarnings.with_filtered_stderr do
+  BootWarnings.suppress_known_deprecations!
+  require_relative "../test/dummy/config/environment"
+  BootWarnings.restore_deprecations!
+end
 
 # The gem's db/migrate contains source migrations that get installed via rake task
 # The dummy app's db/migrate contains the installed migrations that have been run
 # We need to check only the dummy app's migrations and ignore the engine's migrations
-ActiveRecord::Tasks::DatabaseTasks.migrations_paths = ["#{Rails.root}/db/migrate"]
+ActiveRecord::Tasks::DatabaseTasks.migrations_paths = [Rails.root.join("db/migrate").to_s]
 
 # Prevent Rails from checking the engine's migrations during test runs
 # The engine migrations are installed into the dummy app, so we only need to track those
-ActiveRecord::Migrator.migrations_paths = ["#{Rails.root}/db/migrate"]
+ActiveRecord::Migrator.migrations_paths = [Rails.root.join("db/migrate").to_s]
 
 require "rspec/rails"
 require "factory_bot_rails"

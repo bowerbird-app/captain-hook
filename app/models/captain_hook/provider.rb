@@ -8,13 +8,21 @@ module CaptainHook
     self.table_name = "captain_hook_providers"
 
     # Associations
-    has_many :incoming_events, primary_key: :name, foreign_key: :provider, dependent: :restrict_with_error
-    has_many :actions, primary_key: :name, foreign_key: :provider, class_name: "CaptainHook::Action",
-                       dependent: :destroy
+    has_many :incoming_events,
+             primary_key: :name,
+             foreign_key: :provider,
+             dependent: :restrict_with_error,
+             inverse_of: false
+    has_many :actions,
+             primary_key: :name,
+             foreign_key: :provider,
+             class_name: "CaptainHook::Action",
+             dependent: :destroy,
+             inverse_of: false
 
     # Validations
     validates :name, presence: true, uniqueness: true,
-                     format: { with: /\A[a-z0-9_]+\z/, message: "only lowercase letters, numbers, and underscores" }
+                     format: { with: /\A[a-z0-9_]+\z/, message: :captain_hook_provider_name_format }
     validates :token, presence: true, uniqueness: true
     validates :rate_limit_requests, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validates :rate_limit_period, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
@@ -120,12 +128,11 @@ module CaptainHook
       return ENV["APP_URL"] if ENV["APP_URL"].present?
 
       # Detect GitHub Codespaces environment
+      port = ENV.fetch("PORT", "3000")
       if ENV["CODESPACES"] == "true" && ENV["CODESPACE_NAME"].present?
-        port = ENV.fetch("PORT", "3000")
         "https://#{ENV.fetch('CODESPACE_NAME', nil)}-#{port}.app.github.dev"
       else
         # Default to localhost with PORT or 3000
-        port = ENV.fetch("PORT", "3000")
         "http://localhost:#{port}"
       end
     end

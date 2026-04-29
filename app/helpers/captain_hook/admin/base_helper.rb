@@ -9,7 +9,7 @@ module CaptainHook
         # Scan multiple locations for verifiers
         [
           # Application verifiers (Rails app)
-          Rails.root.join("app", "verifiers", "captain_hook", "verifiers"),
+          Rails.root.join("app/verifiers/captain_hook/verifiers"),
           # Loaded gems with verifiers
           *Gem.loaded_specs.values.flat_map do |spec|
             [

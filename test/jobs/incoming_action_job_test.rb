@@ -62,7 +62,7 @@ module CaptainHook
 
       @action_record.reload
       # Lock should be released after processing
-      refute @action_record.locked?
+      assert_not @action_record.locked?
     end
 
     test "job increments attempt count" do
@@ -124,7 +124,7 @@ module CaptainHook
 
       @action_record.reload
       # The job returns early when config lookup fails, but the ensure block still releases the lock.
-      refute @action_record.locked?
+      assert_not @action_record.locked?
       assert @action_record.status_processing?
     end
 
@@ -147,13 +147,15 @@ module CaptainHook
     test "job passes event and payload to action" do
       received_args = {}
 
-      Object.const_set(:TrackingAction, Class.new do
+      tracking_action_class = Class.new do
         define_method(:webhook_action) do |event:, payload:, metadata:|
           received_args[:event] = event
           received_args[:payload] = payload
           received_args[:metadata] = metadata
         end
-      end.tap { |klass| klass.define_singleton_method(:instance) { @instance ||= new } })
+      end
+      tracking_action_class.define_singleton_method(:instance) { @instance ||= new }
+      Object.const_set(:TrackingAction, tracking_action_class)
 
       @action_record.action_class = "TrackingAction"
       @action_record.save!
@@ -338,7 +340,7 @@ module CaptainHook
       recent_event.reload
 
       assert old_event.archived?
-      refute recent_event.archived?
+      assert_not recent_event.archived?
     end
 
     test "job respects retention_days parameter" do
@@ -371,7 +373,7 @@ module CaptainHook
       ArchivalJob.perform_now(retention_days: 50)
 
       event_40_days.reload
-      refute event_40_days.archived?
+      assert_not event_40_days.archived?
     end
 
     test "job uses configuration retention_days when not specified" do

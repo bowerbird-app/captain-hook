@@ -35,7 +35,7 @@ module CaptainHook
       @recent_event.reload
 
       assert @old_event.archived?
-      refute @recent_event.archived?
+      assert_not @recent_event.archived?
     end
 
     test "uses configuration retention_days when not specified" do
@@ -85,7 +85,7 @@ module CaptainHook
       ArchivalJob.new.perform(retention_days: 90, batch_size: 2)
 
       # All old events should be archived
-      old_count = IncomingEvent.where("created_at < ?", 90.days.ago).archived.count
+      old_count = IncomingEvent.where(created_at: ...90.days.ago).archived.count
       assert old_count >= 6 # @old_event + 5 new ones
     end
 
@@ -97,7 +97,9 @@ module CaptainHook
 
     test "handles empty result set" do
       # Archive all events first
-      IncomingEvent.update_all(archived_at: Time.current)
+      IncomingEvent.find_each do |event|
+        event.update!(archived_at: Time.current)
+      end
 
       count = ArchivalJob.new.perform(retention_days: 90, batch_size: 100)
 

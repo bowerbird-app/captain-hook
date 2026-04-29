@@ -54,6 +54,7 @@ A comprehensive Rails engine for managing webhook integrations with features inc
 Add Captain Hook to your Rails application's Gemfile:
 
 ```ruby
+gem 'flat_pack', github: 'bowerbird-app/flatpack', tag: 'v0.1.33'
 gem 'captain_hook'
 ```
 
@@ -74,6 +75,8 @@ The setup wizard will:
 2. ✅ Create configuration files
 3. ✅ Install database migrations
 4. ✅ Create an example provider (in development)
+
+Captain Hook's admin UI is built on FlatPack, so keep the FlatPack entry above in place when installing or upgrading the gem.
 
 Run migrations:
 

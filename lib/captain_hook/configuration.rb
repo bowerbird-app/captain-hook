@@ -99,10 +99,8 @@ module CaptainHook
         )
       else
         # Fallback defaults if not in registry
-        config_attrs.merge!(
-          display_name: db_provider.name.titleize,
-          verifier_class: "CaptainHook::Verifiers::Base"
-        )
+        config_attrs[:display_name] = db_provider.name.titleize
+        config_attrs[:verifier_class] = "CaptainHook::Verifiers::Base"
       end
 
       ProviderConfig.new(**config_attrs)

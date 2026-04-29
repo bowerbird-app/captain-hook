@@ -26,7 +26,7 @@ module CaptainHook
         # Find unarchived events older than cutoff
         events = CaptainHook::IncomingEvent
                  .not_archived
-                 .where("created_at < ?", cutoff_date)
+                 .where(created_at: ...cutoff_date)
                  .limit(batch_size)
 
         break if events.empty?

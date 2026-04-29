@@ -4,7 +4,7 @@ require "test_helper"
 
 class CaptainHookTest < Minitest::Test
   def test_version_exists
-    refute_nil ::CaptainHook::VERSION
+    assert_not_nil ::CaptainHook::VERSION
   end
 
   def test_engine_exists

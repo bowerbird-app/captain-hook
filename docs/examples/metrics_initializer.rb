@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Example metrics initializer for Captain Hook
 # Copy this to config/initializers/captain_hook_metrics.rb and customize
 
@@ -129,9 +131,7 @@ Rails.application.config.after_initialize do
     if USE_STATSD
       $statsd.increment("signature.verified", tags: ["provider:#{event.payload[:provider]}"])
     elsif USE_LOGGING
-      Rails.logger.debug(
-        "[CaptainHook Metrics] Signature verified: #{event.payload[:provider]}"
-      )
+      Rails.logger.debug { "[CaptainHook Metrics] Signature verified: #{event.payload[:provider]}" }
     end
   end
 

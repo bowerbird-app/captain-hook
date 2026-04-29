@@ -245,8 +245,8 @@ class HooksTest < Minitest::Test
 
     @hooks.clear!
 
-    refute @hooks.registered?(:after_initialize)
-    refute @hooks.registered?(:before_service)
+    assert_not @hooks.registered?(:after_initialize)
+    assert_not @hooks.registered?(:before_service)
     assert_empty @hooks.model_extensions_for(:Example)
   end
 
@@ -256,7 +256,7 @@ class HooksTest < Minitest::Test
 
     @hooks.clear(:after_initialize)
 
-    refute @hooks.registered?(:after_initialize)
+    assert_not @hooks.registered?(:after_initialize)
     assert @hooks.registered?(:before_service)
   end
 
@@ -391,7 +391,7 @@ class HooksTest < Minitest::Test
   end
 
   def test_registered_returns_false_for_non_existent_event
-    refute @hooks.registered?(:non_existent_event)
+    assert_not @hooks.registered?(:non_existent_event)
   end
 
   def test_execute_hook_with_callable_object

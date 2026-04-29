@@ -10,22 +10,22 @@ module CaptainHook
         name: "test_provider",
         active: true
       )
-      
+
       # Create a test provider YAML file for registry integration
       create_test_provider_yaml("test_provider")
     end
-    
+
     teardown do
       # Clean up test YAML file
       cleanup_test_provider_yaml("test_provider")
     end
-    
+
     private
-    
+
     def create_test_provider_yaml(name)
       provider_dir = Rails.root.join("captain_hook", name)
       FileUtils.mkdir_p(provider_dir)
-      
+
       File.write(provider_dir.join("#{name}.yml"), <<~YAML)
         name: #{name}
         display_name: Test Provider
@@ -34,7 +34,7 @@ module CaptainHook
         signing_secret: ENV[TEST_PROVIDER_WEBHOOK_SECRET]
         active: true
       YAML
-      
+
       # Create minimal verifier file
       File.write(provider_dir.join("#{name}.rb"), <<~RUBY)
         class TestProviderVerifier
@@ -43,7 +43,7 @@ module CaptainHook
         end
       RUBY
     end
-    
+
     def cleanup_test_provider_yaml(name)
       provider_dir = Rails.root.join("captain_hook", name)
       FileUtils.rm_rf(provider_dir) if provider_dir.exist?
@@ -57,13 +57,13 @@ module CaptainHook
 
     test "requires name" do
       provider = CaptainHook::Provider.new
-      refute provider.valid?
+      assert_not provider.valid?
       assert_includes provider.errors[:name], "can't be blank"
     end
 
     test "requires unique name" do
       duplicate = CaptainHook::Provider.new(name: @provider.name)
-      refute duplicate.valid?
+      assert_not duplicate.valid?
       assert_includes duplicate.errors[:name], "has already been taken"
     end
 
@@ -85,16 +85,16 @@ module CaptainHook
       provider1 = CaptainHook::Provider.create!(name: "provider1")
       provider2 = CaptainHook::Provider.new(name: "provider2", token: provider1.token)
 
-      refute provider2.valid?
+      assert_not provider2.valid?
       assert_includes provider2.errors[:token], "has already been taken"
     end
 
     test "validates rate_limit_requests is positive integer" do
       @provider.rate_limit_requests = -1
-      refute @provider.valid?
+      assert_not @provider.valid?
 
       @provider.rate_limit_requests = 0
-      refute @provider.valid?
+      assert_not @provider.valid?
 
       @provider.rate_limit_requests = 100
       assert @provider.valid?
@@ -102,10 +102,10 @@ module CaptainHook
 
     test "validates rate_limit_period is positive integer" do
       @provider.rate_limit_period = -1
-      refute @provider.valid?
+      assert_not @provider.valid?
 
       @provider.rate_limit_period = 0
-      refute @provider.valid?
+      assert_not @provider.valid?
 
       @provider.rate_limit_period = 60
       assert @provider.valid?
@@ -137,7 +137,7 @@ module CaptainHook
 
       active_providers = CaptainHook::Provider.active
       assert_includes active_providers, @provider
-      refute_includes active_providers, inactive
+      assert_not_includes active_providers, inactive
     end
 
     test "inactive scope returns only inactive providers" do
@@ -145,7 +145,7 @@ module CaptainHook
 
       inactive_providers = CaptainHook::Provider.inactive
       assert_includes inactive_providers, inactive
-      refute_includes inactive_providers, @provider
+      assert_not_includes inactive_providers, @provider
     end
 
     test "by_name scope orders by name" do
@@ -202,7 +202,7 @@ module CaptainHook
       @provider.rate_limit_requests = nil
       @provider.rate_limit_period = nil
 
-      refute @provider.rate_limiting_enabled?
+      assert_not @provider.rate_limiting_enabled?
     end
 
     # Database no longer stores these fields - they come from registry/global config
@@ -218,7 +218,7 @@ module CaptainHook
 
     test "deactivate! sets active to false" do
       @provider.deactivate!
-      refute @provider.reload.active?
+      assert_not @provider.reload.active?
     end
 
     # Verifier tests removed - verifier_class is now in registry, not database

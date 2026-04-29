@@ -38,9 +38,9 @@ module CaptainHook
         action_class: "TestAction"
       )
 
-      refute_same config1.action_registry, config2.action_registry
+      assert_not_same config1.action_registry, config2.action_registry
       assert config1.action_registry.actions_registered?(provider: "stripe", event_type: "test")
-      refute config2.action_registry.actions_registered?(provider: "stripe", event_type: "test")
+      assert_not config2.action_registry.actions_registered?(provider: "stripe", event_type: "test")
     end
 
     def test_to_h_returns_configuration_summary

@@ -1,0 +1,13 @@
+en:
+  errors:
+    messages:
+      captain_hook_provider_name_format: "only lowercase letters, numbers, and underscores"
+  captain_hook:
+    admin:
+      actions:
+        updated: "Action was successfully updated."
+        deleted: "Action was successfully deleted. It will be skipped during future scans."
+      providers:
+        created: "Provider was successfully created."
+        delete_blocked: "Cannot delete provider with associated events."
+        deleted: "Provider was successfully deleted."

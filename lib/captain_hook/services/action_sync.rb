@@ -62,7 +62,10 @@ module CaptainHook
         # Skip updating existing actions if update_existing is false
         if !is_new && !@update_existing
           @results[:skipped] << action
-          Rails.logger.info("⏭️  Skipped existing action: #{action_class} for #{provider}:#{event_type} (update_existing=false)")
+          Rails.logger.info(
+            "⏭️  Skipped existing action: #{action_class} for #{provider}:#{event_type} " \
+            "(update_existing=false)"
+          )
           return
         end
 

@@ -15,8 +15,8 @@ module CaptainHook
     def test_generates_signature_with_secret_and_payload
       signature = @generator.generate(@payload, @secret)
 
-      refute_nil signature
-      refute_empty signature
+      assert_not_nil signature
+      assert_not_empty signature
     end
 
     def test_generates_consistent_signature_for_same_inputs
@@ -33,7 +33,7 @@ module CaptainHook
       signature1 = @generator.generate(payload1, @secret)
       signature2 = @generator.generate(payload2, @secret)
 
-      refute_equal signature1, signature2
+      assert_not_equal signature1, signature2
     end
 
     def test_generates_different_signature_for_different_secrets
@@ -43,7 +43,7 @@ module CaptainHook
       signature1 = @generator.generate(@payload, secret1)
       signature2 = @generator.generate(@payload, secret2)
 
-      refute_equal signature1, signature2
+      assert_not_equal signature1, signature2
     end
 
     # === Signature Verification Tests ===
@@ -58,21 +58,21 @@ module CaptainHook
       signature = @generator.generate(@payload, @secret)
       tampered_signature = "#{signature}tampered"
 
-      refute @generator.verify(@payload, @secret, tampered_signature)
+      assert_not @generator.verify(@payload, @secret, tampered_signature)
     end
 
     def test_rejects_signature_with_wrong_secret
       signature = @generator.generate(@payload, @secret)
       wrong_secret = "wrong_secret"
 
-      refute @generator.verify(@payload, wrong_secret, signature)
+      assert_not @generator.verify(@payload, wrong_secret, signature)
     end
 
     def test_rejects_signature_with_modified_payload
       signature = @generator.generate(@payload, @secret)
       modified_payload = '{"event":"modified"}'
 
-      refute @generator.verify(modified_payload, @secret, signature)
+      assert_not @generator.verify(modified_payload, @secret, signature)
     end
 
     # === HMAC Algorithm Tests ===
@@ -97,7 +97,7 @@ module CaptainHook
       sha256_sig = @generator.generate(@payload, @secret, algorithm: :sha256)
       sha1_sig = @generator.generate(@payload, @secret, algorithm: :sha1)
 
-      refute_equal sha256_sig, sha1_sig
+      assert_not_equal sha256_sig, sha1_sig
     end
 
     # === Edge Cases ===
@@ -105,22 +105,22 @@ module CaptainHook
     def test_handles_empty_payload
       signature = @generator.generate("", @secret)
 
-      refute_nil signature
-      refute_empty signature
+      assert_not_nil signature
+      assert_not_empty signature
     end
 
     def test_handles_empty_secret
       signature = @generator.generate(@payload, "")
 
-      refute_nil signature
-      refute_empty signature
+      assert_not_nil signature
+      assert_not_empty signature
     end
 
     def test_handles_unicode_payload
       unicode_payload = '{"message":"Hello 世界 🌍"}'
       signature = @generator.generate(unicode_payload, @secret)
 
-      refute_nil signature
+      assert_not_nil signature
       assert @generator.verify(unicode_payload, @secret, signature)
     end
 
@@ -128,7 +128,7 @@ module CaptainHook
       large_payload = "{\"data\":\"#{'x' * 100_000}\"}"
       signature = @generator.generate(large_payload, @secret)
 
-      refute_nil signature
+      assert_not_nil signature
       assert @generator.verify(large_payload, @secret, signature)
     end
 
@@ -136,7 +136,7 @@ module CaptainHook
       special_secret = "secret!@#$%^&*()_+-=[]{}|;:',.<>?/~`"
       signature = @generator.generate(@payload, special_secret)
 
-      refute_nil signature
+      assert_not_nil signature
       assert @generator.verify(@payload, special_secret, signature)
     end
 
@@ -188,26 +188,26 @@ module CaptainHook
     end
 
     def test_handles_nil_signature_in_verification
-      refute @generator.verify(@payload, @secret, nil)
+      assert_not @generator.verify(@payload, @secret, nil)
     end
 
     def test_verify_returns_false_for_blank_signature
-      refute @generator.verify(@payload, @secret, "")
-      refute @generator.verify(@payload, @secret, "   ")
+      assert_not @generator.verify(@payload, @secret, "")
+      assert_not @generator.verify(@payload, @secret, "   ")
     end
 
     def test_verify_algorithm_must_match_generation_algorithm
       signature_sha256 = @generator.generate(@payload, @secret, algorithm: :sha256)
 
       # Verifying with sha1 should fail even though signature was valid for sha256
-      refute @generator.verify(@payload, @secret, signature_sha256, algorithm: :sha1)
+      assert_not @generator.verify(@payload, @secret, signature_sha256, algorithm: :sha1)
     end
 
     def test_secure_compare_returns_false_for_different_lengths
       a = "short"
       b = "much_longer_string"
 
-      refute @generator.send(:secure_compare, a, b)
+      assert_not @generator.send(:secure_compare, a, b)
     end
 
     def test_secure_compare_returns_true_for_identical_strings
@@ -221,27 +221,27 @@ module CaptainHook
       a = "string1"
       b = "string2"
 
-      refute @generator.send(:secure_compare, a, b)
+      assert_not @generator.send(:secure_compare, a, b)
     end
 
     def test_secure_compare_returns_false_for_blank_first_argument
-      refute @generator.send(:secure_compare, "", "something")
-      refute @generator.send(:secure_compare, nil, "something")
+      assert_not @generator.send(:secure_compare, "", "something")
+      assert_not @generator.send(:secure_compare, nil, "something")
     end
 
     def test_secure_compare_returns_false_for_blank_second_argument
-      refute @generator.send(:secure_compare, "something", "")
-      refute @generator.send(:secure_compare, "something", nil)
+      assert_not @generator.send(:secure_compare, "something", "")
+      assert_not @generator.send(:secure_compare, "something", nil)
     end
 
     # === Performance Tests ===
 
     def test_generation_is_fast
-      start_time = Time.now
+      start_time = Time.zone.now
       1000.times do
         @generator.generate(@payload, @secret)
       end
-      elapsed = Time.now - start_time
+      elapsed = Time.zone.now - start_time
 
       # Should be able to generate 1000 signatures in less than 0.5 seconds
       assert elapsed < 0.5, "Signature generation should be fast, took #{elapsed} seconds"
@@ -250,11 +250,11 @@ module CaptainHook
     def test_verification_is_fast
       signature = @generator.generate(@payload, @secret)
 
-      start_time = Time.now
+      start_time = Time.zone.now
       1000.times do
         @generator.verify(@payload, @secret, signature)
       end
-      elapsed = Time.now - start_time
+      elapsed = Time.zone.now - start_time
 
       # Should be able to verify 1000 signatures in less than 0.5 seconds
       assert elapsed < 0.5, "Signature verification should be fast, took #{elapsed} seconds"

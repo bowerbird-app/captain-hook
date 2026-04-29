@@ -35,7 +35,7 @@ module CaptainHook
              params: { provider_id: @provider.id, payload: payload }
 
         assert_response :success
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert json["success"]
         assert json["dry_run"]
         assert_equal "stripe", json["provider"]["name"]
@@ -47,7 +47,7 @@ module CaptainHook
              params: { provider_id: @provider.id, payload: "not-json" }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_not json["success"]
         assert_includes json["error"], "Invalid JSON"
       end
@@ -63,7 +63,7 @@ module CaptainHook
              params: { provider_id: @provider.id, payload: payload }
 
         assert_response :success
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert json["success"]
         assert_not json["would_process"]
         assert_includes json["message"], "No actions registered"
@@ -86,7 +86,7 @@ module CaptainHook
              params: { provider_id: @provider.id, payload: payload }
 
         assert_response :success
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert json["success"]
         assert json["would_process"]
         assert_includes json["message"], "Would trigger"
@@ -113,7 +113,7 @@ module CaptainHook
              params: { provider_id: @provider.id, payload: payload }
 
         assert_response :success
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert json["actions"].is_a?(Array)
         assert json["actions"].any?
         action_item = json["actions"].first
@@ -143,7 +143,7 @@ module CaptainHook
 
         # Security validation catches non-existent verifier classes and returns 400
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_not json["success"]
         assert_includes json["error"], "Verifier class not found"
       end
@@ -168,7 +168,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_not json["success"]
         assert_equal "Invalid verifier class", json["error"]
       end
@@ -191,7 +191,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid verifier class", json["error"]
       end
 
@@ -213,7 +213,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid verifier class", json["error"]
       end
 
@@ -235,7 +235,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid verifier class", json["error"]
       end
 
@@ -257,7 +257,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid verifier class", json["error"]
       end
 
@@ -279,7 +279,7 @@ module CaptainHook
              params: { provider_id: bad_provider.id, payload: payload }
 
         assert_response :bad_request
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert_equal "Invalid verifier class", json["error"]
       end
 
@@ -302,7 +302,7 @@ module CaptainHook
 
         # Blank verifier class falls back to Base verifier, which is valid
         assert_response :success
-        json = JSON.parse(response.body)
+        json = response.parsed_body
         assert json["success"]
         # Verify it used the base verifier
         assert_equal "CaptainHook::Verifiers::Base", json["provider"]["verifier"]

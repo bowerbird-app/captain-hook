@@ -76,8 +76,7 @@ module CaptainHook
 
     # Increment attempt counter
     def increment_attempts!
-      increment!(:attempt_count)
-      update!(last_attempt_at: Time.current)
+      update!(attempt_count: attempt_count + 1, last_attempt_at: Time.current)
     end
 
     # Check if max attempts reached

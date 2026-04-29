@@ -58,8 +58,8 @@ module CaptainHook
       )
 
       hash = config.to_h
-      refute hash.key?("description")
-      refute hash.key?("token")
+      assert_not hash.key?("description")
+      assert_not hash.key?("token")
       assert_equal "test", hash["name"]
     end
 
@@ -67,7 +67,7 @@ module CaptainHook
       config = ProviderConfig.new(name: "test", active: true)
 
       hash = config.to_h
-      assert(hash.keys.all? { |k| k.is_a?(String) })
+      assert(hash.keys.all?(String))
     end
 
     def test_initialize_with_string_keys
@@ -164,14 +164,14 @@ module CaptainHook
     def test_active_predicate_returns_false_when_inactive
       config = ProviderConfig.new(name: "test", active: false)
 
-      refute config.active?
+      assert_not config.active?
     end
 
     def test_active_predicate_returns_false_when_nil
       config = ProviderConfig.new(name: "test")
       config.active = nil
 
-      refute config.active?
+      assert_not config.active?
     end
   end
 end

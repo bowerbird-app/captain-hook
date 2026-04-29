@@ -29,24 +29,24 @@ module CaptainHook
 
     test "requires action_class" do
       action_under_test = @event.incoming_event_actions.new(priority: 100)
-      refute action_under_test.valid?
+      assert_not action_under_test.valid?
       assert_includes action_under_test.errors[:action_class], "can't be blank"
     end
 
     test "requires status" do
       action_under_test = @event.incoming_event_actions.new(action_class: "Test", priority: 100)
       action_under_test.status = nil
-      refute action_under_test.valid?
+      assert_not action_under_test.valid?
     end
 
     test "priority must be an integer" do
       @action.priority = "abc"
-      refute @action.valid?
+      assert_not @action.valid?
     end
 
     test "attempt_count must be non-negative integer" do
       @action.attempt_count = -1
-      refute @action.valid?
+      assert_not @action.valid?
 
       @action.attempt_count = 0
       assert @action.valid?
@@ -81,7 +81,7 @@ module CaptainHook
 
       pending_actions_list = @event.incoming_event_actions.pending
       assert_includes pending_actions_list, @action
-      refute_includes pending_actions_list, processing
+      assert_not_includes pending_actions_list, processing
     end
 
     test "failed scope returns only failed actions" do
@@ -93,7 +93,7 @@ module CaptainHook
 
       failed_actions_list = @event.incoming_event_actions.failed
       assert_includes failed_actions_list, failed
-      refute_includes failed_actions_list, @action
+      assert_not_includes failed_actions_list, @action
     end
 
     test "by_priority scope orders by priority then action_class" do
@@ -122,7 +122,7 @@ module CaptainHook
 
       locked_actions = @event.incoming_event_actions.locked
       assert_includes locked_actions, @action
-      refute_includes locked_actions, unlocked
+      assert_not_includes locked_actions, unlocked
     end
 
     test "unlocked scope returns only unlocked actions" do
@@ -134,7 +134,7 @@ module CaptainHook
 
       unlocked_actions = @event.incoming_event_actions.unlocked
       assert_includes unlocked_actions, unlocked
-      refute_includes unlocked_actions, @action
+      assert_not_includes unlocked_actions, @action
     end
 
     # === Locking ===
@@ -173,7 +173,7 @@ module CaptainHook
     end
 
     test "locked? returns true when locked" do
-      refute @action.locked?
+      assert_not @action.locked?
 
       @action.update!(locked_at: Time.current)
 
@@ -235,13 +235,13 @@ module CaptainHook
 
       assert @action.max_attempts_reached?(5)
       assert @action.max_attempts_reached?(4)
-      refute @action.max_attempts_reached?(6)
+      assert_not @action.max_attempts_reached?(6)
     end
 
     test "max_attempts_reached? returns false when below limit" do
       @action.update!(attempt_count: 2)
 
-      refute @action.max_attempts_reached?(5)
+      assert_not @action.max_attempts_reached?(5)
     end
 
     test "reset_for_retry! resets status and clears lock" do
@@ -326,7 +326,7 @@ module CaptainHook
       )
 
       assert_includes IncomingEventAction.locked, locked_action
-      refute_includes IncomingEventAction.locked, @action
+      assert_not_includes IncomingEventAction.locked, @action
     end
 
     test "unlocked scope returns unlocked actions" do
@@ -339,7 +339,7 @@ module CaptainHook
       )
 
       assert_includes IncomingEventAction.unlocked, @action
-      refute_includes IncomingEventAction.unlocked, locked_action
+      assert_not_includes IncomingEventAction.unlocked, locked_action
     end
   end
 end

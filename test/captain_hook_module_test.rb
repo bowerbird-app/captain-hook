@@ -90,7 +90,7 @@ class CaptainHookModuleTest < Minitest::Test
     config1.retention_days = 30
     config2.retention_days = 90
 
-    refute_same config1, config2
+    assert_not_same config1, config2
     assert_equal 30, config1.retention_days
     assert_equal 90, config2.retention_days
   end

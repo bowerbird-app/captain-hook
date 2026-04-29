@@ -73,8 +73,8 @@ module CaptainHook
           verifier_file = File.join(subdir, "#{provider_name}.rb")
           if File.exist?(verifier_file)
             begin
-              load verifier_file
-              Rails.logger.debug("Loaded verifier from #{verifier_file}")
+              require verifier_file
+              Rails.logger.debug { "Loaded verifier from #{verifier_file}" }
             rescue StandardError => e
               Rails.logger.error("Failed to load verifier #{verifier_file}: #{e.message}")
             end
@@ -91,8 +91,8 @@ module CaptainHook
       # Load all action files from a directory
       def load_actions_from_directory(directory)
         Dir.glob(File.join(directory, "**", "*.rb")).each do |action_file|
-          load action_file
-          Rails.logger.debug("Loaded action from #{action_file}")
+          require action_file
+          Rails.logger.debug { "Loaded action from #{action_file}" }
         rescue StandardError => e
           Rails.logger.error("Failed to load action #{action_file}: #{e.message}")
         end

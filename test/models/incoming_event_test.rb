@@ -26,32 +26,32 @@ module CaptainHook
 
     test "requires provider" do
       event = CaptainHook::IncomingEvent.new(external_id: "evt", event_type: "test")
-      refute event.valid?
+      assert_not event.valid?
       assert_includes event.errors[:provider], "can't be blank"
     end
 
     test "requires external_id" do
       event = CaptainHook::IncomingEvent.new(provider: "test", event_type: "test")
-      refute event.valid?
+      assert_not event.valid?
       assert_includes event.errors[:external_id], "can't be blank"
     end
 
     test "requires event_type" do
       event = CaptainHook::IncomingEvent.new(provider: "test", external_id: "evt")
-      refute event.valid?
+      assert_not event.valid?
       assert_includes event.errors[:event_type], "can't be blank"
     end
 
     test "requires status" do
       event = CaptainHook::IncomingEvent.new(provider: "test", external_id: "evt", event_type: "test")
       event.status = nil
-      refute event.valid?
+      assert_not event.valid?
     end
 
     test "requires dedup_state" do
       event = CaptainHook::IncomingEvent.new(provider: "test", external_id: "evt", event_type: "test")
       event.dedup_state = nil
-      refute event.valid?
+      assert_not event.valid?
     end
 
     # === Enums ===
@@ -93,7 +93,7 @@ module CaptainHook
 
       events = CaptainHook::IncomingEvent.by_provider(@provider.name)
       assert_includes events, @event
-      refute_includes events, other_event
+      assert_not_includes events, other_event
     end
 
     test "by_event_type scope filters by event type" do
@@ -105,7 +105,7 @@ module CaptainHook
 
       events = CaptainHook::IncomingEvent.by_event_type("test.event")
       assert_includes events, @event
-      refute_includes events, other_event
+      assert_not_includes events, other_event
     end
 
     test "archived scope returns only archived events" do
@@ -118,7 +118,7 @@ module CaptainHook
 
       archived_events = CaptainHook::IncomingEvent.archived
       assert_includes archived_events, @event
-      refute_includes archived_events, not_archived
+      assert_not_includes archived_events, not_archived
     end
 
     test "not_archived scope returns only non-archived events" do
@@ -131,7 +131,7 @@ module CaptainHook
 
       active_events = CaptainHook::IncomingEvent.not_archived
       assert_includes active_events, not_archived
-      refute_includes active_events, @event
+      assert_not_includes active_events, @event
     end
 
     test "recent scope orders by created_at desc" do
@@ -195,7 +195,7 @@ module CaptainHook
     end
 
     test "archived? returns true when archived" do
-      refute @event.archived?
+      assert_not @event.archived?
       @event.archive!
       assert @event.archived?
     end

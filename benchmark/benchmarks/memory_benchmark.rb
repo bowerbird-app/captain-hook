@@ -25,7 +25,7 @@ BenchmarkHelper.memory_benchmark("Complete webhook processing") do
 end
 
 puts "\n📊 Signature Verification Memory Usage"
-stripe_provider = BenchmarkFixtures.create_test_provider(name: "stripe")
+BenchmarkFixtures.create_test_provider(name: "stripe")
 
 # Get provider config (includes verifier class from YAML)
 provider_config = CaptainHook.configuration.provider("stripe")

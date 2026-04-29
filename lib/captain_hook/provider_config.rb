@@ -146,7 +146,7 @@ module CaptainHook
     def verifier
       # Try to constantize the verifier class first (it might be a built-in verifier)
       begin
-        return @verifier ||= verifier_class.constantize.new
+        @verifier ||= verifier_class.constantize.new
       rescue NameError
         # Class doesn't exist yet, try to load from file
       end
@@ -158,7 +158,8 @@ module CaptainHook
     rescue NameError => e
       Rails.logger.error("Failed to load verifier #{verifier_class}: #{e.message}")
       raise CaptainHook::VerifierNotFoundError,
-            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory or use the built-in Stripe verifier (CaptainHook::Verifiers::Stripe)."
+            "Verifier #{verifier_class} not found. Ensure the verifier file exists in the provider directory " \
+            "or use the built-in Stripe verifier (CaptainHook::Verifiers::Stripe)."
     end
 
     # Load the verifier file from the filesystem
@@ -190,7 +191,7 @@ module CaptainHook
 
       if file_path
         load file_path
-        Rails.logger.debug("Loaded verifier from #{file_path}")
+        Rails.logger.debug { "Loaded verifier from #{file_path}" }
       else
         Rails.logger.warn("Verifier file not found for #{name}, tried: #{possible_paths.inspect}")
       end

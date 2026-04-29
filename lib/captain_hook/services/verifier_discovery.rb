@@ -37,7 +37,7 @@ module CaptainHook
       # Discover custom verifiers in the host application
       def discover_application_verifiers
         # Scan for verifier classes in app/verifiers/captain_hook/verifiers/
-        app_verifiers_path = Rails.root.join("app", "verifiers", "captain_hook", "verifiers")
+        app_verifiers_path = Rails.root.join("app/verifiers/captain_hook/verifiers")
         return unless File.directory?(app_verifiers_path)
 
         Dir.glob(File.join(app_verifiers_path, "*.rb")).each do |file_path|

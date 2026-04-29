@@ -194,7 +194,7 @@ RSpec.describe CaptainHook::ActionRegistry do
 
   describe "thread safety" do
     it "safely handles concurrent registrations" do
-      threads = 10.times.map do |i|
+      threads = Array.new(10) do |i|
         Thread.new do
           registry.register(
             provider: "stripe",

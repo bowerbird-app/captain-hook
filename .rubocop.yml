@@ -5,6 +5,7 @@ AllCops:
     - 'test/dummy/**/*'
     - 'vendor/**/*'
     - 'bin/**/*'
+    - 'docs/examples/**/*'
 
 Style/Documentation:
   Enabled: false
@@ -19,6 +20,12 @@ Style/SingleArgumentDig:
 
 Layout/LineLength:
   Max: 120
+  Exclude:
+    - 'lib/captain_hook/provider_config.rb'
+    - 'lib/captain_hook/services/action_discovery.rb'
+    - 'lib/captain_hook/services/action_lookup.rb'
+    - 'lib/captain_hook/services/action_sync.rb'
+    - 'lib/captain_hook/services/provider_sync.rb'
 
 # Relax metrics for test files, generators, controllers, and jobs
 Metrics/ClassLength:
@@ -29,6 +36,7 @@ Metrics/ClassLength:
     - 'lib/captain_hook/hooks.rb'
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
+    - 'lib/captain_hook/services/action_discovery.rb'
 
 Metrics/ModuleLength:
   Max: 200
@@ -45,6 +53,10 @@ Metrics/MethodLength:
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
     - 'db/migrate/**/*'
+    - 'benchmark/support/fixtures.rb'
+    - 'lib/captain_hook/provider_config.rb'
+    - 'lib/captain_hook/services/action_sync.rb'
+    - 'lib/captain_hook/services/provider_sync.rb'
 
 Metrics/AbcSize:
   Max: 30
@@ -55,23 +67,37 @@ Metrics/AbcSize:
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
     - 'db/migrate/**/*'
+    - 'app/models/captain_hook/provider.rb'
+    - 'lib/captain_hook/configuration.rb'
+    - 'lib/captain_hook/provider_config.rb'
+    - 'lib/captain_hook/services/action_sync.rb'
+    - 'lib/captain_hook/services/provider_sync.rb'
 
 Metrics/CyclomaticComplexity:
   Max: 10
   Exclude:
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
+    - 'app/models/captain_hook/provider.rb'
+    - 'lib/captain_hook/provider_config.rb'
+    - 'lib/captain_hook/services/provider_sync.rb'
 
 Metrics/PerceivedComplexity:
   Max: 10
   Exclude:
     - 'app/controllers/**/*'
     - 'app/jobs/**/*'
+    - 'app/models/captain_hook/provider.rb'
+    - 'lib/captain_hook/provider_config.rb'
+    - 'lib/captain_hook/services/action_sync.rb'
+    - 'lib/captain_hook/services/provider_sync.rb'
 
 Metrics/BlockLength:
   Exclude:
     - 'test/**/*'
     - 'spec/**/*'
+    - 'captain_hook.gemspec'
+    - 'lib/tasks/**/*.rake'
 
 # Allow empty blocks in tests (common for stubs/mocks)
 Lint/EmptyBlock:
@@ -109,6 +135,10 @@ Lint/MissingSuper:
     - 'lib/captain_hook/services/**/*'
     - 'test/services/**/*'
 
+Lint/IneffectiveAccessModifier:
+  Exclude:
+    - 'lib/captain_hook/services/action_discovery.rb'
+
 # Allow short parameter names in cryptographic contexts
 Naming/MethodParameterName:
   AllowedNames:
@@ -122,5 +152,11 @@ Naming/MethodParameterName:
 Naming/PredicateMethod:
   Exclude:
     - 'lib/captain_hook/signature_generator.rb'
+    - 'lib/captain_hook/verifier_helpers.rb'
+    - 'lib/captain_hook/verifiers/base.rb'
     - 'spec/**/*'
+    - 'test/**/*'
+
+Style/OpenStructUse:
+  Exclude:
     - 'test/**/*'

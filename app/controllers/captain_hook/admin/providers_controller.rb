@@ -44,19 +44,19 @@ module CaptainHook
         @provider = CaptainHook::Provider.new(provider_params)
 
         if @provider.save
-          redirect_to [:admin, @provider], notice: "Provider was successfully created."
+          redirect_to [:admin, @provider], notice: I18n.t("captain_hook.admin.providers.created")
         else
-          render :new, status: :unprocessable_entity
+          render :new, status: :unprocessable_content
         end
       end
 
       # DELETE /captain_hook/admin/providers/:id
       def destroy
         if @provider.incoming_events.any?
-          redirect_to [:admin, @provider], alert: "Cannot delete provider with associated events."
+          redirect_to [:admin, @provider], alert: I18n.t("captain_hook.admin.providers.delete_blocked")
         else
           @provider.destroy
-          redirect_to admin_providers_url, notice: "Provider was successfully deleted."
+          redirect_to admin_providers_url, notice: I18n.t("captain_hook.admin.providers.deleted")
         end
       end
 
@@ -69,9 +69,9 @@ module CaptainHook
       end
 
       def provider_params
-        params.require(:provider).permit(
-          :name, :token,
-          :rate_limit_requests, :rate_limit_period, :active
+        params.expect(
+          provider: %i[name token
+                       rate_limit_requests rate_limit_period active]
         )
       end
     end
